@@ -1,0 +1,28 @@
+import { fetchExternalQuotes } from '../services/rfqService.js';
+
+export async function matchOrderWithFallback(order, res) {
+    try {
+        // Call the main order matching logic (assume it's implemented elsewhere)
+        const { trades, remainingAmount } = matchOrder(order);
+
+        if (remainingAmount > 0) {
+            // Fallback: Fetch external RFQ quotes if no local match is found
+            const rfqQuotes = await fetchExternalQuotes(order);
+
+            if (rfqQuotes && rfqQuotes.length > 0) {
+                // Sort quotes by price and return the best one
+                const bestQuote = rfqQuotes.sort((a, b) => a.price - b.price)[0];
+                return res.json({ bestQuote });
+            } else {
+                // No RFQ quotes available
+                return res.status(404).json({ error: 'No RFQ quotes available' });
+            }
+        }
+
+        // If local matches were found, return the trades
+        return res.json({ trades, remainingAmount });
+    } catch (error) {
+        console.error('Error in matchOrderWithFallback:', error.message);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DEX Aggregator</title>
+  <!-- Import modern sans-serif font (Sora) for sleek typography -->
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Import Ethers.js library for blockchain interactions -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
+  <style>
+    /* Base styles and theme */
+    body {
+      margin: 0;
+      font-family: 'Sora', sans-serif;
+      background-color: #0f0f10;      /* dark background */
+      color: #e0e0e0;                /* light text for contrast */
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin: 0;
+      font-weight: 600;
+      color: #ffffff;               /* headings in white for emphasis */
+    }
+    p {
+      margin: 0;
+      color: #cccccc;               /* slightly muted text for secondary info */
+    }
+    a {
+      color: #00BCD4;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Layout */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      background: #121212;  /* dark header background to distinguish from body */
+      border-bottom: 1px solid #1f1f1f;
+    }
+    header .brand {
+      font-size: 1.5rem;
+    }
+    header .brand p {
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
+      color: #888888;
+    }
+    .wallet-info {
+      font-size: 0.9rem;
+    }
+    .wallet-info button {
+      margin-left: 1rem;
+    }
+
+    main.two-col-layout {
+      max-width: 1200px;
+      margin: 2rem auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      padding: 0 1rem;
+    }
+    @media (max-width: 768px) {
+      main.two-col-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Container styling for sections */
+    .container {
+      background: #151515;  /* slightly lighter dark for contrast */
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 1.5rem;
+      /* Add a subtle shadow/glow for futuristic feel */
+      box-shadow: 0 0 10px rgba(0, 188, 212, 0.1);
+    }
+    .container h2 {
+      margin-bottom: 1rem;
+      font-size: 1.25rem;
+      /* Section headings could optionally use accent color if desired */
+    }
+
+    /* Form elements */
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    label {
+      font-size: 0.9rem;
+      margin-bottom: 0.2rem;
+    }
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      background: #1e1e1e;
+      border: 1px solid #3a3a3a;
+      border-radius: 4px;
+      color: #e0e0e0;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    input::placeholder {
+      color: #888888;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #00BCD4;
+      box-shadow: 0 0 5px rgba(0, 188, 212, 0.5);
+    }
+
+    /* Buttons */
+    button {
+      cursor: pointer;
+      font-family: 'Sora', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 4px;
+      color: #ffffff;
+      background-color: #00BCD4;  /* accent color */
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    button:hover {
+      background-color: #17C9E0;  /* slightly lighter on hover */
+      box-shadow: 0 0 8px rgba(0, 188, 212, 0.6);
+    }
+    button:active {
+      background-color: #0aaab8;
+    }
+    /* Secondary/Cancel button style */
+    .cancel-btn {
+      background: transparent;
+      border: 1px solid #E57373;
+      color: #E57373;
+      font-size: 0.9rem;
+      padding: 0.4rem 0.8rem;
+      margin-left: 1rem;
+      border-radius: 4px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .cancel-btn:hover {
+      background-color: #E57373;
+      color: #ffffff;
+    }
+
+    /* Order book list styling */
+    .order-controls {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .order-controls label {
+      margin-bottom: 0;  /* override default label margin in form context */
+      font-weight: 500;
+    }
+    #orderList {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 300px;
+      overflow-y: auto;
+      /* styled scrollbars if needed (optional) */
+    }
+    #orderList li {
+      padding: 0.5rem;
+      border-bottom: 1px solid #2a2a2a;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #orderList li:last-child {
+      border-bottom: none;
+    }
+    #orderList li.green {
+      /* (optional styling if we want to differentiate buy vs sell via class) */
+    }
+
+    /* Toast notification */
+    #toast {
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 20, 20, 0.9);
+      color: #e0e0e0;
+      padding: 0.8rem 1.2rem;
+      border: 1px solid #444444;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      display: none;  /* hidden by default */
+      z-index: 1000;
+    }
+    /* Utility class for hidden elements */
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>DEX Aggregator</h1>
+      <p>Real-time trustless trading across aggregated DEX liquidity</p>
+    </div>
+    <div class="wallet-info">
+      <span id="walletAddress">Not connected</span>
+      <button id="connectBtn">Connect Wallet</button>
+    </div>
+  </header>
+
+  <!-- Toast notification for status messages -->
+  <div id="toast" class="hidden"></div>
+
+  <main class="two-col-layout">
+    <!-- Order Submission Form Section -->
+    <div class="container" id="order-section">
+      <h2>Submit Order</h2>
+      <form id="orderForm">
+        <div>
+          <label for="sellToken">Sell Token:</label>
+          <input type="text" id="sellToken" value="ETH" />
+        </div>
+        <div>
+          <label for="buyToken">Buy Token:</label>
+          <input type="text" id="buyToken" value="USDC" />
+        </div>
+        <div>
+          <label for="sellAmount">Sell Amount:</label>
+          <input type="number" id="sellAmount" placeholder="Amount to sell" />
+        </div>
+        <div>
+          <label for="buyAmount">Buy Amount:</label>
+          <input type="number" id="buyAmount" placeholder="Amount to receive" />
+        </div>
+        <div>
+          <label for="side">Order Side:</label>
+          <select id="side">
+            <option value="buy">Buy (Taking offer)</option>
+            <option value="sell">Sell (Making offer)</option>
+          </select>
+        </div>
+        <button type="submit">Submit Order</button>
+      </form>
+    </div>
+
+    <!-- Order Book / Orders List Section -->
+    <div class="container" id="orderbook-section">
+      <h2>Order Book (Live)</h2>
+      <div class="order-controls">
+        <label for="sort">Sort:</label>
+        <select id="sort">
+          <option value="highest">Highest Price</option>
+          <option value="lowest">Lowest Price</option>
+        </select>
+        <label for="filter">Filter:</label>
+        <select id="filter">
+          <option value="All">All Pairs</option>
+          <option value="ETH/USDC">ETH/USDC</option>
+          <!-- Additional pairs can be listed here -->
+        </select>
+      </div>
+      <ul id="orderList"><!-- Orders will be populated here --></ul>
+    </div>
+  </main>
+
+  <script>
+    // Backend URL for fetching orders (adjust if needed for actual backend)
+    const backendUrl = 'http://localhost:3000';
+
+    // Initialize Ethereum provider (MetaMask)
+    const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+    let userAddress = "";
+
+    // UI elements
+    const connectBtn   = document.getElementById('connectBtn');
+    const walletSpan   = document.getElementById('walletAddress');
+    const orderListEl  = document.getElementById('orderList');
+    const toastEl      = document.getElementById('toast');
+
+    // Show toast notification
+    function showToast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.remove('hidden');
+      // Hide after 3 seconds
+      setTimeout(() => {
+        toastEl.classList.add('hidden');
+      }, 3000);
+    }
+
+    // Fetch and display orders
+    async function refreshOrders() {
+      try {
+        const response = await fetch(\`\${backendUrl}/orders\`);
+        const orders = await response.json();
+        // Filter and sort the orders based on user selection
+        const sortOption = document.getElementById('sort').value;
+        const filterOption = document.getElementById('filter').value;
+        let filteredOrders = orders;
+        if (filterOption !== "All") {
+          filteredOrders = orders.filter(o => \`\${o.base_token}/${o.quote_token}\` === filterOption);
+        }
+        if (sortOption === "highest") {
+          filteredOrders.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+        } else if (sortOption === "lowest") {
+          filteredOrders.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+        }
+        // Clear current list
+        orderListEl.innerHTML = "";
+        const now = Math.floor(Date.now() / 1000);
+        for (const order of filteredOrders) {
+          const item = document.createElement('li');
+          // Format order info
+          const timeRemaining = order.validTo ? Math.max(0, order.validTo - now) : 'N/A';
+          item.textContent = \`${order.side === 'buy' ? '🟢' : '🔴'} #\${order.id} \${order.side.toUpperCase()} \${order.sellAmount} \${order.sellToken} for \${order.buyAmount} \${order.buyToken} @ \${order.price} (${timeRemaining}s left)\`;
+          // If this order was created by the connected user, allow cancellation
+          if (userAddress && order.user && order.user.toLowerCase() === userAddress.toLowerCase()) {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.className = 'cancel-btn';
+            cancelBtn.onclick = async () => {
+              await fetch(\`\${backendUrl}/orders/\${order.id}\`, { method: 'DELETE' });
+              showToast('Order Cancelled');
+              refreshOrders();
+            };
+            item.appendChild(cancelBtn);
+          }
+          orderListEl.appendChild(item);
+        }
+      } catch (err) {
+        console.error('Failed to refresh orders:', err);
+      }
+    }
+
+    // Connect to MetaMask wallet
+    async function connectWallet() {
+      try {
+        // Prompt user to connect any Ethereum accounts
+        await provider.send("eth_requestAccounts", []);
+        const signer = provider.getSigner();
+        userAddress = await signer.getAddress();
+        // Update UI to show connected address (shortened)
+        walletSpan.innerText = \`Connected: \${userAddress.slice(0,6)}...\${userAddress.slice(-4)}\`;
+        // Hide the Connect button after successful connection
+        connectBtn.style.display = 'none';
+        showToast('Wallet connected');
+        return signer;
+      } catch (err) {
+        console.error('Wallet connection failed:', err);
+        showToast('Wallet connection failed');
+      }
+    }
+
+    // Event: manual connect wallet button
+    connectBtn.addEventListener('click', connectWallet);
+
+    // Event: form submission (submit order)
+    document.getElementById('orderForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      // Ensure wallet is connected (connect if not already)
+      const signer = await connectWallet();
+      if (!signer) {
+        return; // if connection failed, abort submission
+      }
+      // Prepare order data from form
+      const order = {
+        sellToken: document.getElementById('sellToken').value,
+        buyToken: document.getElementById('buyToken').value,
+        sellAmount: document.getElementById('sellAmount').value,
+        buyAmount: document.getElementById('buyAmount').value,
+        validTo: Math.floor(Date.now() / 1000) + 600,  // e.g. 10 minutes from now
+        user: userAddress,
+        side: document.getElementById('side').value
+      };
+      try {
+        // Create hash and sign it using the connected wallet
+        const encoded = ethers.utils.defaultAbiCoder.encode(
+          ['string','string','uint256','uint256','uint256','address','string'],
+          [order.sellToken, order.buyToken, order.sellAmount, order.buyAmount, order.validTo, order.user, order.side]
+        );
+        const hash = ethers.utils.keccak256(encoded);
+        const signature = await signer.signMessage(ethers.utils.arrayify(hash));
+        const signedOrder = { ...order, signature };
+        // Send the order to backend (e.g., to be broadcast or stored)
+        await fetch(\`\${backendUrl}/orders\`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(signedOrder)
+        });
+        showToast('Order Submitted');
+        refreshOrders();
+      } catch (err) {
+        console.error('Order submission failed:', err);
+        showToast('Order submission failed');
+      }
+    });
+
+    // Events: sort/filter controls
+    document.getElementById('sort').addEventListener('change', refreshOrders);
+    document.getElementById('filter').addEventListener('change', refreshOrders);
+
+    // Auto-refresh orders every 5 seconds, and fetch on load
+    setInterval(refreshOrders, 5000);
+    refreshOrders();
+  </script>
+</body>
+</html>

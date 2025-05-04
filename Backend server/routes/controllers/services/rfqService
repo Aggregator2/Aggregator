@@ -1,0 +1,28 @@
+export async function fetchExternalQuotes(order) {
+    const timestamp = new Date().toISOString();
+    console.log(`📡 Sending RFQ request for order ${order?.id || 'unknown'} at ${timestamp}`);
+
+    try {
+        const quotes = [
+            {
+                provider: 'ProviderA',
+                price: (Math.random() * 100).toFixed(2),
+                validUntil: Date.now() + 60000 // valid for 1 minute
+            },
+            {
+                provider: 'ProviderB',
+                price: (Math.random() * 100).toFixed(2),
+                validUntil: Date.now() + 120000 // valid for 2 minutes
+            },
+            {
+                provider: 'ProviderC',
+                price: (Math.random() * 100).toFixed(2),
+                validUntil: Date.now() + 90000 // valid for 1.5 minutes
+            }
+        ];
+        return quotes;
+    } catch (error) {
+        console.log(`❌ RFQ request failed: ${error.message}`);
+        return [];
+    }
+}

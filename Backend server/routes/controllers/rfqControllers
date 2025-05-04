@@ -1,0 +1,11 @@
+import { fetchExternalQuotes } from '../services/rfqService.js';
+
+export async function handleRFQRequest(req, res) {
+    try {
+        const { order } = req.body;
+        const quotes = await fetchExternalQuotes(order);
+        res.json({ quotes });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}

@@ -1,0 +1,26 @@
+import express from 'express';
+
+const router = express.Router();
+
+router.post('/mock-rfq', (req, res) => {
+    const quotes = [
+        {
+            provider: 'MockProvider1',
+            price: (Math.random() * 100).toFixed(2),
+            validUntil: Date.now() + 60000 // valid for 1 minute
+        },
+        {
+            provider: 'MockProvider2',
+            price: (Math.random() * 100).toFixed(2),
+            validUntil: Date.now() + 120000 // valid for 2 minutes
+        },
+        {
+            provider: 'MockProvider3',
+            price: (Math.random() * 100).toFixed(2),
+            validUntil: Date.now() + 90000 // valid for 1.5 minutes
+        }
+    ];
+    res.json(quotes);
+});
+
+export default router;

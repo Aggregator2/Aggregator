@@ -1,0 +1,45 @@
+import express from 'express';
+
+const router = express.Router();
+
+router.post('/submit', (req, res) => {
+    const order = req.body;
+
+    if (!order || typeof order !== 'object' || !order.maker) {
+        return res.status(400).json({ error: "❌ Invalid order format" });
+    }
+
+    return res.status(200).json({ message: "✅ Order received." });
+});
+
+// Example form submission handler in a React component
+const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); // Prevent the default form submission behavior
+
+    const formData = new FormData(event.currentTarget);
+    const signedOrder = Object.fromEntries(formData.entries()); // Convert form data to an object
+
+    try {
+        const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(signedOrder),
+        });
+
+        if (response.ok) {
+            console.log("✅ Order submitted");
+            const data = await response.json();
+            console.log("Response:", data);
+        } else {
+            const errorResponse = await response.json();
+            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorResponse.message || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error(`❌ Submission failed: ${error.message}`);
+    }
+};
+
+export default router;
+
