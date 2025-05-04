@@ -18,3 +18,31 @@ This is the backend API for the Meta Aggregator decentralized trading app. It is
    ```bash
    git clone https://github.com/your-repo/meta-aggregator-backend.git
    cd meta-aggregator-backend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env` file in the root directory with the required environment variables (see below).
+
+4. Start the server:
+   ```bash
+   npm start
+   ```
+
+### Environment Variables
+Create a `.env` file with the following variables:
+```env
+PORT=3000
+SMART_CONTRACT_ADDRESS=0xYourSmartContractAddress
+PRIVATE_KEY=your-private-key
+INFURA_PROJECT_ID=your-infura-project-id
+```
+
+### Usage Notes
+- Use `/api/quote` to fetch trading quotes.
+- Use `/api/execute` to execute signed orders.
+
+For more details, refer to the [GitHub repository](https://github.com/your-repo/meta-aggregator-backend).
