@@ -10,5 +10,37 @@
     "@openzeppelin/contracts": "^5.3.0",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "dotenv": "^16.5.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "main": "src/index.js",
+  "nodemonConfig": {
+    "watch": [
+      "src"
+    ],
+    "ext": "js",
+    "ignore": [
+      "src/**/*.test.js"
+    ]
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2021": true,
+      "node": true
+    },
+    "extends": [
+      "eslint:recommended",
+      "plugin:node/recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 12
+    },
+    "rules": {
+      "no-unused-vars": "warn",
+      "no-console": "off"
+    }
   }
 }

@@ -1,9 +1,10 @@
 // Main server entry point. Sets up routes, database connections, and API endpoints.
 // index.js (only fixing POST /orders part)
-const express = require('express');
+const express = require('express'); // Declare express once
 const Database = require('better-sqlite3');
 const cors = require('cors');
 const { ethers } = require('ethers');
+const errorHandler = require('./routes/controllers/services/tests/middleware/errorHandler');
 
 const app = express();
 
@@ -121,8 +122,6 @@ function matchOrder(order) {
 }
 
 // Routes
-const { ethers } = require('ethers'); // At top if not already
-
 // Secure POST /orders with signature verification
 app.post('/orders', (req, res) => {
     const { sellToken, buyToken, sellAmount, buyAmount, validTo, user, signature, side } = req.body;
@@ -305,19 +304,25 @@ async function getCowSwapQuote(from, to, amount) {
     }
 }
 // ⬆️ All your other routes go here first
-app.use("/api", require("./routes/verifyOrder"));
-app.use("/api", require("./routes/orders"));
-app.use("/api", require("./routes/rfq"));
-
-// 🧪 Mock RFQ endpoint — register last
-app.use("/", require("./routes/mockRFQ")); // Or /mock if you prefer
+// app.use('/api', require('./routes/verifyOrder'));
+// app.use('/api', require('./routes/orders'));
+// app.use('/api', require('./routes/rfq'));
+// app.use('/', require('./routes/mockRFQ')); // Or '/mock' if preferred
 
 // ⚠️ Ensure this is before any global 404 or error-handling middleware
 // Start server
-app.listen(3000, () => {
-    console.log('Server running on port 3000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
 });
 
-import errorHandler from './middleware/errorHandler.js';
+app.use(errorHandler);
 
-app.use(errorHandler); // global error handler 
+// Example: routes/verifyOrder.js
+const router = express.Router();
+
+router.get('/verify', (req, res) => {
+    res.json({ message: 'Verify Order endpoint works!' });
+});
+
+module.exports = router;
