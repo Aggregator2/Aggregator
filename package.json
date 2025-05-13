@@ -2,10 +2,9 @@
   "name": "hardhat-clean-project",
   "version": "1.0.0",
   "scripts": {
-    "dev": "next dev",
-    "build": "prisma generate && next build",
-    "start": "react-scripts start",
-    "postinstall": "prisma generate"
+    "build": "next build",
+    "start": "next start",
+    "dev": "next dev"
   },
   "dependencies": {
     "@nomiclabs/hardhat-ethers": "^2.2.1",

@@ -1,30 +1,32 @@
 {
   "compilerOptions": {
-    "target": "es2022", // Or higher
-    "module": "esnext", // Or higher
-    "moduleResolution": "node",
-    "lib": ["es2022", "dom"],
+    "target": "es6",
+    "module": "commonjs",
     "strict": true,
     "esModuleInterop": true,
-    "allowJs": true,
     "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist" // Output directory for compiled files
+    ,
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
     "noEmit": true,
     "incremental": true,
+    "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
-    "baseUrl": "./",
-    "paths": {
-      "*": ["node_modules/*", "src/*"]
-    },
-    "rootDir": "src",
-    "outDir": "dist"
+    "jsx": "preserve"
   },
   "include": [
-    "src",
-    "cypress" // Add this line to include Cypress tests
+    "src/**/*", // Include all files in the src folder
+    "cypress/**/*" // Include all Cypress test files
   ],
   "exclude": [
-    "node_modules"
+    "node_modules", // Exclude dependencies
+    "dist" // Exclude the output directory
   ]
 }

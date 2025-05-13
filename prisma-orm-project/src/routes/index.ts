@@ -1,11 +1,5 @@
-import { Router } from 'express';
+import React from 'react';
 
-const router = Router();
-
-// Define your routes here
-router.get('/', (req, res) => {
-    res.send('Routes working');
-});
-
-// Export the router
-export default router;
+export default function Home() {
+  return <h1>Hello from the homepage</h1>;
+}
