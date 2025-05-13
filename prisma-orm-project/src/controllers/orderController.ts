@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import routes from '../../../components/public/pages/index';
+import routes from '../../../pages/index';
 
 const prisma = new PrismaClient();
 
