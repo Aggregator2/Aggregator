@@ -1,12 +1,9 @@
 {
   "compilerOptions": {
-    "target": "es2022", // Or higher (e.g., esnext)
-    "module": "esnext", // Or higher (e.g., esnext)
+    "target": "es2022", // Or higher
+    "module": "esnext", // Or higher
     "moduleResolution": "node",
-    "lib": [
-      "es2022",
-      "dom"
-    ], // Include ES2022 features
+    "lib": ["es2022", "dom"],
     "strict": true,
     "esModuleInterop": true,
     "allowJs": true,
@@ -18,16 +15,14 @@
     "jsx": "preserve",
     "baseUrl": "./",
     "paths": {
-      "*": [
-        "node_modules/*",
-        "src/*"
-      ]
+      "*": ["node_modules/*", "src/*"]
     },
     "rootDir": "src",
     "outDir": "dist"
   },
   "include": [
-    "src"
+    "src",
+    "cypress" // Add this line to include Cypress tests
   ],
   "exclude": [
     "node_modules"
