@@ -1,0 +1,25 @@
+{
+  "name": "deployment-project",
+  "version": "1.0.0",
+  "description": "A project for deploying a clean setup with API endpoints and Prisma integration.",
+  "main": "dist/app.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "dev": "ts-node src/app.ts"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "prisma": "^3.0.0",
+    "dotenv": "^10.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.0.0",
+    "ts-node": "^10.0.0",
+    "@types/node": "^14.0.0",
+    "@types/express": "^4.17.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

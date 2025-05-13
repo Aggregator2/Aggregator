@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "es2022", // Or higher (e.g., esnext)
+    "module": "esnext", // Or higher (e.g., esnext)
+    "moduleResolution": "node",
+    "lib": [
+      "es2022",
+      "dom"
+    ], // Include ES2022 features
+    "strict": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "incremental": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "baseUrl": "./",
+    "paths": {
+      "*": [
+        "node_modules/*",
+        "src/*"
+      ]
+    },
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

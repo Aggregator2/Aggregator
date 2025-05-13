@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import fetchOrderBook from './fetchOrderBook'; // Adjust the path if needed
+import { API_BASE_URL } from './apiConfig';
 
 const OrderBookComponent = () => {
     const [orders, setOrders] = useState([]); // State to store fetched orders
@@ -62,3 +63,6 @@ const OrderBookComponent = () => {
 };
 
 export default OrderBookComponent;
+
+// Example fetch usage:
+const response = await fetch(`${API_BASE_URL}/orders`);

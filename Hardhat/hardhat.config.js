@@ -1,5 +1,4 @@
-require("@nomicfoundation/hardhat-toolbox");
-require("@nomicfoundation/hardhat-ethers");
+require("@nomiclabs/hardhat-ethers");
 require("dotenv").config({ path: "../.env.local" }); // Load .env.local from the parent directory
 
 const { API_URL, PRIVATE_KEY } = process.env;
@@ -19,13 +18,10 @@ module.exports = {
       url: "http://127.0.0.1:8545",
       chainId: 31337,
     },
-    hardhat: {
-      chainId: 31337,
-    },
-    rinkeby: {
-      url: API_URL,
-      accounts: [`0x${PRIVATE_KEY}`],
-      chainId: 4,
+    goerli: {
+      url: API_URL || "", // e.g., Infura/Alchemy endpoint for Goerli
+      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+      chainId: 5,
     },
   },
 };

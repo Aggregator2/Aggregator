@@ -1,17 +1,16 @@
-require("@nomicfoundation/hardhat-ethers");
+require("dotenv").config();
+const { ethers } = require("hardhat");
 
-const hre = require("hardhat");
-const { ethers } = hre;
-
-const depositorAddress = "0xYourDepositorAddressHere"; // Replace with the actual depositor address
-const tokenAddress = "0xYourTokenAddressHere"; // Replace with the actual token address
+// Use the address from your Hardhat node output and validate checksum
+const depositorAddress = ethers.utils.getAddress("0xf3f9d5e1a3a9d8f4c6acb58827729cff9f5e2266");
+const tokenAddress = "0xf3f9d5e1a3a9d8f4c6acb58827729cff9f5e2266"; // Using the same address for testing
 const amount = ethers.utils.parseEther("1.0"); // 1 ETH in wei
-const counterpartyAddress = "0xYourCounterpartyAddressHere"; // Replace with the actual counterparty address
-const arbiterAddress = "0xYourArbiterAddressHere"; // Replace with the actual arbiter address
+const counterpartyAddress = "0x1234567890abcdef1234567890abcdef12345678"; // Replace with another valid address
+const arbiterAddress = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"; // Replace with another valid address
 const tradeHash = ethers.utils.id("unique-trade-hash"); // Replace with your unique trade hash
-const signature = "0xYourSignatureHere"; // Replace with the actual signature
-const uniswapRouterAddress = "0xYourUniswapRouterAddressHere"; // Replace with the Uniswap router address
-const ownerAddress = "0xYourOwnerAddressHere"; // Replace with the actual owner address
+const signature = "0x00"; // Dummy signature for testing
+const uniswapRouterAddress = "0x1111111111111111111111111111111111111111"; // Replace with a valid Uniswap router address
+const ownerAddress = depositorAddress; // Use the same as depositor for now
 
 async function main() {
     console.log("Ethers object:", ethers);

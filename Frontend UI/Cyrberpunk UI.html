@@ -276,9 +276,10 @@
     </div>
   </main>
 
-  <script>
-    // Backend URL for fetching orders (adjust if needed for actual backend)
-    const backendUrl = 'http://localhost:3000';
+  <script type="module">
+    import { API_BASE_URL } from './apiConfig.js';
+
+    const backendUrl = window.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
     // Initialize Ethereum provider (MetaMask)
     const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
@@ -303,7 +304,7 @@
     // Fetch and display orders
     async function refreshOrders() {
       try {
-        const response = await fetch(\`\${backendUrl}/orders\`);
+        const response = await fetch(`${API_BASE_URL}/orders`);
         const orders = await response.json();
         // Filter and sort the orders based on user selection
         const sortOption = document.getElementById('sort').value;
@@ -331,7 +332,7 @@
             cancelBtn.textContent = 'Cancel';
             cancelBtn.className = 'cancel-btn';
             cancelBtn.onclick = async () => {
-              await fetch(\`\${backendUrl}/orders/\${order.id}\`, { method: 'DELETE' });
+              await fetch(\`\${API_BASE_URL}/orders/\${order.id}\`, { method: 'DELETE' });
               showToast('Order Cancelled');
               refreshOrders();
             };
@@ -394,7 +395,7 @@
         const signature = await signer.signMessage(ethers.utils.arrayify(hash));
         const signedOrder = { ...order, signature };
         // Send the order to backend (e.g., to be broadcast or stored)
-        await fetch(\`\${backendUrl}/orders\`, {
+        await fetch(\`\${API_BASE_URL}/orders\`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(signedOrder)
