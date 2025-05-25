@@ -123,4 +123,8 @@ describe("Lock", function () {
       });
     });
   });
+
+  const buyAmount = quote?.buyAmount
+    ? ethers.utils.formatUnits(quote.buyAmount, 18)
+    : "0";
 });

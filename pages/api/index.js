@@ -5,10 +5,7 @@ export default function Home() {
   return (
     <div>
       <head>
-        <title>TradeGuard - Smarter Trading</title>
-        <link rel="stylesheet" href="/styles.css" />
-        <link rel="stylesheet" href="/homepage.css" />
-        <link
+        <title>MetaAggregator2.0 - Smarter Trading</title>
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Sora:wght@400;600&display=swap"
           rel="stylesheet"
         />

@@ -1,0 +1,348 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+/* Removed .amountInput block as it is no longer used */
+.swapWidget {
+  background: #f9fafb; /* Subtle light gray background */
+  color: #181a20;
+  max-width: 370px;
+  margin: 40px auto;
+  padding: 32px 24px;
+  border-radius: 18px; /* Increased border-radius for a modern look */
+  box-shadow: 0 2px 16px rgba(31, 35, 40, 0.08); /* Softer shadow for depth */
+  text-align: center;
+  font-family: 'Inter', Arial, sans-serif;
+}
+
+.header {
+  font-weight: 700;
+  font-size: 1.4rem;
+  margin-bottom: 20px;
+  color: #1a202c;
+  letter-spacing: -0.01em; /* Reduced letter spacing for crisp typography */
+}
+
+.tokenButtons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.tokenButton {
+  flex: 1;
+  padding: 12px 0;
+  border-radius: 12px; /* Rounded corners for a "pill" look */
+  background: #e5f7fa;
+  color: #00bcd4;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.tokenButton.active,
+.tokenButton:hover {
+  background: linear-gradient(90deg, #00bcd4 0%, #17c9e0 100%);
+  color: #fff;
+}
+
+.selectRow {
+  display: flex;
+  flex-direction: column;
+  gap: 14px; /* Increased gap for more space */
+  margin-bottom: 24px; /* Slightly more space below each row */
+}
+
+.select,
+.input {
+  width: 100%;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #f1f5f9;
+  border: none;
+  font-size: 1.15rem;
+  color: #181a20;
+  transition: box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.select:focus,
+.input:focus {
+  box-shadow: 0 0 0 2px #00bcd4;
+  outline: none;
+}
+
+.actionButton {
+  width: 100%;
+  min-height: 56px;
+  padding: 0;
+  margin-top: 16px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #00bcd4 0%, #17c9e0 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px 0 rgba(0, 188, 212, 0.12);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.actionButton:hover {
+  background: linear-gradient(90deg, #17c9e0 0%, #00bcd4 100%);
+  box-shadow: 0 8px 24px 0 rgba(0, 188, 212, 0.18);
+}
+
+.tradeWrapper {
+  background: #f7f7fa;
+  padding: 32px 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', Arial, sans-serif;
+}
+
+.tradeCard {
+  background: #fff;
+  border-radius: 28px;
+  max-width: 480px;
+  margin: 0 auto;
+  box-shadow: 0 4px 32px rgba(31,35,40,0.10), 0 1.5px 0 #00bcd4 inset;
+  padding: 38px 32px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border: 1.5px solid #e0e7ef;
+}
+
+.tradeTitle {
+  font-size: 2.3rem;
+  font-weight: 800;
+  color: #18181b;
+  margin-bottom: 18px;
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+.tabRow {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 28px;
+  justify-content: center;
+  align-items: center; /* Ensures vertical alignment */
+}
+
+.tab {
+  min-width: 110px;
+  height: 44px;
+  padding: 0 28px;
+  border-radius: 16px;
+  background: transparent;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #2563eb;
+  border: none;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tokenPanel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Center both columns vertically */
+  gap: 18px;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 1px 8px rgba(31,35,40,0.04);
+  padding: 4px 20px;
+  margin-bottom: 12px;
+}
+
+.tokenPanel:first-of-type {
+  margin-top: 0;      /* No extra space above Sell panel */
+  margin-bottom: 0;   /* No extra space below Sell panel */
+}
+
+.tokenPanel:last-of-type {
+  margin-top: 0;      /* No extra space above Buy panel */
+  margin-bottom: 0;   /* No extra space below Buy panel */
+}
+
+.panelGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px; /* Space between label and panel */
+  margin-bottom: 18px; /* Space between groups */
+}
+
+.panelLabel {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #23272f;
+  margin-bottom: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  text-align: left;
+  padding-left: 10px; /* Optional: aligns label with selector */
+}
+
+.tokenSelector,
+.amountInput {
+  border: 2px solid #23272f;
+  border-radius: 14px;
+  background: #f6f8fa;
+  box-sizing: border-box;
+  height: 56px;
+  width: 200px;         /* Set the same width for all boxes */
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  transition: box-shadow 0.2s, border 0.2s;
+}
+
+.tokenSelector {
+  margin-top: 2px; /* Adjust this value (1px, 2px, or 3px) for perfect alignment */
+}
+
+/* Ensure inner select/input fills the box */
+.select,
+.amountInput input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  font-size: 1.1rem;
+  font-weight: 700;
+  outline: none;
+  box-sizing: border-box;
+  /* Remove height: 200xp; (typo and not needed) */
+  display: flex;
+  align-items: center;
+}
+
+.tokenIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #eee;
+  margin-right: 8px;
+  display: inline-block;
+}
+
+.select {
+  height: 56px;
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #181a20;
+  outline: none;
+  display: flex;
+  align-items: center;
+  line-height: 1.2;
+}
+
+
+.usdEquivalent {
+  color: #6b7280;
+  font-size: 1rem;
+  margin-top: 0px;   /* Remove extra space below input */
+  font-weight: 500;
+}
+
+.swapDivider {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 28px 0;     /* Increase or decrease this for perfect balance */
+  position: relative;
+  z-index: 2;
+}
+
+.swapIconCircle {
+  background: #f3f4f6;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.swapIconCircle:hover {
+  background: #e0e7ef;
+}
+
+.connectButton,
+.actionButton {
+  width: 100%;
+  min-height: 56px;
+  padding: 0;
+  border-radius: 15px;
+  background: linear-gradient(90deg, #2563eb 0%, #17c9e0 100%);
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  border: none;
+  margin-top: 18px;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.connectButton:hover,
+.actionButton:hover {
+  background: linear-gradient(90deg, #17c9e0 0%, #2563eb 100%);
+  box-shadow: 0 4px 12px 0 rgba(37,99,235,0.15);
+}
+
+.dividerLine {
+  width: 100%;
+  height: 1.5px;
+  background: #e5e7eb;
+  margin: 18px 0;
+  border-radius: 1px;
+}
+
+.walletStatus {
+  color: #6b7280;
+  font-size: 1.05rem;
+  margin-top: 10px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.panelLeft {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  /* Remove height! */
+}
+
+/* Responsive design for mobile */
+@media (max-width: 600px) {
+  .swapWidget {
+    padding: 14px 4px;
+    max-width: 98vw;
+  }
+  .tradeCard {
+    max-width: 98vw;
+    padding: 18px 4vw 18px 4vw;
+  }
+  .amountInput {
+    width: 100%;
+    font-size: 1.4rem;
+  }
+}

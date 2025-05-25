@@ -1,6 +1,6 @@
 # Meta Aggregator – Backend
 
-This is the backend API for the Meta Aggregator decentralized trading app. It is built with Node.js and Express and provides endpoints for fetching trading quotes and executing signed orders on a deployed smart contract.
+This is the backend API for the Meta Aggregator decentralized trading app. It is built with Node.js and Express and provides endpoints for fetching trading quotes and executing signed orders on a deployed smart contract. The system aggregates using off chain signed orders via RFQ. 
 
 ## Features
 - **`/api/quote`**: Accepts trading pair information and returns a mock or real quote.

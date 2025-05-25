@@ -37,7 +37,9 @@ async function sendTestOrders() {
         const validResponse = await axios.post("http://localhost:3000/api/verify-order", {
             order: validOrder,
             signature: validSignature,
-            signer: wallet.address
+            signer: wallet.address,
+        }, {
+            headers: { Authorization: 'Bearer ce875464-1d55-4097-830b-9f241b299fdb' },
         });
         console.log("✅ Valid Order Response:", validResponse.status, validResponse.data);
 

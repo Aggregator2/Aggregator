@@ -27,8 +27,34 @@ app.post('/orders', async (req, res) => {
     try {
         const reconstructedHash = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ['string', 'string', 'uint256', 'uint256', 'uint256', 'address', 'string'],
-                [sellToken, buyToken, sellAmount, buyAmount, validTo, user, side]
+                [
+                    "address", // sellToken
+                    "address", // buyToken
+                    "uint256", // sellAmount
+                    "uint256", // buyAmount
+                    "uint256", // validTo
+                    "address", // user
+                    "address", // receiver
+                    "bytes",   // appData
+                    "uint256", // feeAmount
+                    "bool",    // partiallyFillable
+                    "string",  // kind
+                    "string",  // signingScheme
+                ],
+                [
+                    sellToken,
+                    buyToken,
+                    sellAmount,
+                    buyAmount,
+                    validTo,
+                    user,
+                    receiver,
+                    appData,
+                    feeAmount,
+                    partiallyFillable,
+                    kind,
+                    signingScheme,
+                ]
             )
         );
 
@@ -138,8 +164,34 @@ app.post('/orders', (req, res) => {
         // Step 2: Reconstruct the order hash
         const reconstructedHash = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ['string', 'string', 'uint256', 'uint256', 'uint256', 'address', 'string'],
-                [sellToken, buyToken, sellAmount, buyAmount, validTo, user, side]
+                [
+                    "address", // sellToken
+                    "address", // buyToken
+                    "uint256", // sellAmount
+                    "uint256", // buyAmount
+                    "uint256", // validTo
+                    "address", // user
+                    "address", // receiver
+                    "bytes",   // appData
+                    "uint256", // feeAmount
+                    "bool",    // partiallyFillable
+                    "string",  // kind
+                    "string",  // signingScheme
+                ],
+                [
+                    sellToken,
+                    buyToken,
+                    sellAmount,
+                    buyAmount,
+                    validTo,
+                    user,
+                    receiver,
+                    appData,
+                    feeAmount,
+                    partiallyFillable,
+                    kind,
+                    signingScheme,
+                ]
             )
         );
 
@@ -178,8 +230,13 @@ app.post('/orders', (req, res) => {
 
 
 app.get('/orders', (req, res) => {
-    const orders = db.prepare('SELECT * FROM orders ORDER BY created_at ASC').all();
-    res.json(orders);
+    try {
+        const orders = db.prepare('SELECT * FROM orders ORDER BY created_at ASC').all();
+        res.json(orders);
+    } catch (err) {
+        console.error('Error fetching orders:', err);
+        res.status(500).send('Internal Server Error');
+    }
 });
 
 app.get('/trades', (req, res) => {
@@ -268,10 +325,16 @@ app.post('/execute-trade', async (req, res) => {
 // External quote fetching
 async function get0xQuote(from, to, amount) {
     try {
-        const res = await axios.get('https://api.0x.org/swap/v1/quote', {
-            params: { sellToken: from, buyToken: to, sellAmount: amount }
+        const params = new URLSearchParams({
+            sellToken: from,
+            buyToken: to,
+            sellAmount: amount,
         });
-        return { source: '0x', price: parseFloat(res.data.price), amount: parseFloat(res.data.buyAmount) };
+        const res = await axios.get(`https://arbitrum.api.0x.org/swap/v1/quote?${params.toString()}`, {
+            headers: { Authorization: 'Bearer ce875464-1d55-4097-830b-9f241b299fdb' },
+        });
+        const price = parseFloat(res.data.buyAmount) / parseFloat(res.data.sellAmount);
+        return { source: '0x', price, amount: parseFloat(res.data.buyAmount) };
     } catch (err) {
         console.error('0x Error:', err.message);
         return null;
@@ -282,7 +345,7 @@ async function get1inchQuote(from, to, amount) {
     try {
         const res = await axios.get('https://api.1inch.dev/swap/v5.2/1/quote', {
             params: { fromTokenAddress: from, toTokenAddress: to, amount },
-            headers: { Authorization: `Bearer ${process.env.ONEINCH_API_KEY}` }
+            headers: { Authorization: 'Bearer cdc3902a-daef-4d26-bca5-23df95595774' },
         });
         const price = parseFloat(res.data.toTokenAmount) / parseFloat(res.data.fromTokenAmount);
         return { source: '1inch', price, amount: parseFloat(res.data.toTokenAmount) };
@@ -294,7 +357,7 @@ async function get1inchQuote(from, to, amount) {
 
 async function getCowSwapQuote(from, to, amount) {
     try {
-        const res = await axios.post('https://api.cow.fi/mainnet/api/v1/quote/', {
+        const res = await axios.post('https://arbitrum.api.0x.org/swap/v1/quote', {
             sellToken: from,
             buyToken: to,
             sellAmountBeforeFee: amount
@@ -341,3 +404,20 @@ const routes = {
 };
 
 export default routes;
+
+const fetchQuote = async () => {
+  try {
+    const response = await fetch('/api/quote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sellToken, buyToken, sellAmount }),
+    });
+    const data = await response.json();
+    setQuote(data); // Ensure this updates the state
+  } catch (error) {
+    console.error("Error fetching quote:", error);
+  }
+};
+
+console.log("Raw buyAmount:", quote?.buyAmount);
+

@@ -304,7 +304,12 @@
     // Fetch and display orders
     async function refreshOrders() {
       try {
-        const response = await fetch(`${API_BASE_URL}/orders`);
+        const response = await fetch(`${API_BASE_URL}/orders`, {
+          method: 'GET',
+          headers: {
+              'Authorization': `Bearer ${API_KEY}`,
+          },
+        });
         const orders = await response.json();
         // Filter and sort the orders based on user selection
         const sortOption = document.getElementById('sort').value;
@@ -379,12 +384,19 @@
       const order = {
         sellToken: document.getElementById('sellToken').value,
         buyToken: document.getElementById('buyToken').value,
-        sellAmount: document.getElementById('sellAmount').value,
-        buyAmount: document.getElementById('buyAmount').value,
-        validTo: Math.floor(Date.now() / 1000) + 600,  // e.g. 10 minutes from now
+        sellAmount: ethers.utils.parseUnits(document.getElementById('sellAmount').value, 18).toString(),
+        buyAmount: "1", // Placeholder or from a real quote API
+        validTo: Math.floor(Date.now() / 1000) + 600,
         user: userAddress,
-        side: document.getElementById('side').value
+        receiver: userAddress,
+        appData: "0x",
+        feeAmount: "0",
+        partiallyFillable: false,
+        kind: "sell",
+        signingScheme: "eip712",
+        signature: "0x", // Placeholder for now
       };
+      console.log("ORDER OBJECT", order);
       try {
         // Create hash and sign it using the connected wallet
         const encoded = ethers.utils.defaultAbiCoder.encode(
@@ -415,6 +427,19 @@
     // Auto-refresh orders every 5 seconds, and fetch on load
     setInterval(refreshOrders, 5000);
     refreshOrders();
+
+    const availableBuyTokens = tokens.filter(t => t.address !== sellToken);
+const availableSellTokens = tokens.filter(t => t.address !== buyToken);
+
+console.log('sellToken:', sellToken);
+console.log('buyToken:', buyToken);
+console.log('sellAmount:', sellAmount);
+console.log('walletAddress:', walletAddress);
+
+if (!sellToken || !buyToken || !walletAddress || !sellAmount) {
+  alert("Fill in all fields and connect your wallet.");
+  return;
+}
   </script>
 </body>
 </html>

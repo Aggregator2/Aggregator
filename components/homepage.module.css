@@ -1,0 +1,15 @@
+/* filepath: c:\Users\joeri\OneDrive\Desktop\Meta Aggregator 2.0\components\public\homepage.module.css */
+.container {
+  padding: 20px;
+  background-color: #f0f0f0;
+}
+.header {
+  font-size: 24px;
+  font-weight: bold;
+}
+.toast {
+  color: red;
+}
+.main {
+  margin-top: 20px;
+}

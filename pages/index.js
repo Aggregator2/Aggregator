@@ -1,48 +1,116 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import SwapWidget from '../components/SwapWidget';
+import Nav from '../components/Nav';
+import Footer from '../components/Footer';
+import styles from '../components/homepage.module.css';
 
-// filepath: c:\Users\joeri\OneDrive\Desktop\Meta Aggregator 2.0\pages\index.js
 export default function Home() {
+  const [userAddress, setUserAddress] = useState('');
+  const [orders, setOrders] = useState([]);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+  useEffect(() => {
+    refreshOrders();
+    const interval = setInterval(refreshOrders, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const connectWallet = async () => {
+    try {
+      if (!window.ethereum) return alert('MetaMask required');
+      const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+      await provider.send('eth_requestAccounts', []);
+      const signer = provider.getSigner();
+      const address = await signer.getAddress();
+      setUserAddress(address);
+      showToast('Wallet connected');
+    } catch (err) {
+      console.error('Wallet connection failed:', err);
+      showToast('Wallet connection failed');
+    }
+  };
+
+  const refreshOrders = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/orders`);
+      const orders = await response.json();
+      setOrders(orders);
+    } catch (err) {
+      console.error('Failed to refresh orders:', err);
+    }
+  };
+
+  const showToast = (message) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  // Example: expects SwapWidget to call this with an order object
+  const handleSubmitOrder = async (order) => {
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+      const signer = provider.getSigner();
+
+      const encoded = ethers.utils.defaultAbiCoder.encode(
+        ['string', 'string', 'uint256', 'uint256', 'uint256', 'address', 'string'],
+        [
+          order.sellToken,
+          order.buyToken,
+          order.sellAmount,
+          order.buyAmount,
+          order.validTo,
+          order.user,
+          order.side,
+        ]
+      );
+      const hash = ethers.utils.keccak256(encoded);
+      const signature = await signer.signMessage(ethers.utils.arrayify(hash));
+      const signedOrder = { ...order, signature };
+
+      const url = `${API_BASE_URL}/orders`;
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(signedOrder),
+      });
+
+      showToast('Order Submitted');
+      refreshOrders();
+    } catch (err) {
+      console.error('Order submission failed:', err);
+      showToast('Order submission failed');
+    }
+  };
+
   return (
-    <div>
-      <head>
-        <title>TradeGuard - Smarter Trading</title>
-        <link rel="stylesheet" href="/styles.css" />
-        <link rel="stylesheet" href="/homepage.css" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Sora:wght@400;600&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body>
-        {/* Top Navigation */}
-        <nav className="top-nav">
-          <div className="logo">TradeGuard</div>
-          <ul className="nav-links">
-            <li><a href="#home">Home</a></li>
-            <li><a href="#how-it-works">How It Works</a></li>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#faq">FAQ</a></li>
-            <li><a href="#contact">Contact</a></li>
-          </ul>
-          <button className="cta-btn">Get Early Access</button>
-        </nav>
-
-        {/* Hero Section */}
-        <section id="home" className="hero">
-          <div className="hero-content">
-            <h1>The more you lose, the more they win.</h1>
-            <p>
-              This DEX can be the difference between you being profitable or not. We say no to hidden slippage, slow execution, and silent manipulation.
-            </p>
-            <div className="hero-buttons">
-              <button className="primary-btn">Get Early Access</button>
-              <button className="secondary-btn">Learn How It Works</button>
-            </div>
+    <>
+      <Nav account={userAddress} connectWallet={connectWallet} />
+      <div className={styles.container}>
+        {toastMessage && <div className={styles.toast}>{toastMessage}</div>}
+        <main className={styles.main}>
+          <SwapWidget
+            userAddress={userAddress}
+            onConnect={connectWallet}
+            onSubmitOrder={handleSubmitOrder}
+            orders={orders}
+          />
+          {/* Example order book display */}
+          <div style={{ marginTop: 24 }}>
+            <h3>Order Book</h3>
+            <ul>
+              {orders.map((order, i) => (
+                <li key={i}>
+                  {order.side} {order.sellAmount} {order.sellToken} → {order.buyAmount} {order.buyToken} ({order.user?.slice(0, 6)}...)
+                </li>
+              ))}
+            </ul>
           </div>
-        </section>
-
-        {/* Add other sections here, following the same JSX conversion */}
-      </body>
-    </div>
+        </main>
+      </div>
+      <Footer />
+    </>
   );
 }

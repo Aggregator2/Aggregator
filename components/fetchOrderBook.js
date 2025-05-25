@@ -1,30 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import fetchOrderBook from './fetchOrderBook'; // Adjust the path if needed
-import { API_BASE_URL } from './apiConfig';
 
-const OrderBookComponent = () => {
-    const [orders, setOrders] = useState([]); // State to store fetched orders
-    const [error, setError] = useState(null); // State to store any errors
+const API_BASE_URL = 'http://localhost:3000/api/orders';
+
+// Named export for the fetch function
+export async function fetchOrderBook(apiUrl) {
+    try {
+        const res = await fetch(apiUrl, {
+            headers: {
+                'Authorization': 'Bearer ce875464-1d55-4097-830b-9f241b299fdb',
+            },
+        });
+
+        if (!res.ok) {
+            throw new Error(`API request failed with status ${res.status}: ${res.statusText}`);
+        }
+
+        return await res.json();
+    } catch (err) {
+        console.error('Error fetching order book:', err);
+        throw err;
+    }
+}
+
+// Default export for the component
+function OrderBookComponent() {
+    const [orders, setOrders] = useState([]);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        const fetchOrders = async () => {
+        const fetchData = async () => {
             try {
-                const data = await fetchOrderBook(); // Call the fetchOrderBook function
-                setOrders(data); // Update the orders state
-                setError(null); // Clear any previous errors
+                // Use the correct backend API URL
+                const API_URL = 'http://localhost:3000/api/orders';
+                const data = await fetchOrderBook(API_URL);
+                setOrders(data);
+                setError(null);
             } catch (err) {
-                console.error('❌ Error fetching order book:', err.message);
-                setError('Failed to load order book. Please try again later.');
+                setError(err.message);
             }
         };
-
-        // Fetch orders immediately and set up interval
-        fetchOrders();
-        const intervalId = setInterval(fetchOrders, 10000); // Fetch every 10 seconds
-
-        // Cleanup interval on component unmount
-        return () => clearInterval(intervalId);
-    }, []); // Empty dependency array ensures this runs only once on mount
+        fetchData();
+    }, []);
 
     return (
         <div>
@@ -60,9 +76,6 @@ const OrderBookComponent = () => {
             )}
         </div>
     );
-};
+}
 
 export default OrderBookComponent;
-
-// Example fetch usage:
-const response = await fetch(`${API_BASE_URL}/orders`);

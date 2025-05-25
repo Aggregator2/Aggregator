@@ -1,36 +1,40 @@
-document.getElementById("submitButton").addEventListener("click", async function () {
-  const textarea = document.getElementById("jsonInput");
-  const resultBox = document.getElementById("resultBox");
+import React, { useState } from 'react';
 
-  try {
-    const jsonData = JSON.parse(textarea.value);
-    resultBox.innerText = "⏳ Sending request...";
-    resultBox.style.color = "gray";
+const Homepage = () => {
+  const [result, setResult] = useState('');
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const jsonInput = document.getElementById('jsonInput').value;
 
     try {
-      const response = await fetch("/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const jsonData = JSON.parse(jsonInput);
+      setResult('⏳ Sending request...');
+      const response = await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(jsonData),
       });
 
       if (response.ok) {
-        const result = await response.json();
-        resultBox.innerText = `✅ Order submitted successfully`;
-        resultBox.style.color = "green";
+        setResult('✅ Order submitted successfully');
       } else {
-        const error = await response.json();
-        resultBox.innerText = `❌ Error: ${error.message}`;
-        resultBox.style.color = "red";
+        setResult('❌ Error submitting order');
       }
     } catch (error) {
-      resultBox.innerText = "❌ Failed to send request. Please try again.";
-      resultBox.style.color = "red";
+      setResult('❌ Invalid JSON. Please check your input.');
     }
-  } catch (error) {
-    resultBox.textContent = "Invalid JSON. Please check your input.";
-    resultBox.style.color = "red";
-  }
-});
+  };
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit}>
+        <textarea id="jsonInput" rows="10" placeholder='{"key": "value"}'></textarea>
+        <button type="submit">Submit</button>
+      </form>
+      <div>{result}</div>
+    </div>
+  );
+};
+
+export default Homepage;
