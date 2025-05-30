@@ -19,16 +19,18 @@ export default function Home() {
   }, []);
 
   const connectWallet = async () => {
+    if (!window.ethereum) {
+      console.error('MetaMask not installed.');
+      return;
+    }
     try {
-      if (!window.ethereum) return alert('MetaMask required');
-      const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-      await provider.send('eth_requestAccounts', []);
-      const signer = provider.getSigner();
-      const address = await signer.getAddress();
-      setUserAddress(address);
+      const provider = new ethers.BrowserProvider(window.ethereum); // <-- v6 syntax
+      const signer = await provider.getSigner();
+      const walletAddress = await signer.getAddress();
+      setUserAddress(walletAddress);
       showToast('Wallet connected');
-    } catch (err) {
-      console.error('Wallet connection failed:', err);
+    } catch (error) {
+      console.error('Error connecting wallet:', error);
       showToast('Wallet connection failed');
     }
   };

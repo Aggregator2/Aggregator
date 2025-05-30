@@ -1,16 +1,16 @@
 require("@nomiclabs/hardhat-ethers");
-require("dotenv").config({ path: "../.env.local" }); // Load .env.local from the parent directory
+require("dotenv").config({ path: "../.env" }); // Make sure this matches your .env location
 
-const { API_URL, PRIVATE_KEY } = process.env;
+const { API_URL, PRIVATE_KEY, SEPOLIA_RPC_URL } = process.env;
 
-console.log("Loaded API_URL:", API_URL || "Not Loaded");
+console.log("Loaded SEPOLIA_RPC_URL:", SEPOLIA_RPC_URL || "Not Loaded");
 console.log("Loaded PRIVATE_KEY:", PRIVATE_KEY || "Not Loaded");
 
 module.exports = {
   solidity: {
     compilers: [
       { version: "0.8.0" },
-      { version: "0.8.20" }, // Add this if needed
+      { version: "0.8.20" },
     ],
   },
   networks: {
@@ -19,9 +19,14 @@ module.exports = {
       chainId: 31337,
     },
     goerli: {
-      url: API_URL || "", // e.g., Infura/Alchemy endpoint for Goerli
+      url: API_URL || "",
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
       chainId: 5,
+    },
+    sepolia: {
+      url: SEPOLIA_RPC_URL || "",
+      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+      chainId: 11155111,
     },
   },
 };

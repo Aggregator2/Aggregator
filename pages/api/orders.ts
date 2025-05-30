@@ -5,16 +5,17 @@ import { ethers } from 'ethers';
 
 const prisma = new PrismaClient();
 
+// Example for Next.js API route
 export default async function handler(req, res) {
-    if (req.method === 'POST') {
-        const { order: reqOrder, signature } = req.body;
+    try {
+        if (req.method === 'POST') {
+            const { order: reqOrder, signature } = req.body;
 
-        // Validate required fields
-        if (!reqOrder || !signature) {
-            return res.status(400).json({ error: 'Missing order or signature' });
-        }
+            // Validate required fields
+            if (!reqOrder || !signature) {
+                return res.status(400).json({ error: 'Missing order or signature' });
+            }
 
-        try {
             // Destructure and set default values for order fields
             const {
                 sellToken = "0x0000000000000000000000000000000000000000",
@@ -89,19 +90,18 @@ export default async function handler(req, res) {
 
             // Return success response
             return res.status(200).json({ ok: true });
-        } catch (error) {
-            console.error('Error processing order:', error);
-            return res.status(500).json({ error: 'Failed to process order', details: error.message });
+        } else if (req.method === 'GET') {
+            try {
+                const orders = await prisma.orders.findMany(); // Fetch all orders
+                return res.status(200).json(orders);
+            } catch (error) {
+                return res.status(500).json({ error: 'Failed to fetch orders', details: error.message });
+            }
+        } else {
+            res.setHeader('Allow', ['GET', 'POST']);
+            return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
         }
-    } else if (req.method === 'GET') {
-        try {
-            const orders = await prisma.orders.findMany(); // Fetch all orders
-            return res.status(200).json(orders);
-        } catch (error) {
-            return res.status(500).json({ error: 'Failed to fetch orders', details: error.message });
-        }
-    } else {
-        res.setHeader('Allow', ['GET', 'POST']);
-        return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
+    } catch (err) {
+        res.status(400).json({ error: err.message || "Unknown error" }); // Error as JSON
     }
 }

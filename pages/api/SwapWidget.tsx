@@ -1,10 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
+import { domain, types } from "../lib/eip712"; // Adjust path as needed
+import { hashOrder } from '../utils/hashOrder';
+
+async function signAndSubmitOrder(order) {
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  const signer = await provider.getSigner();
+
+  // EIP-712 signature
+  const signature = await signer.signTypedData(domain, types, order);
+
+  const signedOrder = { order, signature };
+
+  // Submit to backend
+  await fetch("/api/submitOrder", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(signedOrder),
+  });
+}
+
 import styles from "./SwapWidget.module.css";
 import { useTokenPrice } from "../hooks/useTokenPrice";
 import MarketOrderWidget from "./MarketOrderWidget";
 import QuoteSummary from "./QuoteSummary";
-import { hashOrder } from '../utils/hashOrder';
 
 // Token list with symbol, name, and address
 const DEFAULT_TOKENS = [
@@ -87,95 +106,53 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
   // Submit order
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!walletAddress) {
-      return;
-    }
-    if (!sellAmount || !quote?.buyAmount || !quote?.minReceived) {
-      return;
-    }
+    if (!walletAddress) return;
+    if (!sellAmount || !quote?.buyAmount || !quote?.minReceived) return;
 
     const order = {
       sellToken: sellToken || "0x0000000000000000000000000000000000000000",
       buyToken: buyToken || "0x0000000000000000000000000000000000000000",
       sellAmount: ethers.utils.parseUnits(sellAmount || "0", 18).toString(),
       buyAmount: ethers.utils.parseUnits(buyAmount || "0", 18).toString(),
-      validTo: Math.floor(Date.now() / 1000) + 600,
+      validTo: Math.floor(Date.now() / 1000) + 600,--
       user: walletAddress || "0x0000000000000000000000000000000000000000",
       receiver: walletAddress || "0x0000000000000000000000000000000000000000",
-      appData: "0x", // Default value
-      feeAmount: "0", // Default value
+      appData: "0x",
+      feeAmount: "0",
       partiallyFillable: false,
-      kind: "sell", // Default value
-      signingScheme: "eip712", // Default value
+      kind: "sell",
+      signingScheme: "eip712",
     };
 
-    // Generate the order hash
+    // 1. Generate the hash (optional, for your own logging/debug)
     const orderHash = hashOrder(order);
-    console.log("Order Hash:", orderHash);
 
-    console.log("Order for hashing:", order);
-    console.log("ORDER OBJECT:", order);
-    Object.entries(order).forEach(([key, value]) => {
-      if (value === undefined) {
-        console.error(`Order field ${key} is undefined`);
-      }
-    });
+    // 2. Sign the EIP-712 order
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const signature = await signer.signTypedData(domain, types, order);
 
-    if (
-      !order.sellToken ||
-      !order.buyToken ||
-      !order.sellAmount ||
-      !order.buyAmount ||
-      !order.minReceived ||
-      !order.wallet ||
-      !order.validTo
-    ) {
-      alert("Missing order field! Check your inputs and quote.");
-      return;
-    }
+    // 3. Submit the correctly shaped payload
+    const payload = { order, signature };
 
-    try {
-      // Get the signer from MetaMask
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
+    console.log("🔐 Sending payload:", payload); // double check this shows "order" and "signature" keys
 
-      // Sign the order hash
-      const signature = await signer.signMessage(ethers.utils.arrayify(orderHash));
-      console.log("Signature:", signature);
+    console.log("📝 Submitting:", order, signature);
 
-      // Combine the order and signature
-      const signedOrder = { ...order, signature };
-      console.log("Signed Order:", signedOrder);
-
-      // Submit the signed order
-      await submitOrder(signedOrder);
-    } catch (err) {
-      console.error("Error signing order:", err);
-      alert("❌ Error signing order. Please try again.");
-    }
+    console.log("🚀 Calling submitOrder with:", { order, signature });
+    await submitOrder({ order, signature }); // ✅ sends both correctly
   };
 
-  const submitOrder = async (signedOrder: any) => {
-    try {
-      const response = await fetch("/api/submitOrder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(signedOrder),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Order submitted successfully:", data);
-        alert("✅ Order submitted successfully!");
-      } else {
-        const error = await response.json();
-        console.error("Error submitting order:", error);
-        alert(`❌ Error submitting order: ${error.message || "Unknown error"}`);
-      }
-    } catch (err) {
-      console.error("Network error submitting order:", err);
-      alert("❌ Network error submitting order. Please try again.");
-    }
+  const submitOrder = async ({ order, signature }: { order: any, signature: string }) => {
+    console.log("📦 Sending order payload:", { order, signature }); // 🧪 Debug log
+    const res = await fetch("/api/submitOrder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order, signature }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Unknown error");
+    return data;
   };
 
   const { price: sellTokenPrice, loading: sellLoading } = useTokenPrice(sellToken);
@@ -446,8 +423,9 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
         )}
       </div>
     </div>
+      </div>
+    </div>
   );
-};
+};port default SwapWidget;
 
 export default SwapWidget;
-

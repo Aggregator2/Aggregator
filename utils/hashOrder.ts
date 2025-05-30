@@ -1,31 +1,27 @@
-import { ethers } from "ethers";
+import { AbiCoder, ethers } from "ethers"; // for ethers v6
 
-interface Order {
-  sellToken: string; // address
-  buyToken: string; // address
-  sellAmount: string; // uint256
-  buyAmount: string; // uint256
-  validTo: number; // uint256 (Unix timestamp)
-  wallet: string; // address
-  nonce: number; // uint256
-  user: string; // address
-  receiver: string; // address
-  appData: string; // bytes
-  feeAmount: number; // uint256
-  partiallyFillable: boolean; // bool
-  kind: string; // string
-  signingScheme: string; // string
+export interface Order {
+  sellToken: string;
+  buyToken: string;
+  sellAmount: string;
+  buyAmount: string;
+  validTo: number;
+  wallet: string;
+  nonce: number;
+  user: string;
+  receiver: string;
+  appData: string;
+  feeAmount: number;
+  partiallyFillable: boolean;
+  kind: string;
+  signingScheme: string;
 }
 
 export function hashOrder(order: Order): string {
   console.log("Order for hashing:", order);
-  Object.entries(order).forEach(([key, value]) => {
-    if (value === undefined || value === null) {
-      console.error(`Order field ${key} is missing or invalid:`, value);
-    }
-  });
 
-  const encoded = ethers.utils.defaultAbiCoder.encode(
+  // Use ethers v6 ABI coder
+  const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
     [
       "address", // sellToken
       "address", // buyToken
@@ -55,7 +51,7 @@ export function hashOrder(order: Order): string {
       order.signingScheme,
     ]
   );
-  return ethers.utils.keccak256(encoded);
+  return ethers.keccak256(encoded);
 }
 
 export function validateAndHashOrder(order: Order): string | void {
@@ -78,3 +74,26 @@ export function validateAndHashOrder(order: Order): string | void {
   const orderHash = hashOrder(order);
   return orderHash;
 }
+
+const sellToken = "0xTokenAddress"; // from user dropdown
+const buyToken = "0xTokenAddress"; // from user dropdown
+const baseUnits = "1000000000000000000"; // from user input, parsed to base units
+const quote = { buyAmount: "500000000000000000" }; // from quote API response
+const walletAddress = "0xWalletAddress"; // connected wallet address
+
+const order = {
+  sellToken,                                 // from user dropdown
+  buyToken,                                  // from user dropdown
+  sellAmount: baseUnits,                     // from user input, parsed to base units
+  buyAmount: quote?.buyAmount || "0",        // from quote API response
+  validTo: Math.floor(Date.now() / 1000) + 600, // 10 minutes from now
+  user: walletAddress,                       // connected wallet address
+  receiver: walletAddress,                   // same as user for MVP
+  appData: "0x",                             // empty bytes for MVP
+  feeAmount: 0,                              // 0 for MVP, or from quote if you have it
+  partiallyFillable: false,                  // false for MVP
+  kind: "sell",                              // "sell" for swap UI
+  signingScheme: "eip712",                   // "eip712" for MetaMask
+  wallet: walletAddress,                     // required by your interface, use walletAddress
+  nonce: 0,                                  // 0 for MVP, or fetch from backend if needed
+};

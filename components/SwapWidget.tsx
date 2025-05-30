@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { ethers } from "ethers";
+import { ethers, JsonRpcProvider } from "ethers";
 import styles from "./SwapWidget.module.css";
 import { useTokenPrice } from "../hooks/useTokenPrice";
 import MarketOrderWidget from "./MarketOrderWidget";
 import QuoteSummary from "./QuoteSummary";
 import { hashOrder } from '../utils/hashOrder';
+import EscrowABI from "../artifacts/contracts/Escrow.sol/Escrow.json";
+import { ESCROW_CONTRACT_ADDRESS } from "../frontend/src/config/escrowAddress";
+import { domain, types } from "../lib/eip712"; // <-- Add this line at the top
 
 // Token list with symbol, name, and address
 const DEFAULT_TOKENS = [
@@ -25,6 +28,34 @@ const DEFAULT_TOKENS = [
 export interface SwapWidgetProps {
   userWalletAddress: string;
 } 
+
+const provider = new JsonRpcProvider(process.env.ARBITRUM_RPC || "https://arb1.arbitrum.io/rpc");
+
+const domain = {
+  name: 'MetaAggregator',
+  version: '1',
+  chainId: 31337,
+  verifyingContract: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+};
+
+const types = {
+  Order: [
+    { name: 'sellToken', type: 'address' },
+    { name: 'buyToken', type: 'address' },
+    { name: 'sellAmount', type: 'uint256' },
+    { name: 'buyAmount', type: 'uint256' },
+    { name: 'validTo', type: 'uint32' },
+    { name: 'appData', type: 'bytes32' },
+    { name: 'feeAmount', type: 'uint256' },
+    { name: 'kind', type: 'string' },
+    { name: 'partiallyFillable', type: 'bool' },
+    { name: 'receiver', type: 'address' },
+    { name: 'user', type: 'address' },
+    { name: 'signingScheme', type: 'string' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'wallet', type: 'address' },
+  ],
+};
 
 const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -50,9 +81,10 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
     setConnectError(null);
     try {
       if (window.ethereum) {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        // ethers v6+ uses BrowserProvider instead of providers.Web3Provider
+        const provider = new ethers.BrowserProvider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
+        const signer = await provider.getSigner();
         const address = await signer.getAddress();
         setWalletAddress(address);
       } else {
@@ -87,71 +119,95 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
   // Submit order
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!walletAddress) {
+
+    if (!window.ethereum) {
+      alert("MetaMask is not installed!");
       return;
     }
-    if (!sellAmount || !quote?.buyAmount || !quote?.minReceived) {
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const userAddress = await signer.getAddress();
+
+    if (!userAddress) {
+      alert("Please connect your wallet.");
       return;
     }
+
+    const amount = parseFloat(sellAmount);
+    if (!amount || isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid amount to sell.");
+      return;
+    }
+
+    // Convert amount to base units (e.g., Wei for Ethereum)
+    const baseUnits = ethers.parseUnits(sellAmount, 18).toString();
+
+    const validTo = Number(Math.floor(Date.now() / 1000) + 1800); // ensures integer, safe for uint32
 
     const order = {
-      sellToken: sellToken || "0x0000000000000000000000000000000000000000",
-      buyToken: buyToken || "0x0000000000000000000000000000000000000000",
-      sellAmount: ethers.utils.parseUnits(sellAmount || "0", 18).toString(),
-      buyAmount: ethers.utils.parseUnits(buyAmount || "0", 18).toString(),
-      validTo: Math.floor(Date.now() / 1000) + 600,
-      user: walletAddress || "0x0000000000000000000000000000000000000000",
-      receiver: walletAddress || "0x0000000000000000000000000000000000000000",
-      appData: "0x", // Default value
-      feeAmount: "0", // Default value
+      sellToken,
+      buyToken,
+      sellAmount: baseUnits,
+      buyAmount: quote?.buyAmount || "0",
+      validTo, // ✅ now a proper uint32
+      user: userAddress, // ✅ use the address that is signing
+      receiver: userAddress,
+      wallet: userAddress,
+      appData: '0x' + '00'.repeat(32), // ✅ 32-byte zero hash for appData
+      feeAmount: quote?.lpFee || 0,
       partiallyFillable: false,
-      kind: "sell", // Default value
-      signingScheme: "eip712", // Default value
+      kind: "sell",
+      signingScheme: "eip712",
+      nonce: 0,
     };
 
-    // Generate the order hash
-    const orderHash = hashOrder(order);
-    console.log("Order Hash:", orderHash);
+    // Validate that none of the order fields are undefined or empty
+    const missingFields = Object.entries(order)
+      .filter(([_, value]) => value === undefined || value === null || value === "")
+      .map(([key]) => key);
 
-    console.log("Order for hashing:", order);
-    console.log("ORDER OBJECT:", order);
-    Object.entries(order).forEach(([key, value]) => {
-      if (value === undefined) {
-        console.error(`Order field ${key} is undefined`);
-      }
-    });
-
-    if (
-      !order.sellToken ||
-      !order.buyToken ||
-      !order.sellAmount ||
-      !order.buyAmount ||
-      !order.minReceived ||
-      !order.wallet ||
-      !order.validTo
-    ) {
-      alert("Missing order field! Check your inputs and quote.");
+    if (missingFields.length > 0) {
+      alert(`❌ Missing order fields: ${missingFields.join(", ")}`);
       return;
     }
 
+    console.log("Order submitted:", order);
+
+    // Compute the order hash
+    const orderHash = hashOrder(order);
+
+    // Add the orderHash to the order object
+    const signedOrder = {
+      ...order,
+      orderHash,
+    };
+
+    console.log("Signed order submitted:", signedOrder);
+
     try {
-      // Get the signer from MetaMask
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
+      // 1. Sign the order using EIP-712
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const signerAddress = await signer.getAddress();
+      console.log("👤 Signing with:", signerAddress);
+      console.log("🧾 order.user is:", order.user);
 
-      // Sign the order hash
-      const signature = await signer.signMessage(ethers.utils.arrayify(orderHash));
-      console.log("Signature:", signature);
+      if (signerAddress.toLowerCase() !== order.user.toLowerCase()) {
+        console.error("🚫 Mismatch between signer and order.user!");
+        return; // Optionally prevent signing if mismatch
+      }
 
-      // Combine the order and signature
-      const signedOrder = { ...order, signature };
-      console.log("Signed Order:", signedOrder);
+      const signature = await signer.signTypedData(domain, types, order);
 
-      // Submit the signed order
-      await submitOrder(signedOrder);
+      // Log the signed order for tracing
+      console.log("📦 submitting from signAndSubmitOrder:", { order, signature });
+
+      // Now you can safely call:
+      await submitOrder({ order, signature }); // ✅ just once
     } catch (err) {
-      console.error("Error signing order:", err);
-      alert("❌ Error signing order. Please try again.");
+      console.error("Error submitting order:", err);
+      alert("❌ Error submitting order. Please try again.");
     }
   };
 
@@ -163,17 +219,23 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
         body: JSON.stringify(signedOrder),
       });
 
-      if (response.ok) {
+      const contentType = response.headers.get("Content-Type");
+      if (contentType && contentType.includes("application/json")) {
         const data = await response.json();
-        console.log("Order submitted successfully:", data);
-        alert("✅ Order submitted successfully!");
+        if (response.ok) {
+          console.log("✅ Order submitted successfully:", data);
+          alert("✅ Order submitted successfully!");
+        } else {
+          console.error("❌ Error submitting order:", data);
+          alert(`❌ Error submitting order: ${data.message || "Unknown error"}`);
+        }
       } else {
-        const error = await response.json();
-        console.error("Error submitting order:", error);
-        alert(`❌ Error submitting order: ${error.message || "Unknown error"}`);
+        const text = await response.text();
+        console.error("❌ Non-JSON response:", text);
+        alert("❌ Unexpected response from server.");
       }
     } catch (err) {
-      console.error("Network error submitting order:", err);
+      console.error("❌ Network error submitting order:", err);
       alert("❌ Network error submitting order. Please try again.");
     }
   };
@@ -196,23 +258,31 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
         body: JSON.stringify({
           sellToken,
           buyToken,
-          sellAmount: ethers.utils.parseUnits(sellAmount, 18).toString(),
+          sellAmount: ethers.parseUnits(sellAmount, 18).toString(), // <-- changed here
           user: walletAddress || "0x000000000000000000000000000000000000dead",
         }),
       });
 
-      const data = await res.json();
-      console.log("✅ Quote response:", data);
+      const contentType = res.headers.get("Content-Type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        console.log("✅ Quote response:", data);
 
-      if (data.error) {
-        setQuoteError(data.error);
-        setQuote(null);
+        if (data.error) {
+          setQuoteError(data.error);
+          setQuote(null);
+        } else {
+          setQuote(data);
+        }
       } else {
-        setQuote(data);
+        const text = await res.text();
+        console.error("❌ Non-JSON response:", text);
+        setQuoteError("Unexpected response from server.");
+        setQuote(null);
       }
     } catch (err) {
       console.error("❌ fetchQuote error:", err);
-      setQuoteError(err.message);
+      setQuoteError((err as Error).message);
       setQuote(null);
     }
   };
@@ -224,10 +294,10 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
 
   // Use backend quote for buyAmount and minReceived (format with ethers)
   const buyAmount = quote?.buyAmount
-    ? ethers.utils.formatUnits(quote.buyAmount, 18)
+    ? ethers.formatUnits(quote.buyAmount, 18) // <-- changed here
     : "0";
   const minReceived = quote?.minReceived
-    ? parseFloat(ethers.utils.formatUnits(quote.minReceived, 18)).toFixed(4)
+    ? parseFloat(ethers.formatUnits(quote.minReceived, 18)).toFixed(4) // <-- changed here
     : "0";
 
   const sellUsd = sellAmount && quote?.sellTokenUsd
