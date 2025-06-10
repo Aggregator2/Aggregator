@@ -49,10 +49,9 @@ export default async function handler(req, res) {
             };
 
             console.log("Order for validation:", order);
+            console.log("Order field types and values:");
             Object.entries(order).forEach(([key, value]) => {
-              if (!value) {
-                console.error(`Order field ${key} is missing or invalid:`, value);
-              }
+              console.log(`${key}:`, value, `(type: ${typeof value})`);
             });
             
             if (

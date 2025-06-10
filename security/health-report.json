@@ -1,0 +1,81 @@
+{
+  "timestamp": "2025-06-08T23:36:19.243Z",
+  "systemStatus": {
+    "timestamp": "2025-06-08T23:36:19.242Z",
+    "environment": "development",
+    "initialized": true,
+    "runningServices": [],
+    "services": {
+      "rotation": {
+        "keyStatuses": {
+          "PRIVATE_KEY": {
+            "currentVersion": 2,
+            "isDue": false,
+            "keyId": "PRIVATE_KEY_v2"
+          },
+          "ARBITER_PRIVATE_KEY": {
+            "currentVersion": 2,
+            "isDue": false,
+            "keyId": "ARBITER_PRIVATE_KEY_v2"
+          }
+        }
+      },
+      "monitoring": {
+        "healthStatus": "healthy",
+        "alertCount": 0,
+        "lastCheck": "2025-06-08T23:36:19.239Z",
+        "isRunning": false
+      },
+      "scheduled": {
+        "isRunning": false,
+        "nextCheck": null,
+        "dryRun": true
+      }
+    },
+    "config": {
+      "rotationIntervalDays": 30,
+      "schedulePattern": "0 2 * * *",
+      "alertsEnabled": true,
+      "emergencyRotationEnabled": true
+    }
+  },
+  "healthReport": {
+    "timestamp": "2025-06-08T23:36:19.241Z",
+    "overallStatus": "healthy",
+    "totalAlerts": 0,
+    "criticalAlerts": 0,
+    "warningAlerts": 0,
+    "keyStatuses": {
+      "PRIVATE_KEY": {
+        "status": "healthy",
+        "alerts": [],
+        "lastUpdate": "2025-06-08T23:30:50.914Z",
+        "ageDays": 0,
+        "version": 2
+      },
+      "ARBITER_PRIVATE_KEY": {
+        "status": "healthy",
+        "alerts": [],
+        "lastUpdate": "2025-06-08T23:33:33.247Z",
+        "ageDays": 0,
+        "version": 2
+      }
+    },
+    "alerts": [],
+    "lastCheck": "2025-06-08T23:36:19.239Z"
+  },
+  "recommendations": [
+    {
+      "priority": "medium",
+      "type": "service_issue",
+      "message": "Monitoring service is not running",
+      "action": "Start monitoring service"
+    },
+    {
+      "priority": "medium",
+      "type": "service_issue",
+      "message": "Scheduled rotation service is not running",
+      "action": "Start scheduled rotation service"
+    }
+  ]
+}

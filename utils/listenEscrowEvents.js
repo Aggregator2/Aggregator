@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import dotenv from "dotenv";
-import EscrowABI from "../artifacts/contracts/Escrow.sol/Escrow.json" assert { type: "json" };
+import FixedEscrowABI from "../artifacts/contracts/FixedEscrow.sol/FixedEscrow.json" assert { type: "json" };
 
 dotenv.config();
 
@@ -12,7 +12,7 @@ if (!ESCROW_ADDRESS) {
 }
 
 const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
-const escrow = new ethers.Contract(ESCROW_ADDRESS, EscrowABI.abi, provider);
+const escrow = new ethers.Contract(ESCROW_ADDRESS, FixedEscrowABI.abi, provider);
 
 // Listen for all events
 escrow.on("*", (event) => {

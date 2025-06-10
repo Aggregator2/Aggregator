@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { ethers, JsonRpcProvider } from "ethers";
 import styles from "./SwapWidget.module.css";
 import { useTokenPrice } from "../hooks/useTokenPrice";
 import MarketOrderWidget from "./MarketOrderWidget";
 import QuoteSummary from "./QuoteSummary";
 import { hashOrder } from '../utils/hashOrder';
-import EscrowABI from "../artifacts/contracts/Escrow.sol/Escrow.json";
+import FixedEscrowABI from "../artifacts/contracts/FixedEscrow.sol/FixedEscrow.json";
 import { ESCROW_CONTRACT_ADDRESS } from "../frontend/src/config/escrowAddress";
 import { domain, types } from "../lib/eip712"; // <-- Add this line at the top
 
@@ -57,6 +57,21 @@ const types = {
   ],
 };
 
+export function useEscrowContract() {
+  return useMemo(() => {
+    if (typeof window === "undefined" || !window.ethereum) return null;
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    // Return a promise that resolves to the contract instance with signer
+    return provider.getSigner().then((signer) => {
+      return new ethers.Contract(
+        ESCROW_CONTRACT_ADDRESS,
+        FixedEscrowABI.abi,
+        signer
+      );
+    });
+  }, []);
+}
+
 const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [tokens] = useState(DEFAULT_TOKENS);
@@ -73,6 +88,14 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
   const [quote, setQuote] = useState<any>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+
+  const [settlementMode, setSettlementMode] = useState<"offchain" | "escrow">("offchain");
+
+  // New state for escrow
+  const [escrowLoading, setEscrowLoading] = useState(false);
+  const [escrowError, setEscrowError] = useState<string | null>(null);
+
+  const escrowContractPromise = useEscrowContract();
 
   // Debounced connectWallet
   const connectWallet = async () => {
@@ -256,9 +279,9 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sellToken,
-          buyToken,
-          sellAmount: ethers.parseUnits(sellAmount, 18).toString(), // <-- changed here
+          sellToken: sellToken || "",
+          buyToken: buyToken || "",
+          sellAmount: sellAmount ? ethers.parseUnits(sellAmount, 18).toString() : "0",
           user: walletAddress || "0x000000000000000000000000000000000000dead",
         }),
       });
@@ -320,6 +343,64 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
 
   const calculatedMinReceived = sellAmountNum - lpFeeAmount - slippageAmount - priceImpactAmount;
 
+  // --- NEW: Escrow deposit handling ---
+  async function handleEscrowDeposit() {
+    if (!quote) return;
+    setEscrowLoading(true);
+    setEscrowError(null);
+    try {
+      const contract = await escrowContractPromise;
+      if (!contract) throw new Error("Escrow contract not available");
+      // Use the order hash as orderId
+      const orderId = hashOrder(quote); // or use your order object if available
+      const tx = await contract.deposit(quote.sellToken, quote.sellAmount);
+      await tx.wait();
+      await submitEscrowTx(orderId, tx.hash);
+      alert("✅ Deposited to Escrow!");
+    } catch (err: any) {
+      setEscrowError(err.message || "Escrow deposit failed");
+    } finally {
+      setEscrowLoading(false);
+    }
+  }
+
+  /**
+   * Calls the backend to release escrowed funds using a signature.
+   * @param {string} makerReleaseSignature - The EIP-712 signature from the maker.
+   * @param {any} order - The order object (should contain receiver).
+   * @param {any} quote - The quote object (should contain escrowAddress, sellToken, sellAmount).
+   */
+  async function releaseEscrowFunds(makerReleaseSignature: string, order: any, quote: any) {
+    try {
+      const res = await fetch("/api/releaseFunds", {
+        method: "POST",
+        body: JSON.stringify({
+          escrowAddress: quote.escrowAddress,
+          to: order.receiver,
+          token: quote.sellToken,
+          amount: quote.sellAmount,
+          signature: makerReleaseSignature,
+        }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const contentType = res.headers.get("Content-Type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (res.ok) {
+          alert(`✅ Funds released! Tx: ${data.txHash}`);
+        } else {
+          alert(`❌ Release failed: ${data.error || "Unknown error"}`);
+        }
+      } else {
+        const text = await res.text();
+        alert(`❌ Unexpected response: ${text}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Network error: ${err.message}`);
+    }
+  }
+
   return (
     <div className={styles.tradeWrapper}>
       <div className={styles.tradeCard}>
@@ -339,6 +420,26 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
           >
             Limit
           </button>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label>
+            <input
+              type="radio"
+              value="offchain"
+              checked={settlementMode === "offchain"}
+              onChange={() => setSettlementMode("offchain")}
+            />
+            Off-chain Settlement
+          </label>
+          <label style={{ marginLeft: 16 }}>
+            <input
+              type="radio"
+              value="escrow"
+              checked={settlementMode === "escrow"}
+              onChange={() => setSettlementMode("escrow")}
+            />
+            Escrow Settlement
+          </label>
         </div>
         {activeTab === "swap" ? (
           <form onSubmit={handleSubmit}>
@@ -468,6 +569,7 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
             walletAddress={walletAddress}
             onSubmitOrder={submitOrder}
             connectingWallet={connectingWallet}
+            onSellAmountChange={setSellAmount} // <-- Add this line!
           />
         )}
         {quoteError && <div className={styles.error}>{quoteError}</div>}
@@ -485,10 +587,34 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
             quote={quote}
           />
         </div>
+        {settlementMode === "escrow" && (
+          <button
+            type="button"
+            className={styles.submitButton}
+            onClick={handleEscrowDeposit}
+            disabled={escrowLoading || !quote}
+          >
+            {escrowLoading ? "Depositing to Escrow..." : "Use Escrow"}
+          </button>
+        )}
+        {escrowError && <div className={styles.error}>{escrowError}</div>}
       </div>
     </div>
   );
 };
 
 export default SwapWidget;
+
+/**
+ * Submits the escrow deposit transaction hash to the backend.
+ * @param orderId - The order ID associated with the deposit.
+ * @param txHash - The transaction hash from the escrow deposit.
+ */
+export async function submitEscrowTx(orderId: string, txHash: string) {
+  await fetch("/api/markEscrowDeposit", {
+    method: "POST",
+    body: JSON.stringify({ orderId, txHash }),
+    headers: { "Content-Type": "application/json" },
+  });
+}
 

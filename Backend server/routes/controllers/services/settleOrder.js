@@ -1,6 +1,6 @@
 require("dotenv").config();
 const { ethers } = require("ethers");
-const EscrowABI = require("../../artifacts/contracts/Escrow.sol/Escrow.json").abi; // Adjust path as needed
+const FixedEscrowABI = require("../../artifacts/contracts/FixedEscrow.sol/FixedEscrow.json").abi; // Updated to use FixedEscrow
 
 // --- Contract address and API key usage ---
 // Use environment variables for sensitive data
@@ -28,7 +28,7 @@ async function settleOrderOnChain(order, signature) {
   const signer = new ethers.Wallet(PRIVATE_KEY, provider);
 
   // 2. Connect to the contract
-  const escrow = new ethers.Contract(ESCROW_ADDRESS, EscrowABI, signer);
+  const escrow = new ethers.Contract(ESCROW_ADDRESS, FixedEscrowABI, signer);
 
   // 3. Call the contract method
   // If your contract expects the order as a struct, make sure the JS object matches the Solidity struct

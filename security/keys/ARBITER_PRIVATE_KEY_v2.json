@@ -1,0 +1,7 @@
+{
+  "keyId": "ARBITER_PRIVATE_KEY_v2",
+  "encrypted": "02644760bcab2cf2b213fd74d2fd5e0a80a1640172024ecd31a771f6eab4ad07ef0e8d4b232bfd1f9697476ffeeb4f1484e4fecb8c226c4009dda9c46337455bacec38877eebc6c2fa3243189c0faadb",
+  "iv": "5a766f92202651fc8c03f3a80d36dd51",
+  "timestamp": "2025-06-08T23:33:33.247Z",
+  "algorithm": "aes-256-cbc"
+}

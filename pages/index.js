@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
 import SwapWidget from '../components/SwapWidget';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
@@ -11,6 +10,7 @@ export default function Home() {
   const [toastMessage, setToastMessage] = useState('');
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  const url = `${API_BASE_URL}/api/orders`;
 
   useEffect(() => {
     refreshOrders();
@@ -24,6 +24,7 @@ export default function Home() {
       return;
     }
     try {
+      const { ethers } = await import('ethers');
       const provider = new ethers.BrowserProvider(window.ethereum); // <-- v6 syntax
       const signer = await provider.getSigner();
       const walletAddress = await signer.getAddress();
@@ -53,6 +54,7 @@ export default function Home() {
   // Example: expects SwapWidget to call this with an order object
   const handleSubmitOrder = async (order) => {
     try {
+      const { ethers } = await import('ethers');
       const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
       const signer = provider.getSigner();
 
@@ -72,14 +74,23 @@ export default function Home() {
       const signature = await signer.signMessage(ethers.utils.arrayify(hash));
       const signedOrder = { ...order, signature };
 
-      const url = `${API_BASE_URL}/orders`;
-      await fetch(url, {
+      const url = `${API_BASE_URL}/api/orders`;
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(signedOrder),
       });
+      const result = await response.json();
 
-      showToast('Order Submitted');
+      // Show different toast messages based on API response status
+      if (result.status === "escrow_required") {
+        showToast("Order valid — awaiting escrow deposit from maker.");
+      } else if (result.status === "settled_offchain") {
+        showToast("Order fully matched and settled (simulated).");
+      } else {
+        showToast(result.message || "Order submitted!");
+      }
+
       refreshOrders();
     } catch (err) {
       console.error('Order submission failed:', err);

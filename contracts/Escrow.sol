@@ -6,14 +6,17 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 /**
  * @title Escrow Contract
  * @notice Facilitates token escrow, trade execution, and refunds.
  * @dev Secure and optimized for Hardhat verification.
  */
-contract Escrow is Ownable, ReentrancyGuard {
+contract Escrow is Ownable, ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
+    using ECDSA for bytes32;
 
     /**
      * @notice Represents the state of the escrow.
@@ -49,19 +52,24 @@ contract Escrow is Ownable, ReentrancyGuard {
     /// @dev Amount of tokens or Ether held in escrow. Made private for security.
     uint256 private amount;
 
+    mapping(bytes32 => bool) public usedSignatures;
+
     /// @notice Emitted when the depositor deposits funds into the escrow.
     /// @param depositor Address of the depositor.
     /// @param amount Amount of funds deposited.
-    event Deposited(address indexed depositor, uint256 amount);
-
-    /// @notice Emitted when the counterparty confirms the trade.
+    event Deposited(address indexed depositor, uint256 amount);    /// @notice Emitted when the counterparty confirms the trade.
     /// @param sender Address of the counterparty who confirmed the trade.
     event Confirmed(address indexed sender);
-
+    
     /// @notice Emitted when the arbiter refunds the depositor.
     /// @param depositor Address of the depositor.
     /// @param amount Amount of funds refunded.
     event Refunded(address indexed depositor, uint256 amount);
+
+    /// @notice Emitted when funds are released with a valid signature.
+    /// @param to Address of the recipient.
+    /// @param amount Amount of funds released.
+    event FundsReleased(address indexed to, uint256 amount);
 
     /// @notice Emitted when a trade is executed via Uniswap V2.
     /// @param sender Address of the depositor who executed the trade.
@@ -107,7 +115,9 @@ contract Escrow is Ownable, ReentrancyGuard {
         address _arbiter,
         bytes32 _tradeHash,
         address _uniswapRouter
-    ) {
+    )
+        EIP712("Escrow", "1")
+    {
         require(_depositor != address(0), "Depositor address cannot be zero");
         require(_token != address(0), "Token address cannot be zero");
         require(_amount > 0, "Amount must be greater than zero");
@@ -189,6 +199,62 @@ contract Escrow is Ownable, ReentrancyGuard {
         );
 
         emit TradeExecuted(msg.sender, amountOutMin, path, deadline);
+    }    /**
+     * @notice Releases funds to the counterparty if a valid arbiter signature is provided.
+     * @param to The recipient address.
+     * @param token_ The token address.
+     * @param amount_ The amount to release.
+     * @param signature The arbiter's signature.
+     */
+    function releaseWithSignature(
+        address to,
+        address token_,
+        uint256 amount_,
+        bytes calldata signature
+    ) external nonReentrant {
+        require(currentState == State.AWAITING_CONFIRMATION || currentState == State.COMPLETE, "Invalid state");
+        require(to != address(0), "Invalid recipient address");
+        require(amount_ > 0, "Amount must be greater than zero");
+        require(amount_ <= amount, "Amount exceeds escrow balance");
+        
+        // Create the digest for signature verification
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(abi.encode(
+                keccak256("Release(address escrowAddress,address to,address token,uint256 amount)"),
+                address(this),
+                to,
+                token_,
+                amount_
+            ))
+        );
+        
+        // Verify the signature is from the arbiter
+        address signer = ECDSA.recover(digest, signature);
+        require(signer == arbiter, "Invalid signature");
+        
+        // Prevent signature replay attacks
+        require(!usedSignatures[digest], "Signature already used");
+        usedSignatures[digest] = true;
+        
+        // Release the funds
+        if (token_ == address(0)) {
+            // Release ETH
+            (bool success, ) = payable(to).call{value: amount_}("");
+            require(success, "ETH transfer failed");
+        } else {
+            // Release ERC20 tokens
+            IERC20(token_).safeTransfer(to, amount_);
+        }
+        
+        // Update the escrow balance
+        amount -= amount_;
+        
+        // Update state if all funds have been released
+        if (amount == 0) {
+            currentState = State.COMPLETE;
+        }
+        
+        emit FundsReleased(to, amount_);
     }
 }
 

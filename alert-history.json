@@ -1,0 +1,11 @@
+{
+  "consecutiveFailures": 0,
+  "lastAlertTime": 1749402560841,
+  "serviceFailures": {
+    "zeroXApi": 2,
+    "environment": 0,
+    "database": 0,
+    "smartContract": 0,
+    "localApi": 0
+  }
+}

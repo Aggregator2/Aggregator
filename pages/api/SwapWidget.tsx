@@ -59,8 +59,7 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
 
   // --- NEW: Quote state ---
   const [quote, setQuote] = useState<any>(null);
-  const [quoteLoading, setQuoteLoading] = useState(false);
-  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [makerSignature, setMakerSignature] = useState<string | null>(null); // <-- Add this
 
   // Debounced connectWallet
   const connectWallet = async () => {
@@ -109,46 +108,53 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
     if (!walletAddress) return;
     if (!sellAmount || !quote?.buyAmount || !quote?.minReceived) return;
 
-    const order = {
-      sellToken: sellToken || "0x0000000000000000000000000000000000000000",
-      buyToken: buyToken || "0x0000000000000000000000000000000000000000",
-      sellAmount: ethers.utils.parseUnits(sellAmount || "0", 18).toString(),
-      buyAmount: ethers.utils.parseUnits(buyAmount || "0", 18).toString(),
-      validTo: Math.floor(Date.now() / 1000) + 600,--
-      user: walletAddress || "0x0000000000000000000000000000000000000000",
-      receiver: walletAddress || "0x0000000000000000000000000000000000000000",
-      appData: "0x",
-      feeAmount: "0",
-      partiallyFillable: false,
-      kind: "sell",
-      signingScheme: "eip712",
-    };
+    // 1. Prepare the quote object (from backend)
+    const backendQuote = quote?.quote || quote; // Support both {quote, makerSignature} and flat
 
-    // 1. Generate the hash (optional, for your own logging/debug)
-    const orderHash = hashOrder(order);
-
-    // 2. Sign the EIP-712 order
+    // 2. Sign the quote as taker (user)
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
-    const signature = await signer.signTypedData(domain, types, order);
 
-    // 3. Submit the correctly shaped payload
-    const payload = { order, signature };
+    // You need the EIP-712 domain and types for Quote
+    // If you have them imported, use them here:
+    // import { QUOTE_DOMAIN, quoteTypes } from "...";
+    // For now, assume they are available as quoteDomain and quoteTypes
 
-    console.log("🔐 Sending payload:", payload); // double check this shows "order" and "signature" keys
+    // If not imported, you can define them here or import from shared location
+    // const quoteDomain = { ... }; const quoteTypes = { ... };
 
-    console.log("📝 Submitting:", order, signature);
+    const takerSignature = await signer.signTypedData(
+      quoteDomain, // <-- import or define this
+      quoteTypes,  // <-- import or define this
+      backendQuote
+    );
 
-    console.log("🚀 Calling submitOrder with:", { order, signature });
-    await submitOrder({ order, signature }); // ✅ sends both correctly
+    // 3. Submit to backend with both signatures and the quote
+    const payload = {
+      quote: backendQuote,
+      makerSignature: makerSignature,
+      takerSignature: takerSignature,
+    };
+
+    console.log("🚀 Submitting to /api/submitOrder:", payload);
+
+    await submitOrder(payload);
   };
 
-  const submitOrder = async ({ order, signature }: { order: any, signature: string }) => {
-    console.log("📦 Sending order payload:", { order, signature }); // 🧪 Debug log
+  const submitOrder = async ({
+    quote,
+    makerSignature,
+    takerSignature,
+  }: {
+    quote: any;
+    makerSignature: string;
+    takerSignature: string;
+  }) => {
+    console.log("📦 Sending order payload:", { quote, makerSignature, takerSignature });
     const res = await fetch("/api/submitOrder", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ order, signature }),
+      body: JSON.stringify({ quote, makerSignature, takerSignature }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || "Unknown error");
@@ -163,6 +169,7 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
     if (!sellAmount || isNaN(Number(sellAmount))) {
       console.error("❌ Invalid sellAmount:", sellAmount);
       setQuote(null);
+      setMakerSignature(null); // Clear signature on error
       return;
     }
 
@@ -184,13 +191,16 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
       if (data.error) {
         setQuoteError(data.error);
         setQuote(null);
+        setMakerSignature(null);
       } else {
         setQuote(data);
+        setMakerSignature(data.makerSignature || null); // <-- Store makerSignature
       }
     } catch (err) {
       console.error("❌ fetchQuote error:", err);
       setQuoteError(err.message);
       setQuote(null);
+      setMakerSignature(null);
     }
   };
 

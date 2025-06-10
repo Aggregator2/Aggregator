@@ -9,9 +9,11 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.3",
     "@prisma/client": "^6.8.2",
+    "@supabase/supabase-js": "^2.50.0",
     "@types/react-dom": "^18.3.1",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "axios": "^1.9.0",
+    "better-sqlite3": "^11.10.0",
     "bignumber.js": "^9.3.0",
     "next": "^15.3.2",
     "pg": "^8.15.6",

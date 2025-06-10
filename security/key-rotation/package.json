@@ -1,0 +1,96 @@
+{
+  "name": "meta-aggregator-key-rotation",
+  "version": "1.0.0",
+  "description": "Comprehensive key rotation system for Meta Aggregator 2.0 escrow platform",
+  "main": "orchestrator.js",
+  "scripts": {
+    "start": "node orchestrator.js start",
+    "stop": "node orchestrator.js stop",
+    "status": "node orchestrator.js status",
+    "test": "node test-suite.js run",
+    "report": "node orchestrator.js report",
+    "init": "node orchestrator.js init",
+    "install-system": "powershell -ExecutionPolicy Bypass -File install.ps1",
+    "install-dev": "powershell -ExecutionPolicy Bypass -File install.ps1 -Environment development -TestInstallation",
+    "install-prod": "powershell -ExecutionPolicy Bypass -File install.ps1 -Environment production",
+    "rotate:private": "node orchestrator.js rotate PRIVATE_KEY",
+    "rotate:arbiter": "node orchestrator.js rotate ARBITER_PRIVATE_KEY",
+    "emergency:private": "node orchestrator.js emergency PRIVATE_KEY",
+    "emergency:arbiter": "node orchestrator.js emergency ARBITER_PRIVATE_KEY",
+    "monitor:start": "node monitoring.js start",
+    "monitor:check": "node monitoring.js check",
+    "monitor:report": "node monitoring.js report",
+    "scheduled:start": "node scheduled-rotation.js start",
+    "scheduled:stop": "node scheduled-rotation.js stop",
+    "scheduled:status": "node scheduled-rotation.js status",
+    "scheduled:check": "node scheduled-rotation.js check",
+    "manual:rotate": "node manual-rotation.js",
+    "validate:keys": "node validate-keys.js validate",
+    "validate:comprehensive": "node validate-keys.js comprehensive",
+    "test:unit": "node test-suite.js run",
+    "test:integration": "node test-suite.js run --integration",
+    "test:performance": "node test-suite.js run --performance",
+    "docs": "echo 'See README.md for documentation'",
+    "health": "node orchestrator.js report",
+    "backup": "node manual-rotation.js backup-all",
+    "restore": "node manual-rotation.js restore"
+  },
+  "dependencies": {
+    "ethers": "^6.8.0",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "os": [
+    "win32",
+    "linux",
+    "darwin"
+  ],
+  "keywords": [
+    "security",
+    "key-rotation",
+    "ethereum",
+    "blockchain",
+    "escrow",
+    "defi",
+    "meta-aggregator",
+    "private-keys",
+    "automation",
+    "monitoring"
+  ],
+  "author": {
+    "name": "Meta Aggregator 2.0 Team",
+    "email": "security@meta-aggregator.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/meta-aggregator/key-rotation.git"
+  },
+  "bugs": {
+    "url": "https://github.com/meta-aggregator/key-rotation/issues"
+  },
+  "homepage": "https://github.com/meta-aggregator/key-rotation#readme",
+  "files": [
+    "*.js",
+    "*.md",
+    "*.ps1",
+    "*.json"
+  ],
+  "config": {
+    "rotation_interval_days": 30,
+    "monitoring_interval_minutes": 60,
+    "alert_threshold_days": 7,
+    "emergency_cooldown_hours": 1
+  },
+  "funding": {
+    "type": "ethereum",
+    "url": "https://meta-aggregator.com/funding"
+  }
+}

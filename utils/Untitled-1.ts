@@ -1,5 +1,5 @@
 // ...inside SwapWidget component...
-import EscrowABI from "../artifacts/contracts/Escrow.sol/Escrow.json";
+import FixedEscrowABI from "../artifacts/contracts/FixedEscrow.sol/FixedEscrow.json";
 import { ESCROW_CONTRACT_ADDRESS } from "../frontend/src/config/escrowAddress";
 import { getAddress } from 'ethers';
 
@@ -9,7 +9,7 @@ useEffect(() => {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const contract = new ethers.Contract(
       ESCROW_CONTRACT_ADDRESS,
-      EscrowABI.abi,
+      FixedEscrowABI.abi,
       provider
     );
     try {

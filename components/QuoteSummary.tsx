@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { BigNumber } from "@ethersproject/bignumber";
 import { formatUnits } from "@ethersproject/units";
 import styles from "./SwapWidget.module.css";
+import CountdownTimer from "./CountdownTimer"; // adjust path as needed
 
 interface QuoteSummaryProps {
   buyToken: string;
@@ -14,6 +15,7 @@ interface QuoteSummaryProps {
   lpFeeAmount: string; // Added lpFeeAmount prop
   slippageAmount: string; // Added slippageAmount prop
   quote: any; // Added quote prop
+  validTo: number; // Added validTo prop for countdown timer
 }
 
 const QuoteSummary: React.FC<QuoteSummaryProps> = ({
@@ -27,6 +29,7 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
   lpFeeAmount, // Destructure lpFeeAmount
   slippageAmount, // Destructure slippageAmount
   quote, // Destructure quote
+  validTo, // Destructure validTo
 }) => {
   const [quoteData, setQuoteData] = useState({
     lpFee: "0",
@@ -34,6 +37,10 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
     priceImpact: "0",
     minReceived: "0",
   });
+
+  const [secondsLeft, setSecondsLeft] = useState(() =>
+    Math.max(0, validTo - Math.floor(Date.now() / 1000))
+  );
 
   useEffect(() => {
     // Fetch data from the API
@@ -45,6 +52,13 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
 
     fetchQuote();
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSecondsLeft(Math.max(0, validTo - Math.floor(Date.now() / 1000)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [validTo]);
 
   // Safely format values from wei to human-readable format
   const safeBigNumber = (val: any) => {
@@ -59,6 +73,10 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
   const formattedSlippage = formatUnits(safeBigNumber(quoteData.slippage), 18);
   const formattedPriceImpact = formatUnits(safeBigNumber(quoteData.priceImpact), 18);
   const formattedMinReceived = formatUnits(safeBigNumber(quoteData.minReceived), 18);
+
+  // Format secondsLeft as mm:ss
+  const minutes = Math.floor(secondsLeft / 60);
+  const seconds = secondsLeft % 60;
 
   return (
     <div
@@ -92,6 +110,12 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
         <span>Min Received</span>
         <span>{formattedMinReceived} {typeof buyToken === "object" ? buyToken.symbol : buyToken}</span>
       </div>
+      <div style={{ marginTop: 12, fontSize: "0.9rem", color: "#666" }}>
+        <span>
+          {minutes}:{seconds.toString().padStart(2, "0")} left
+        </span>
+      </div>
+      {quote?.validTo && <CountdownTimer validTo={quote.validTo} />}
     </div>
   );
 };

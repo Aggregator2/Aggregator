@@ -1,0 +1,12 @@
+[2025-06-08 18:10:56] [INFO] Starting Meta Aggregator monitoring...
+[2025-06-08 18:10:56] [INFO] Interval: 5 minutes
+[2025-06-08 18:10:56] [INFO] Run once: True
+[2025-06-08 18:10:56] [INFO] Checking prerequisites...
+[2025-06-08 18:10:56] [INFO] Node.js version: v22.14.0
+[2025-06-08 18:10:56] [WARN] WARNING: Hardhat network may not be running
+[2025-06-08 18:10:56] [WARN] WARNING: Next.js server may not be running
+[2025-06-08 18:10:56] [INFO] === Monitoring Check (0.0 minutes since start) ===
+[2025-06-08 18:10:56] [INFO] Running health check and monitoring alerts...
+[2025-06-08 18:10:57] [INFO] Health check completed successfully
+[2025-06-08 18:10:57] [INFO] Health check passed. Consecutive failures reset to 0.
+[2025-06-08 18:10:57] [INFO] Monitoring completed.

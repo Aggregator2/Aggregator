@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-06-08T17:10:56.774Z",
+  "overall": "healthy",
+  "services": {
+    "environment": "healthy",
+    "database": "healthy",
+    "smartContract": "healthy",
+    "localApi": "healthy",
+    "zeroXApi": "unhealthy"
+  }
+}

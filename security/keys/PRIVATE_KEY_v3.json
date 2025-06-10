@@ -1,0 +1,7 @@
+{
+  "keyId": "PRIVATE_KEY_v3",
+  "encrypted": "2e9dc982b9746fdd492de00dd048a2e9f05b211639c4b296b849a7f24299e53d780f3da88c3f755a00bfcabf3c13bb403243edf1457c61506de2f76468006ee1525615654d069504b0a091318f59bc54",
+  "iv": "9c6b42727ee59b1c2f3dc9a0740ea853",
+  "timestamp": "2025-06-08T23:36:26.724Z",
+  "algorithm": "aes-256-cbc"
+}

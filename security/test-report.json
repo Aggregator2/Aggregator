@@ -1,0 +1,134 @@
+{
+  "timestamp": "2025-06-08T23:36:48.818Z",
+  "summary": {
+    "totalTests": 16,
+    "passedTests": 16,
+    "failedTests": 0,
+    "successRate": 100
+  },
+  "results": [
+    {
+      "testName": "Key Generation",
+      "passed": true,
+      "details": "Successfully generated valid key pair",
+      "timestamp": "2025-06-08T23:36:48.225Z",
+      "address": "0x812e4dbeD3E1bF1B62f6a151C9e78B6F3D3E3F38",
+      "hasPrivateKey": true,
+      "hasPublicKey": true,
+      "hasMnemonic": true
+    },
+    {
+      "testName": "Key Storage - Store",
+      "passed": true,
+      "details": "Key stored successfully",
+      "timestamp": "2025-06-08T23:36:48.308Z",
+      "keyId": "test_key_storage",
+      "storagePath": "C:\\Users\\joeri\\OneDrive\\Desktop\\Meta Aggregator 2.0\\security\\test-keys\\test_key_storage.json"
+    },
+    {
+      "testName": "Key Storage - Retrieve",
+      "passed": true,
+      "details": "Key retrieved and decrypted successfully",
+      "timestamp": "2025-06-08T23:36:48.358Z"
+    },
+    {
+      "testName": "Key Storage - Security",
+      "passed": true,
+      "details": "Wrong password correctly rejected",
+      "timestamp": "2025-06-08T23:36:48.406Z"
+    },
+    {
+      "testName": "Key Validation - Valid Key",
+      "passed": true,
+      "details": "Valid key passed validation",
+      "timestamp": "2025-06-08T23:36:48.425Z"
+    },
+    {
+      "testName": "Key Validation - Invalid Key",
+      "passed": true,
+      "details": "Invalid key correctly rejected",
+      "timestamp": "2025-06-08T23:36:48.427Z"
+    },
+    {
+      "testName": "Key Rotation",
+      "passed": true,
+      "details": "Key rotation completed successfully",
+      "timestamp": "2025-06-08T23:36:48.505Z",
+      "keyType": "TEST_KEY",
+      "oldVersion": 1,
+      "newVersion": 2,
+      "newAddress": "0x0AC06Df6AAe85D8f44DAd62801b024adaA860809"
+    },
+    {
+      "testName": "Emergency Rotation",
+      "passed": true,
+      "details": "Emergency rotation completed successfully",
+      "timestamp": "2025-06-08T23:36:48.593Z",
+      "keyType": "TEST_EMERGENCY_KEY",
+      "newVersion": 2,
+      "trigger": "emergency"
+    },
+    {
+      "testName": "Scheduled Service - Start",
+      "passed": true,
+      "details": "Service started successfully",
+      "timestamp": "2025-06-08T23:36:48.596Z"
+    },
+    {
+      "testName": "Scheduled Service - Status",
+      "passed": true,
+      "details": "Service status correct",
+      "timestamp": "2025-06-08T23:36:48.598Z",
+      "isRunning": true,
+      "dryRun": true
+    },
+    {
+      "testName": "Scheduled Service - Stop",
+      "passed": true,
+      "details": "Service stopped successfully",
+      "timestamp": "2025-06-08T23:36:48.599Z"
+    },
+    {
+      "testName": "Event Service - Event Handling",
+      "passed": true,
+      "details": "Event service handles events correctly",
+      "timestamp": "2025-06-08T23:36:48.709Z"
+    },
+    {
+      "testName": "Event Service - Cooldown",
+      "passed": true,
+      "details": "Cooldown functionality working",
+      "timestamp": "2025-06-08T23:36:48.709Z",
+      "isInCooldown": false
+    },
+    {
+      "testName": "Monitoring Service - Health Check",
+      "passed": true,
+      "details": "Health check completed",
+      "timestamp": "2025-06-08T23:36:48.714Z",
+      "healthStatus": "healthy",
+      "alertCount": 0
+    },
+    {
+      "testName": "Monitoring Service - Report",
+      "passed": true,
+      "details": "Health report generated successfully",
+      "timestamp": "2025-06-08T23:36:48.718Z",
+      "overallStatus": "healthy",
+      "totalAlerts": 0
+    },
+    {
+      "testName": "Integration - Rotation Status",
+      "passed": true,
+      "details": "Test key rotation completed successfully",
+      "timestamp": "2025-06-08T23:36:48.810Z",
+      "keyType": "TEST_INTEGRATION_KEY",
+      "note": "Test keys are not tracked by production monitoring"
+    }
+  ],
+  "config": {
+    "testTimeout": 30000,
+    "useTestKeys": false,
+    "cleanupAfterTests": true
+  }
+}
