@@ -1,0 +1,71 @@
+{
+  "name": "Claude Code Sandbox - YOLO Mode",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "TZ": "${localEnv:TZ:America/Los_Angeles}"
+    }
+  },  "runArgs": [
+    "--cap-add=NET_ADMIN",
+    "--cap-add=NET_RAW",
+    "-e", "ANTHROPIC_API_KEY=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"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "eamodio.gitlens",
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "bash",
+            "icon": "terminal-bash"
+          },
+          "zsh": {
+            "path": "zsh"
+          }
+        }
+      }
+    }
+  },
+  "remoteUser": "node",
+  "mounts": [
+    "source=claude-code-bashhistory,target=/commandhistory,type=volume",
+    "source=claude-code-config,target=/home/node/.claude,type=volume"
+  ],
+  "remoteEnv": {
+    "NODE_OPTIONS": "--max-old-space-size=4096",
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+    "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [3000, 3002, 3003, 3004, 8545],
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js Dev Server"
+    },
+    "3002": {
+      "label": "Event Listener Health"
+    },
+    "3003": {
+      "label": "API Service"
+    },
+    "3004": {
+      "label": "Listener Service"
+    },
+    "8545": {
+      "label": "Hardhat Node"
+    }
+  }
+}

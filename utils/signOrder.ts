@@ -42,10 +42,25 @@ export async function signQuote(
   return signature;
 }
 
-// Returns a MetaMask EIP-712 signature for the given order using ethers.js v5
+// Returns a MetaMask EIP-712 signature for the given order using ethers.js v6
 export async function signOrderWithEIP712(order: any, domain: any, types: any): Promise<string> {
   if (!window.ethereum) throw new Error("MetaMask not found");
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  const signer = provider.getSigner();
-  return await signer._signTypedData(domain, types, order);
+  
+  // Check if accounts are available first
+  const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+  if (!accounts || accounts.length === 0) {
+    throw new Error("No wallet connected. Please connect first.");
+  }
+  
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  
+  try {
+    const signer = await provider.getSigner();
+    return await signer.signTypedData(domain, types, order);
+  } catch (error: any) {
+    if (error.code === -32002) {
+      throw new Error("MetaMask request already pending. Please check MetaMask.");
+    }
+    throw error;
+  }
 }

@@ -1,0 +1,26 @@
+version: '3.8'
+services:
+  claude-dev:
+    build:
+      context: .devcontainer
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace
+      - ~/.gitconfig:/home/node/.gitconfig:ro
+    environment:
+      - ANTHROPIC_API_KEY=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
+      - NODE_ENV=development
+    working_dir: /workspace
+    ports:
+      - "3000:3000"
+      - "3002:3002"
+      - "3003:3003"
+      - "3004:3004"
+      - "8545:8545"
+    command: tail -f /dev/null
+    networks:
+      - claude-net
+
+networks:
+  claude-net:
+    driver: bridge

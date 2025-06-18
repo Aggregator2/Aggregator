@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test MetaMask Connection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+        .button:hover {
+            background: #764ba2;
+        }
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        .success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+        .warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #667eea;
+            padding-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>MetaMask Connection Test</h1>
+    
+    <div>
+        <button class="button" onclick="checkMetaMask()">Check MetaMask</button>
+        <button class="button" onclick="getAccounts()">Get Accounts</button>
+        <button class="button" onclick="requestAccounts()">Request Accounts</button>
+        <button class="button" onclick="connectSafely()">Safe Connect</button>
+        <button class="button" onclick="getSigner()">Get Signer</button>
+        <button class="button" onclick="simulateMultipleRequests()">Test Multiple Requests</button>
+        <button class="button" onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div id="status" class="status"></div>
+    <div id="log" class="log"></div>
+    
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.style.borderColor = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#667eea';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function setStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            document.getElementById('status').textContent = '';
+        }
+        
+        async function checkMetaMask() {
+            log('Checking MetaMask...');
+            
+            if (typeof window.ethereum === 'undefined') {
+                log('MetaMask is NOT installed', 'error');
+                setStatus('MetaMask is not installed. Please install MetaMask.', 'error');
+                return false;
+            }
+            
+            log('MetaMask is installed', 'success');
+            log(`isMetaMask: ${window.ethereum.isMetaMask}`);
+            log(`selectedAddress: ${window.ethereum.selectedAddress || 'null'}`);
+            
+            setStatus('MetaMask is installed and ready', 'success');
+            return true;
+        }
+        
+        async function getAccounts() {
+            try {
+                log('Getting accounts without prompting...');
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                
+                if (accounts.length > 0) {
+                    log(`Found ${accounts.length} account(s)`, 'success');
+                    log(`Primary account: ${accounts[0]}`);
+                    setStatus(`Connected: ${accounts[0]}`, 'success');
+                } else {
+                    log('No accounts connected', 'warning');
+                    setStatus('No accounts connected. Use "Request Accounts" to connect.', 'warning');
+                }
+                
+                return accounts;
+            } catch (error) {
+                log(`Error getting accounts: ${error.message}`, 'error');
+                log(`Error code: ${error.code}`);
+                setStatus(`Error: ${error.message}`, 'error');
+                return [];
+            }
+        }
+        
+        async function requestAccounts() {
+            try {
+                log('Requesting account access...');
+                setStatus('Check MetaMask for connection request...', 'warning');
+                
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                log(`Access granted! ${accounts.length} account(s)`, 'success');
+                log(`Primary account: ${accounts[0]}`);
+                setStatus(`Connected: ${accounts[0]}`, 'success');
+                
+                return accounts;
+            } catch (error) {
+                log(`Error requesting accounts: ${error.message}`, 'error');
+                log(`Error code: ${error.code}`);
+                
+                if (error.code === -32002) {
+                    setStatus('Request already pending. Check MetaMask!', 'warning');
+                } else if (error.code === 4001) {
+                    setStatus('User rejected the connection request', 'error');
+                } else {
+                    setStatus(`Error: ${error.message}`, 'error');
+                }
+                
+                return [];
+            }
+        }
+        
+        async function connectSafely() {
+            log('Starting safe connection process...');
+            
+            // Step 1: Check MetaMask
+            if (!await checkMetaMask()) {
+                return;
+            }
+            
+            // Step 2: Check existing accounts
+            const existingAccounts = await getAccounts();
+            if (existingAccounts.length > 0) {
+                log('Already connected!', 'success');
+                return existingAccounts;
+            }
+            
+            // Step 3: Request accounts
+            return await requestAccounts();
+        }
+        
+        async function getSigner() {
+            try {
+                log('Getting signer...');
+                
+                // First check accounts
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                if (accounts.length === 0) {
+                    throw new Error('No accounts connected. Connect first!');
+                }
+                
+                // Import ethers (for demo, using CDN)
+                const script = document.createElement('script');
+                script.src = 'https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js';
+                document.head.appendChild(script);
+                
+                await new Promise(resolve => script.onload = resolve);
+                
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = provider.getSigner();
+                const address = await signer.getAddress();
+                
+                log(`Signer obtained for address: ${address}`, 'success');
+                setStatus(`Signer ready: ${address}`, 'success');
+                
+                return signer;
+            } catch (error) {
+                log(`Error getting signer: ${error.message}`, 'error');
+                log(`Error code: ${error.code}`);
+                
+                if (error.code === -32002) {
+                    setStatus('Request already pending. Check MetaMask!', 'warning');
+                } else {
+                    setStatus(`Error: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        async function simulateMultipleRequests() {
+            log('Simulating multiple simultaneous requests...');
+            
+            // This will trigger the -32002 error on purpose
+            const promises = [];
+            for (let i = 0; i < 3; i++) {
+                promises.push(
+                    window.ethereum.request({ method: 'eth_requestAccounts' })
+                        .then(accounts => log(`Request ${i + 1} succeeded: ${accounts[0]}`, 'success'))
+                        .catch(error => {
+                            log(`Request ${i + 1} failed: ${error.message}`, 'error');
+                            if (error.code === -32002) {
+                                log(`Request ${i + 1} got -32002 (expected for subsequent requests)`, 'warning');
+                            }
+                        })
+                );
+            }
+            
+            await Promise.allSettled(promises);
+            log('Multiple request test complete', 'info');
+        }
+        
+        // Initial check on page load
+        window.addEventListener('load', () => {
+            log('Page loaded. Checking MetaMask status...');
+            checkMetaMask();
+            getAccounts();
+        });
+        
+        // Listen for account changes
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                log(`Accounts changed: ${accounts.length > 0 ? accounts[0] : 'disconnected'}`, 'info');
+                if (accounts.length === 0) {
+                    setStatus('Wallet disconnected', 'warning');
+                } else {
+                    setStatus(`Connected: ${accounts[0]}`, 'success');
+                }
+            });
+            
+            window.ethereum.on('chainChanged', (chainId) => {
+                log(`Chain changed to: ${chainId}`, 'info');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useTokenPriceFallback } from "./useFallback";
+
+const ADDRESS_TO_COINGECKO_ID: Record<string, string> = {
+  "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee": "ethereum",
+  "0x82af49447d8a07e3bd95bd0d56f35241523fbab1": "ethereum", // WETH
+  "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1": "dai", // DAI
+  "0x9d47894f8becb68b9cf3428d256311affe8b068b": "rope-token",
+};
+
+const TOKEN_SYMBOLS: Record<string, string> = {
+  "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee": "ETH",
+  "0x82af49447d8a07e3bd95bd0d56f35241523fbab1": "WETH",
+  "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1": "DAI",
+  "0x9d47894f8becb68b9cf3428d256311affe8b068b": "ROPE",
+};
+
+// Client-side cache with 60 second TTL
+const priceCache = new Map<string, { price: number; timestamp: number; error?: string }>();
+const CACHE_TTL = 60 * 1000; // 60 seconds
+
+// Track ongoing requests to prevent duplicates
+const ongoingRequests = new Map<string, Promise<any>>();
+
+export function useTokenPrice(contractAddress: string | null) {
+  const [price, setPrice] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  const { fallbackActive, fallbackData, enableFallback } = useTokenPriceFallback();
+
+  const fetchPrice = useCallback(async (address: string): Promise<{ price: number; error?: string }> => {
+    // Check cache first
+    const cached = priceCache.get(address);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return { price: cached.price, error: cached.error };
+    }
+
+    // Check if request is already ongoing
+    if (ongoingRequests.has(address)) {
+      return await ongoingRequests.get(address);
+    }
+
+    // Start new request
+    const requestPromise = (async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const res = await fetch(
+          `/api/tokenPrice?tokenAddress=${encodeURIComponent(address)}`,
+          { 
+            signal: controller.signal,
+            headers: { 'Accept': 'application/json' }
+          }
+        );
+        
+        clearTimeout(timeoutId);
+        
+        if (!res.ok) {
+          throw new Error(`API Error: ${res.status} ${res.statusText}`);
+        }
+        
+        const data = await res.json();
+        const result = { price: data.price, error: data.error };
+        
+        // Cache the result
+        priceCache.set(address, { ...result, timestamp: Date.now() });
+        
+        return result;
+      } catch (err) {
+        const error = err instanceof Error ? err.message : "Failed to fetch price";
+        
+        // Try to return cached data even if expired
+        const cached = priceCache.get(address);
+        if (cached) {
+          return { price: cached.price, error: `Stale data: ${error}` };
+        }
+        
+        throw new Error(error);
+      } finally {
+        // Remove from ongoing requests
+        ongoingRequests.delete(address);
+      }
+    })();
+
+    ongoingRequests.set(address, requestPromise);
+    return await requestPromise;
+  }, []);
+
+  const fetchPriceWithRetry = useCallback(async (attempts = 0) => {
+    if (!contractAddress) return;
+    
+    const normalizedAddress = contractAddress.toLowerCase();
+    const coingeckoId = ADDRESS_TO_COINGECKO_ID[normalizedAddress];
+    const tokenSymbol = TOKEN_SYMBOLS[normalizedAddress];
+    
+    if (!coingeckoId) {
+      setPrice(null);
+      setError(`Unsupported token: ${tokenSymbol || contractAddress}`);
+      return;
+    }
+
+    setLoading(true);
+    setRetryCount(attempts);
+    
+    try {
+      const result = await fetchPrice(contractAddress);
+      setPrice(result.price);
+      setError(result.error || null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to fetch price";
+      
+      // Try fallback data if available
+      if (fallbackData && tokenSymbol && fallbackData[tokenSymbol]) {
+        setPrice(fallbackData[tokenSymbol]);
+        setError(`Using fallback price: ${errorMessage}`);
+        enableFallback();
+      } else if (attempts < 2) {
+        // Retry with exponential backoff
+        const delay = Math.pow(2, attempts) * 1000;
+        setTimeout(() => fetchPriceWithRetry(attempts + 1), delay);
+        return; // Don't set loading to false yet
+      } else {
+        setPrice(null);
+        setError(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [contractAddress, fallbackData, enableFallback, fetchPrice]);
+
+  useEffect(() => {
+    // Clear existing debounce timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    if (contractAddress) {
+      // Debounce the fetch by 1000ms to prevent rapid-fire requests
+      debounceTimeoutRef.current = setTimeout(() => {
+        fetchPriceWithRetry(0);
+      }, 1000);
+    } else {
+      setPrice(null);
+      setError(null);
+      setRetryCount(0);
+    }
+
+    // Cleanup function
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [contractAddress, fetchPriceWithRetry]);
+
+  const retry = useCallback(() => {
+    if (contractAddress) {
+      setError(null);
+      fetchPriceWithRetry(0);
+    }
+  }, [contractAddress, fetchPriceWithRetry]);
+
+  return { 
+    price, 
+    loading, 
+    error, 
+    retry, 
+    retryCount,
+    usingFallback: fallbackActive 
+  };
+}

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Crypto Background</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        .background-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #0a0a0b 0%, #121214 50%, #0a0a0b 100%);
+            overflow: hidden;
+        }
+        
+        .token {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+        
+        .token img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .token-1 {
+            left: 8%;
+            top: 15%;
+            animation: float1 12s ease-in-out infinite;
+        }
+        
+        .token-2 {
+            left: 85%;
+            top: 20%;
+            animation: float2 14s ease-in-out infinite;
+            animation-delay: 2s;
+        }
+        
+        .token-3 {
+            left: 12%;
+            top: 70%;
+            animation: float3 10s ease-in-out infinite;
+            animation-delay: 4s;
+        }
+        
+        .token-4 {
+            left: 88%;
+            top: 75%;
+            animation: float1 16s ease-in-out infinite;
+            animation-delay: 1s;
+        }
+        
+        .token-5 {
+            left: 50%;
+            top: 8%;
+            animation: float2 11s ease-in-out infinite;
+            animation-delay: 3s;
+        }
+        
+        .token-6 {
+            left: 25%;
+            top: 40%;
+            animation: float3 13s ease-in-out infinite;
+            animation-delay: 0.5s;
+        }
+        
+        .token-7 {
+            left: 75%;
+            top: 45%;
+            animation: float1 9s ease-in-out infinite;
+            animation-delay: 5s;
+        }
+        
+        .token-8 {
+            left: 45%;
+            top: 80%;
+            animation: float2 15s ease-in-out infinite;
+            animation-delay: 2.5s;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(98, 126, 234, 0.6);
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(98, 126, 234, 0.4);
+        }
+        
+        .particle-1 { left: 15%; animation: drift 18s linear infinite; }
+        .particle-2 { left: 35%; animation: drift 22s linear infinite; animation-delay: 3s; }
+        .particle-3 { left: 55%; animation: drift 16s linear infinite; animation-delay: 6s; }
+        .particle-4 { left: 75%; animation: drift 20s linear infinite; animation-delay: 2s; }
+        .particle-5 { left: 25%; animation: drift 19s linear infinite; animation-delay: 8s; }
+        .particle-6 { left: 65%; animation: drift 17s linear infinite; animation-delay: 4s; }
+        .particle-7 { left: 5%; animation: drift 21s linear infinite; animation-delay: 7s; }
+        .particle-8 { left: 85%; animation: drift 15s linear infinite; animation-delay: 1s; }
+        .particle-9 { left: 45%; animation: drift 23s linear infinite; animation-delay: 5s; }
+        .particle-10 { left: 95%; animation: drift 14s linear infinite; animation-delay: 9s; }
+        
+        .connecting-line {
+            position: absolute;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(98, 126, 234, 0.2), transparent);
+            transform-origin: left center;
+            opacity: 0;
+            animation: lineGlow 8s ease-in-out infinite;
+        }
+        
+        .wave-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 120px;
+            overflow: hidden;
+        }
+        
+        .wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 200%;
+            height: 100px;
+            background: linear-gradient(45deg, transparent, rgba(98, 126, 234, 0.1), transparent);
+            clip-path: polygon(0 60%, 100% 40%, 100% 100%, 0% 100%);
+            animation: waveMove 20s ease-in-out infinite;
+        }
+        
+        .content {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            alignItems: center;
+            justify-content: center;
+            height: 100%;
+            padding: 20px;
+        }
+        
+        .content-box {
+            background: rgba(15, 15, 20, 0.85);
+            backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            text-align: center;
+            max-width: 550px;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .content-box h1 {
+            margin-top: 0;
+            font-size: 32px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #ffffff, #e0e0e0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .content-box p {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+        
+        .token-list {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(98, 126, 234, 0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(98, 126, 234, 0.1);
+        }
+        
+        .token-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .token-item img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+        
+        .token-item span {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        .theme-switch {
+            margin-top: 25px;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+        }
+        
+        .theme-switch:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(79, 70, 229, 0.4);
+        }
+        
+        @keyframes float1 {
+            0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+            25% { transform: translateY(-25px) rotate(8deg) scale(1.05); }
+            50% { transform: translateY(-15px) rotate(-5deg) scale(0.95); }
+            75% { transform: translateY(-30px) rotate(12deg) scale(1.1); }
+        }
+        
+        @keyframes float2 {
+            0%, 100% { transform: translateX(0px) translateY(0px) rotate(0deg) scale(1); }
+            25% { transform: translateX(20px) translateY(-20px) rotate(-8deg) scale(0.9); }
+            50% { transform: translateX(-10px) translateY(-25px) rotate(6deg) scale(1.1); }
+            75% { transform: translateX(15px) translateY(-10px) rotate(-10deg) scale(0.95); }
+        }
+        
+        @keyframes float3 {
+            0%, 100% { transform: translateX(0px) translateY(0px) rotate(0deg) scale(1); }
+            33% { transform: translateX(-15px) translateY(-22px) rotate(7deg) scale(1.05); }
+            66% { transform: translateX(18px) translateY(-12px) rotate(-9deg) scale(0.9); }
+        }
+        
+        @keyframes drift {
+            0% { 
+                transform: translateY(100vh) translateX(0px); 
+                opacity: 0; 
+            }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { 
+                transform: translateY(-10vh) translateX(60px); 
+                opacity: 0; 
+            }
+        }
+        
+        @keyframes lineGlow {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+        
+        @keyframes waveMove {
+            0%, 100% { 
+                transform: translateX(-50%) scaleY(1);
+                clip-path: polygon(0 60%, 100% 40%, 100% 100%, 0% 100%); 
+            }
+            25% { 
+                transform: translateX(-45%) scaleY(1.2);
+                clip-path: polygon(0 50%, 100% 60%, 100% 100%, 0% 100%); 
+            }
+            50% { 
+                transform: translateX(-40%) scaleY(0.8);
+                clip-path: polygon(0 70%, 100% 30%, 100% 100%, 0% 100%); 
+            }
+            75% { 
+                transform: translateX(-35%) scaleY(1.1);
+                clip-path: polygon(0 40%, 100% 50%, 100% 100%, 0% 100%); 
+            }
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            .token, .particle, .wave, .connecting-line {
+                animation: none !important;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .token {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .token img {
+                width: 32px;
+                height: 32px;
+            }
+            
+            .content-box {
+                padding: 30px;
+                margin: 10px;
+            }
+            
+            .token-list {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-container">
+        <!-- Real Crypto Token Images -->
+        <div class="token token-1">
+            <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.png" alt="Bitcoin" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNGNzkzMUEiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPC9zdmc+Cjwvc3ZnPgo='" />
+        </div>
+        <div class="token token-2">
+            <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png" alt="Ethereum" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM2MjdFRUEiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPC9zdmc+Cjwvc3ZnPgo='" />
+        </div>
+        <div class="token token-3">
+            <img src="https://cryptologos.cc/logos/solana-sol-logo.png" alt="Solana" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM5OTQ1RkYiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPC9zdmc+Cjwvc3ZnPgo='" />
+        </div>
+        <div class="token token-4">
+            <img src="https://cryptologos.cc/logos/cardano-ada-logo.png" alt="Cardano" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiMwMEQ0QUEiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPC9zdmc+Cjwvc3ZnPgo='" />
+        </div>
+        <div class="token token-5">
+            <img src="https://cryptologos.cc/logos/chainlink-link-logo.png" alt="Chainlink" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiMyOTVBRkYiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPC9zdmc+Cjwvc3ZnPgo='" />
+        </div>
+        <div class="token token-6">
+            <img src="https://cryptologos.cc/logos/polygon-matic-logo.png" alt="Polygon" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM4MjQ3RTUiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPC9zdmc+Cjwvc3ZnPgo='" />
+        </div>
+        <div class="token token-7">
+            <img src="https://cryptologos.cc/logos/avalanche-avax-logo.png" alt="Avalanche" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNFODQxNDIiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPC9zdmc+Cjwvc3ZnPgo='" />
+        </div>
+        <div class="token token-8">
+            <img src="https://cryptologos.cc/logos/uniswap-uni-logo.png" alt="Uniswap" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNGRjAwN0EiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPC9zdmc+Cjwvc3ZnPgo='" />
+        </div>
+        
+        <!-- Enhanced Particles -->
+        <div class="particle particle-1"></div>
+        <div class="particle particle-2"></div>
+        <div class="particle particle-3"></div>
+        <div class="particle particle-4"></div>
+        <div class="particle particle-5"></div>
+        <div class="particle particle-6"></div>
+        <div class="particle particle-7"></div>
+        <div class="particle particle-8"></div>
+        <div class="particle particle-9"></div>
+        <div class="particle particle-10"></div>
+        
+        <!-- Animated Wave -->
+        <div class="wave-container">
+            <div class="wave"></div>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <div class="content-box">
+                <h1>🚀 Enhanced Crypto Background</h1>
+                <p>Real cryptocurrency token images floating with professional animations!</p>
+                
+                <div class="token-list">
+                    <div class="token-item">
+                        <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.png" alt="Bitcoin">
+                        <span>BTC</span>
+                    </div>
+                    <div class="token-item">
+                        <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png" alt="Ethereum">
+                        <span>ETH</span>
+                    </div>
+                    <div class="token-item">
+                        <img src="https://cryptologos.cc/logos/solana-sol-logo.png" alt="Solana">
+                        <span>SOL</span>
+                    </div>
+                    <div class="token-item">
+                        <img src="https://cryptologos.cc/logos/cardano-ada-logo.png" alt="Cardano">
+                        <span>ADA</span>
+                    </div>
+                    <div class="token-item">
+                        <img src="https://cryptologos.cc/logos/chainlink-link-logo.png" alt="Chainlink">
+                        <span>LINK</span>
+                    </div>
+                    <div class="token-item">
+                        <img src="https://cryptologos.cc/logos/polygon-matic-logo.png" alt="Polygon">
+                        <span>MATIC</span>
+                    </div>
+                    <div class="token-item">
+                        <img src="https://cryptologos.cc/logos/avalanche-avax-logo.png" alt="Avalanche">
+                        <span>AVAX</span>
+                    </div>
+                    <div class="token-item">
+                        <img src="https://cryptologos.cc/logos/uniswap-uni-logo.png" alt="Uniswap">
+                        <span>UNI</span>
+                    </div>
+                </div>
+                
+                <p style="font-size: 14px; opacity: 0.8;">
+                    ✨ Features: Real token logos, enhanced animations, backdrop blur, wave effects
+                </p>
+                
+                <button class="theme-switch" onclick="switchTheme()">
+                    Switch Theme 🎨
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isDark = true;
+        
+        function switchTheme() {
+            const container = document.querySelector('.background-container');
+            const contentBox = document.querySelector('.content-box');
+            
+            if (isDark) {
+                // Light theme
+                container.style.background = 'linear-gradient(135deg, #fefefe 0%, #f8fafc 50%, #fefefe 100%)';
+                contentBox.style.background = 'rgba(255, 255, 255, 0.9)';
+                contentBox.style.color = 'black';
+                contentBox.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+                
+                // Update tokens for light theme
+                document.querySelectorAll('.token').forEach(token => {
+                    token.style.background = 'rgba(255, 255, 255, 0.8)';
+                    token.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+                });
+                
+                // Update particles for light theme
+                document.querySelectorAll('.particle').forEach(particle => {
+                    particle.style.background = 'rgba(79, 70, 229, 0.4)';
+                    particle.style.boxShadow = '0 0 8px rgba(79, 70, 229, 0.3)';
+                });
+                
+                // Update wave for light theme
+                document.querySelector('.wave').style.background = 'linear-gradient(45deg, transparent, rgba(79, 70, 229, 0.08), transparent)';
+                
+            } else {
+                // Dark theme
+                container.style.background = 'linear-gradient(135deg, #0a0a0b 0%, #121214 50%, #0a0a0b 100%)';
+                contentBox.style.background = 'rgba(15, 15, 20, 0.85)';
+                contentBox.style.color = 'white';
+                contentBox.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                
+                document.querySelectorAll('.token').forEach(token => {
+                    token.style.background = 'rgba(255, 255, 255, 0.05)';
+                    token.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                });
+                
+                document.querySelectorAll('.particle').forEach(particle => {
+                    particle.style.background = 'rgba(98, 126, 234, 0.6)';
+                    particle.style.boxShadow = '0 0 8px rgba(98, 126, 234, 0.4)';
+                });
+                
+                document.querySelector('.wave').style.background = 'linear-gradient(45deg, transparent, rgba(98, 126, 234, 0.1), transparent)';
+            }
+            
+            isDark = !isDark;
+        }
+        
+        // Add some connecting lines between tokens randomly
+        function createConnectingLines() {
+            const tokens = document.querySelectorAll('.token');
+            tokens.forEach((token, index) => {
+                if (Math.random() > 0.7 && index < tokens.length - 1) {
+                    const line = document.createElement('div');
+                    line.className = 'connecting-line';
+                    line.style.width = '100px';
+                    line.style.left = token.style.left;
+                    line.style.top = token.style.top;
+                    line.style.animationDelay = `${index * 2}s`;
+                    document.querySelector('.background-container').appendChild(line);
+                }
+            });
+        }
+        
+        // Initialize connecting lines after page load
+        setTimeout(createConnectingLines, 1000);
+    </script>
+</body>
+</html>

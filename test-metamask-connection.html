@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaMask Connection Test</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+            margin: 10px 0;
+        }
+        .success {
+            color: green;
+            margin: 10px 0;
+        }
+        .log {
+            background: #f4f4f4;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .pending {
+            color: orange;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>MetaMask Connection Test</h1>
+    
+    <div>
+        <button onclick="checkPendingRequest()">Check Pending Request</button>
+        <button onclick="getAccounts()">Get Accounts (Safe)</button>
+        <button onclick="connectWalletBad()">Connect Wallet (Bad - Will Cause -32002)</button>
+        <button onclick="connectWalletGood()">Connect Wallet (Good - Handles -32002)</button>
+        <button onclick="getSigner()">Get Signer</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+    
+    <div id="status"></div>
+    <div id="logs"></div>
+    
+    <script>
+        const { ethers } = window.ethers;
+        
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log';
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            if (type === 'error') logEntry.style.color = 'red';
+            if (type === 'success') logEntry.style.color = 'green';
+            if (type === 'pending') logEntry.className += ' pending';
+            logs.appendChild(logEntry);
+        }
+        
+        function setStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.className = type;
+            status.textContent = message;
+        }
+        
+        async function checkPendingRequest() {
+            log('Checking for pending requests...');
+            try {
+                await window.ethereum.request({ method: 'eth_accounts' });
+                log('No pending requests', 'success');
+                setStatus('No pending requests', 'success');
+            } catch (error) {
+                if (error.code === -32002) {
+                    log('PENDING REQUEST DETECTED!', 'pending');
+                    setStatus('MetaMask has a pending request!', 'error');
+                } else {
+                    log(`Error: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        async function getAccounts() {
+            log('Getting accounts safely...');
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                if (accounts.length > 0) {
+                    log(`Found accounts: ${accounts.join(', ')}`, 'success');
+                    setStatus(`Connected: ${accounts[0]}`, 'success');
+                } else {
+                    log('No accounts connected', 'info');
+                    setStatus('No accounts connected', 'info');
+                }
+            } catch (error) {
+                log(`Error: ${error.message} (Code: ${error.code})`, 'error');
+                if (error.code === -32002) {
+                    setStatus('Request pending - check MetaMask!', 'error');
+                }
+            }
+        }
+        
+        // Bad implementation - will cause -32002 errors
+        async function connectWalletBad() {
+            log('Attempting bad connection (multiple rapid calls)...');
+            
+            // This will likely cause -32002 errors
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            
+            // Fire multiple requests rapidly
+            Promise.all([
+                provider.send("eth_requestAccounts", []),
+                provider.getSigner(),
+                window.ethereum.request({ method: 'eth_requestAccounts' })
+            ]).then(results => {
+                log('All requests completed', 'success');
+            }).catch(error => {
+                log(`Error: ${error.message} (Code: ${error.code})`, 'error');
+                if (error.code === -32002) {
+                    setStatus('ERROR -32002: Request already pending!', 'error');
+                }
+            });
+        }
+        
+        // Good implementation - handles -32002 properly
+        async function connectWalletGood() {
+            log('Attempting good connection (with error handling)...');
+            
+            try {
+                // First check for existing accounts
+                const existingAccounts = await window.ethereum.request({ method: 'eth_accounts' });
+                if (existingAccounts.length > 0) {
+                    log(`Already connected: ${existingAccounts[0]}`, 'success');
+                    setStatus(`Already connected: ${existingAccounts[0]}`, 'success');
+                    return;
+                }
+            } catch (error) {
+                if (error.code === -32002) {
+                    log('Pending request detected, aborting', 'pending');
+                    setStatus('Request already pending - check MetaMask!', 'error');
+                    return;
+                }
+            }
+            
+            try {
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const accounts = await provider.send("eth_requestAccounts", []);
+                
+                if (accounts.length > 0) {
+                    log(`Connected: ${accounts[0]}`, 'success');
+                    setStatus(`Connected: ${accounts[0]}`, 'success');
+                    
+                    // Only get signer after successful connection
+                    const signer = await provider.getSigner();
+                    const address = await signer.getAddress();
+                    log(`Signer address: ${address}`, 'success');
+                }
+            } catch (error) {
+                log(`Error: ${error.message} (Code: ${error.code})`, 'error');
+                if (error.code === -32002) {
+                    setStatus('Request already pending - check MetaMask!', 'error');
+                } else if (error.code === 4001) {
+                    setStatus('User rejected connection', 'info');
+                } else {
+                    setStatus(`Error: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        async function getSigner() {
+            log('Attempting to get signer...');
+            
+            try {
+                // Check accounts first
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                if (accounts.length === 0) {
+                    log('No accounts connected', 'error');
+                    setStatus('Connect wallet first!', 'error');
+                    return;
+                }
+                
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = await provider.getSigner();
+                const address = await signer.getAddress();
+                
+                log(`Got signer for address: ${address}`, 'success');
+                setStatus(`Signer ready: ${address}`, 'success');
+            } catch (error) {
+                log(`Error: ${error.message} (Code: ${error.code})`, 'error');
+                if (error.code === -32002) {
+                    setStatus('Request pending - check MetaMask!', 'error');
+                }
+            }
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            document.getElementById('status').textContent = '';
+            log('Logs cleared');
+        }
+        
+        // Initial check
+        window.addEventListener('load', () => {
+            if (!window.ethereum) {
+                setStatus('MetaMask not installed!', 'error');
+                log('MetaMask not detected', 'error');
+            } else {
+                log('MetaMask detected', 'success');
+                getAccounts();
+            }
+        });
+    </script>
+</body>
+</html>

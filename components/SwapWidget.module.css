@@ -1,348 +1,614 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-/* Removed .amountInput block as it is no longer used */
-.swapWidget {
-  background: #f9fafb; /* Subtle light gray background */
-  color: #181a20;
-  max-width: 370px;
-  margin: 40px auto;
-  padding: 32px 24px;
-  border-radius: 18px; /* Increased border-radius for a modern look */
-  box-shadow: 0 2px 16px rgba(31, 35, 40, 0.08); /* Softer shadow for depth */
-  text-align: center;
-  font-family: 'Inter', Arial, sans-serif;
-}
-
-.header {
-  font-weight: 700;
-  font-size: 1.4rem;
-  margin-bottom: 20px;
-  color: #1a202c;
-  letter-spacing: -0.01em; /* Reduced letter spacing for crisp typography */
-}
-
-.tokenButtons {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 22px;
-}
-
-.tokenButton {
-  flex: 1;
-  padding: 12px 0;
-  border-radius: 12px; /* Rounded corners for a "pill" look */
-  background: #e5f7fa;
-  color: #00bcd4;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-.tokenButton.active,
-.tokenButton:hover {
-  background: linear-gradient(90deg, #00bcd4 0%, #17c9e0 100%);
-  color: #fff;
-}
-
-.selectRow {
-  display: flex;
-  flex-direction: column;
-  gap: 14px; /* Increased gap for more space */
-  margin-bottom: 24px; /* Slightly more space below each row */
-}
-
-.select,
-.input {
-  width: 100%;
-  padding: 16px 18px;
-  border-radius: 14px;
-  background: #f1f5f9;
-  border: none;
-  font-size: 1.15rem;
-  color: #181a20;
-  transition: box-shadow 0.2s;
-  box-sizing: border-box;
-}
-
-.select:focus,
-.input:focus {
-  box-shadow: 0 0 0 2px #00bcd4;
-  outline: none;
-}
-
-.actionButton {
-  width: 100%;
-  min-height: 56px;
-  padding: 0;
-  margin-top: 16px;
-  border-radius: 12px;
-  background: linear-gradient(90deg, #00bcd4 0%, #17c9e0 100%);
-  color: #fff;
-  font-weight: 700;
-  font-size: 1.1rem;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 4px 12px 0 rgba(0, 188, 212, 0.12);
-  transition: background 0.2s, box-shadow 0.2s;
-}
-
-.actionButton:hover {
-  background: linear-gradient(90deg, #17c9e0 0%, #00bcd4 100%);
-  box-shadow: 0 8px 24px 0 rgba(0, 188, 212, 0.18);
-}
-
+/* SwapWidget styles */
 .tradeWrapper {
-  background: #f7f7fa;
-  padding: 32px 0;
-  min-height: 100vh;
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  font-family: 'Inter', Arial, sans-serif;
+  align-items: center;
+  min-height: 600px;
+  padding: 20px;
 }
 
 .tradeCard {
-  background: #fff;
-  border-radius: 28px;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 24px;
+  width: 100%;
   max-width: 480px;
-  margin: 0 auto;
-  box-shadow: 0 4px 32px rgba(31,35,40,0.10), 0 1.5px 0 #00bcd4 inset;
-  padding: 38px 32px 32px 32px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.tradeHeader {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  border: 1.5px solid #e0e7ef;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
 }
 
 .tradeTitle {
-  font-size: 2.3rem;
-  font-weight: 800;
-  color: #18181b;
-  margin-bottom: 18px;
-  text-align: center;
-  letter-spacing: -0.01em;
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settingsButton {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  z-index: 10;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.settingsButton:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: rotate(90deg);
+}
+
+.settingsButton:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.settingsButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+.offlineIndicator {
+  font-size: 16px;
+  color: #fbbf24;
 }
 
 .tabRow {
   display: flex;
-  gap: 14px;
-  margin-bottom: 28px;
-  justify-content: center;
-  align-items: center; /* Ensures vertical alignment */
+  gap: 8px;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px;
+  border-radius: 12px;
 }
 
 .tab {
-  min-width: 110px;
-  height: 44px;
-  padding: 0 28px;
-  border-radius: 16px;
-  background: transparent;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #2563eb;
+  flex: 1;
+  padding: 12px;
   border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.18s, color 0.18s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.tab:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tab.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.panelGroup {
+  margin-bottom: 16px;
+}
+
+.panelLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 8px;
 }
 
 .tokenPanel {
   display: flex;
-  justify-content: space-between;
-  align-items: center; /* Center both columns vertically */
-  gap: 18px;
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 1px 8px rgba(31,35,40,0.04);
-  padding: 4px 20px;
-  margin-bottom: 12px;
-}
-
-.tokenPanel:first-of-type {
-  margin-top: 0;      /* No extra space above Sell panel */
-  margin-bottom: 0;   /* No extra space below Sell panel */
-}
-
-.tokenPanel:last-of-type {
-  margin-top: 0;      /* No extra space above Buy panel */
-  margin-bottom: 0;   /* No extra space below Buy panel */
-}
-
-.panelGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 4px; /* Space between label and panel */
-  margin-bottom: 18px; /* Space between groups */
-}
-
-.panelLabel {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #23272f;
-  margin-bottom: 0;
-  letter-spacing: -0.01em;
-  line-height: 1.1;
-  text-align: left;
-  padding-left: 10px; /* Optional: aligns label with selector */
-}
-
-.tokenSelector,
-.amountInput {
-  border: 2px solid #23272f;
-  border-radius: 14px;
-  background: #f6f8fa;
-  box-sizing: border-box;
-  height: 56px;
-  width: 200px;         /* Set the same width for all boxes */
-  display: flex;
   align-items: center;
-  padding: 0 16px;
-  font-size: 1.1rem;
-  font-weight: 700;
-  transition: box-shadow 0.2s, border 0.2s;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+
+.tokenPanel:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.tokenPanel:focus-within {
+  border-color: rgba(102, 126, 234, 0.5);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
 }
 
 .tokenSelector {
-  margin-top: 2px; /* Adjust this value (1px, 2px, or 3px) for perfect alignment */
-}
-
-/* Ensure inner select/input fills the box */
-.select,
-.amountInput input {
-  width: 100%;
-  height: 100%;
-  border: none;
-  background: transparent;
-  font-size: 1.1rem;
-  font-weight: 700;
-  outline: none;
-  box-sizing: border-box;
-  /* Remove height: 200xp; (typo and not needed) */
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
 .tokenIcon {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  object-fit: contain;
-  background: #eee;
-  margin-right: 8px;
-  display: inline-block;
+  background: rgba(255, 255, 255, 0.1);
 }
 
-.select {
-  height: 56px;
+.tokenSelect {
   background: transparent;
   border: none;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #181a20;
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
   outline: none;
+}
+
+.tokenSelect option {
+  background: #000;
+  color: white;
+}
+
+.amountInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: right;
+  outline: none;
+  width: 100%;
+}
+
+.amountInput::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.amountInput:disabled {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.buyAmountContainer {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.priceError {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #ef4444;
   display: flex;
   align-items: center;
-  line-height: 1.2;
+  gap: 8px;
 }
 
-
-.usdEquivalent {
-  color: #6b7280;
-  font-size: 1rem;
-  margin-top: 0px;   /* Remove extra space below input */
-  font-weight: 500;
+.priceError button {
+  font-size: 12px;
+  padding: 2px 8px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  color: #ef4444;
+  cursor: pointer;
 }
 
-.swapDivider {
+/* Switch button styles */
+.switchContainer {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 28px 0;     /* Increase or decrease this for perfect balance */
+  margin: -6px 0;
   position: relative;
-  z-index: 2;
+  height: 12px;
 }
 
-.swapIconCircle {
-  background: #f3f4f6;
+.switchButton {
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.15);
   border-radius: 50%;
   width: 40px;
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  font-size: 16px;
   cursor: pointer;
-  transition: background 0.18s;
-}
-.swapIconCircle:hover {
-  background: #e0e7ef;
+  transition: all 0.3s ease;
+  color: white;
+  position: absolute;
+  z-index: 10;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+.switchButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(180deg);
+}
+
+.switchButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Button styles */
 .connectButton,
-.actionButton {
+.submitButton {
   width: 100%;
-  min-height: 56px;
-  padding: 0;
-  border-radius: 15px;
-  background: linear-gradient(90deg, #2563eb 0%, #17c9e0 100%);
-  color: #fff;
-  font-size: 1.25rem;
-  font-weight: 700;
+  padding: 16px;
   border: none;
-  margin-top: 18px;
+  border-radius: 16px;
+  font-size: 18px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-}
-.connectButton:hover,
-.actionButton:hover {
-  background: linear-gradient(90deg, #17c9e0 0%, #2563eb 100%);
-  box-shadow: 0 4px 12px 0 rgba(37,99,235,0.15);
+  gap: 8px;
+  margin-top: 24px;
 }
 
-.dividerLine {
+.connectButton {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.connectButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.submitButton {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.submitButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.connectButton:disabled,
+.submitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.escrowButton {
   width: 100%;
-  height: 1.5px;
-  background: #e5e7eb;
-  margin: 18px 0;
-  border-radius: 1px;
+  padding: 16px;
+  margin-top: 16px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: none;
+  border-radius: 16px;
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
 }
 
-.walletStatus {
-  color: #6b7280;
-  font-size: 1.05rem;
-  margin-top: 10px;
-  text-align: center;
+.escrowButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+.escrowButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Error styles */
+.error {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #ef4444;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.retryButton {
+  padding: 6px 12px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  color: #ef4444;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retryButton:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+/* Quote summary */
+.quoteSummary {
+  margin-top: 24px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Order book styles */
+.orderBook {
+  margin-top: 24px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.orderBook h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+.orderList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.orderItem {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Settings Panel */
+.settingsPanel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settingGroup {
+  margin-bottom: 20px;
+}
+
+.settingGroup:last-child {
+  margin-bottom: 0;
+}
+
+.settingLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 12px;
+}
+
+.infoIcon {
+  cursor: help;
+  font-size: 12px;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+  color: #666;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.infoIcon:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.slippageInputContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  max-width: 120px;
+}
+
+.slippageInput {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 14px;
+  outline: none;
+  width: 100%;
+  text-align: right;
+}
+
+.slippageInput::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.slippagePercent {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
   font-weight: 500;
 }
 
-.panelLeft {
+.settlementButtons {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  /* Remove height! */
+  gap: 12px;
 }
 
-/* Responsive design for mobile */
-@media (max-width: 600px) {
-  .swapWidget {
-    padding: 14px 4px;
-    max-width: 98vw;
-  }
+.settlementButton {
+  flex: 1;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.settlementButton:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.settlementButton.active {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: white;
+}
+
+/* Limit Order Styles */
+.limitPricePanel {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+
+.limitPricePanel:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.limitPricePanel:focus-within {
+  border-color: rgba(102, 126, 234, 0.5);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.limitPriceInput {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: right;
+  outline: none;
+  width: 100%;
+}
+
+.limitPriceInput::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.limitPriceInput:disabled {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.expirySelect {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 16px;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.expirySelect:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.expirySelect:focus {
+  border-color: rgba(102, 126, 234, 0.5);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.expirySelect option {
+  background: #000;
+  color: white;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
   .tradeCard {
-    max-width: 98vw;
-    padding: 18px 4vw 18px 4vw;
+    padding: 16px;
   }
+  
+  .tradeTitle {
+    font-size: 20px;
+  }
+  
   .amountInput {
-    width: 100%;
-    font-size: 1.4rem;
+    font-size: 20px;
+  }
+  
+  .connectButton,
+  .submitButton,
+  .escrowButton {
+    padding: 14px;
+    font-size: 16px;
+  }
+  
+  .slippageInputContainer {
+    max-width: 100px;
+  }
+  
+  .settlementButtons {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .settingsPanel {
+    padding: 16px;
   }
 }

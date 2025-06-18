@@ -1,11 +1,5 @@
 import React, { useState } from "react";
 import styles from "./SwapWidget.module.css";
-import QuoteSummary from "./QuoteSummary";
-
-const LP_FEE_RATE = 0.003; // 0.3%
-const SLIPPAGE_RATE = 0.005; // 0.5%
-const PRICE_IMPACT_RATE = 0.0012; // 0.12%
-const NETWORK_FEE_USD = 1.23; // Example, replace with real estimate
 
 const EXPIRY_OPTIONS = [
   { label: "1 day", value: 60 * 60 * 24 },
@@ -14,15 +8,14 @@ const EXPIRY_OPTIONS = [
   { label: "1 year", value: 60 * 60 * 24 * 365 },
 ];
 
-const PERCENT_OPTIONS = [
-  { label: "Market", value: 0 },
-  { label: "+1%", value: 1 },
-  { label: "+5%", value: 5 },
-  { label: "+10%", value: 10 },
-];
+interface Token {
+  symbol: string;
+  address: string;
+  logoURI?: string;
+}
 
 export interface MarketOrderWidgetProps {
-  tokens: { symbol: string; address: string }[];
+  tokens: Token[];
   sellToken: string;
   buyToken: string;
   sellAmount: string;
@@ -35,6 +28,9 @@ export interface MarketOrderWidgetProps {
   slippageTolerance: string;
   onSlippageClick: () => void;
   onSlippageChange: (value: string) => void;
+  walletAddress?: string;
+  onConnect?: () => void;
+  connectingWallet?: boolean;
 }
 
 const MarketOrderWidget: React.FC<MarketOrderWidgetProps> = ({
@@ -47,15 +43,13 @@ const MarketOrderWidget: React.FC<MarketOrderWidgetProps> = ({
   onSellAmountChange,
   onSubmit,
   rate,
-  showSlippage,
-  slippageTolerance,
-  onSlippageClick,
-  onSlippageChange,
+  walletAddress,
+  onConnect,
+  connectingWallet = false,
 }) => {
-  const [selectedPercent, setSelectedPercent] = useState(0);
+  const [limitPrice, setLimitPrice] = useState("");
   const [expiry, setExpiry] = useState(EXPIRY_OPTIONS[0].value);
-
-  const handlePercentClick = (percent: number) => setSelectedPercent(percent);
+  const [buyAmount, setBuyAmount] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,78 +57,163 @@ const MarketOrderWidget: React.FC<MarketOrderWidgetProps> = ({
       sellToken,
       buyToken,
       sellAmount,
-      percent: selectedPercent,
+      buyAmount,
+      limitPrice,
       expiry,
+      type: "limit"
     });
   };
 
-  // Find token symbols
-  const sellSymbol = tokens.find(t => t.address === sellToken)?.symbol || "";
-  const buySymbol = tokens.find(t => t.address === buyToken)?.symbol || "";
+  // Handle token switching
+  const handleSwitch = () => {
+    onSellTokenChange(buyToken);
+    onBuyTokenChange(sellToken);
+    // Clear amounts when switching
+    onSellAmountChange("");
+    setBuyAmount("");
+    setLimitPrice("");
+  };
 
-  // Calculate values
-  const sellAmountNum = parseFloat(sellAmount) || 0;
-  const slippageRate = parseFloat(slippageTolerance) / 100 || 0.005;
-  const lpFee = sellAmountNum * LP_FEE_RATE;
-  const slippage = sellAmountNum * slippageRate;
-  const priceImpact = sellAmountNum * PRICE_IMPACT_RATE;
-  const minReceived =
-    sellAmountNum && rate
-      ? ((sellAmountNum * rate) - slippage).toFixed(6)
-      : "0";
+  // Calculate buy amount based on sell amount and limit price
+  const handleSellAmountChange = (value: string) => {
+    onSellAmountChange(value);
+    if (value && limitPrice) {
+      const calculated = (parseFloat(value) * parseFloat(limitPrice)).toFixed(6);
+      setBuyAmount(calculated);
+    } else {
+      setBuyAmount("");
+    }
+  };
+
+  // Calculate sell amount based on buy amount and limit price  
+  const handleBuyAmountChange = (value: string) => {
+    setBuyAmount(value);
+    if (value && limitPrice) {
+      const calculated = (parseFloat(value) / parseFloat(limitPrice)).toFixed(6);
+      onSellAmountChange(calculated);
+    }
+  };
+
+  const handleLimitPriceChange = (value: string) => {
+    setLimitPrice(value);
+    if (sellAmount && value) {
+      const calculated = (parseFloat(sellAmount) * parseFloat(value)).toFixed(6);
+      setBuyAmount(calculated);
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className={styles.tradeTitle}>
-        When 1 {tokens.find(t => t.address === sellToken)?.symbol} is worth{" "}
-        {rate} {tokens.find(t => t.address === buyToken)?.symbol}
-      </div>
-      <div style={{ display: "flex", gap: 8, margin: "16px 0" }}>
-        {PERCENT_OPTIONS.map(opt => (
-          <button
-            key={opt.label}
-            type="button"
-            className={selectedPercent === opt.value ? styles.active : ""}
-            onClick={() => handlePercentClick(opt.value)}
-            style={{ flex: 1 }}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      {/* Sell Panel */}
       <div className={styles.panelGroup}>
-        <div className={styles.panelLabel}>Sell Amount</div>
-        <input
-          type="number"
-          className={styles.amountInput}
-          placeholder="Amount"
-          value={sellAmount}
-          onChange={e => onSellAmountChange(e.target.value)}
-          min="0"
-          step="any"
-          required
-        />
+        <div className={styles.panelLabel}>You pay</div>
+        <div className={styles.tokenPanel}>
+          <div className={styles.tokenSelector}>
+            <img
+              src={tokens.find(t => t.address === sellToken)?.logoURI || "/images/fallback.png"}
+              onError={e => {
+                const img = e.target as HTMLImageElement;
+                if (!img.src.endsWith("/images/fallback.png")) {
+                  img.src = "/images/fallback.png";
+                }
+              }}
+              className={styles.tokenIcon}
+              alt={tokens.find(t => t.address === sellToken)?.symbol || "Token"}
+            />
+            <select
+              value={sellToken}
+              onChange={e => onSellTokenChange(e.target.value)}
+              className={styles.tokenSelect}
+            >
+              {tokens.map(token => (
+                <option key={token.address} value={token.address}>
+                  {token.symbol}
+                </option>
+              ))}
+            </select>
+          </div>
+          <input
+            type="text"
+            value={sellAmount}
+            onChange={e => handleSellAmountChange(e.target.value)}
+            placeholder="0.0"
+            className={styles.amountInput}
+          />
+        </div>
       </div>
-      <div className={styles.panelGroup}>
-        <div className={styles.panelLabel}>Buy Token</div>
-        <select
-          value={buyToken}
-          onChange={e => onBuyTokenChange(e.target.value)}
-          className={styles.select}
+
+      {/* Switch Button */}
+      <div className={styles.switchContainer}>
+        <button
+          type="button"
+          onClick={handleSwitch}
+          className={styles.switchButton}
         >
-          {tokens.map(t => (
-            <option key={t.address} value={t.address}>
-              {t.symbol}
-            </option>
-          ))}
-        </select>
+          ⇅
+        </button>
       </div>
+
+      {/* Buy Panel */}
+      <div className={styles.panelGroup}>
+        <div className={styles.panelLabel}>You receive</div>
+        <div className={styles.tokenPanel}>
+          <div className={styles.tokenSelector}>
+            <img
+              src={tokens.find(t => t.address === buyToken)?.logoURI || "/images/fallback.png"}
+              onError={e => {
+                const img = e.target as HTMLImageElement;
+                if (!img.src.endsWith("/images/fallback.png")) {
+                  img.src = "/images/fallback.png";
+                }
+              }}
+              className={styles.tokenIcon}
+              alt={tokens.find(t => t.address === buyToken)?.symbol || "Token"}
+            />
+            <select
+              value={buyToken}
+              onChange={e => onBuyTokenChange(e.target.value)}
+              className={styles.tokenSelect}
+            >
+              {tokens.map(token => (
+                <option key={token.address} value={token.address}>
+                  {token.symbol}
+                </option>
+              ))}
+            </select>
+          </div>
+          <input
+            type="text"
+            value={buyAmount}
+            onChange={e => handleBuyAmountChange(e.target.value)}
+            placeholder="0.0"
+            className={styles.amountInput}
+          />
+        </div>
+      </div>
+
+      {/* Limit Price */}
+      <div className={styles.panelGroup}>
+        <div className={styles.panelLabel}>
+          Limit Price ({tokens.find(t => t.address === buyToken)?.symbol} per {tokens.find(t => t.address === sellToken)?.symbol})
+        </div>
+        <div className={styles.limitPricePanel}>
+          <input
+            type="text"
+            value={limitPrice}
+            onChange={e => handleLimitPriceChange(e.target.value)}
+            placeholder="0.0"
+            className={styles.limitPriceInput}
+          />
+        </div>
+      </div>
+
+      {/* Expiry */}
       <div className={styles.panelGroup}>
         <div className={styles.panelLabel}>Expiry</div>
         <select
           value={expiry}
           onChange={e => setExpiry(Number(e.target.value))}
-          className={styles.select}
+          className={styles.expirySelect}
         >
           {EXPIRY_OPTIONS.map(opt => (
             <option key={opt.value} value={opt.value}>
@@ -143,23 +222,25 @@ const MarketOrderWidget: React.FC<MarketOrderWidgetProps> = ({
           ))}
         </select>
       </div>
-      <QuoteSummary
-        lpFee={`${LP_FEE_RATE * 100}% (${lpFee.toFixed(4)} ${sellSymbol})`}
-        networkFee={`$${NETWORK_FEE_USD}`}
-        slippage={`${(slippageRate * 100).toFixed(2)}% (${slippage.toFixed(4)} ${buySymbol})`}
-        priceImpact={`${PRICE_IMPACT_RATE * 100}% (${priceImpact.toFixed(4)} ${buySymbol})`}
-        minReceived={`${minReceived} ${buySymbol}`}
-        showSlippage={showSlippage}
-        onSlippageClick={onSlippageClick}
-        slippageTolerance={slippageTolerance}
-        onSlippageChange={onSlippageChange}
-        buyAmount={minReceived}
-        tokens={tokens}
-        buyToken={buyToken}
-      />
-      <button className={styles.connectButton} type="submit" style={{ marginTop: 16 }}>
-        Submit
-      </button>
+
+      {!walletAddress ? (
+        <button
+          type="button"
+          onClick={onConnect}
+          className={styles.connectButton}
+          disabled={connectingWallet}
+        >
+          {connectingWallet ? "Connecting..." : "Connect Wallet"}
+        </button>
+      ) : (
+        <button 
+          className={styles.submitButton} 
+          type="submit" 
+          disabled={!sellAmount || !buyAmount || !limitPrice}
+        >
+          Place Limit Order
+        </button>
+      )}
     </form>
   );
 };

@@ -17,7 +17,7 @@ export function verifySignature(
   types: any
 ): boolean {
   try {
-    const recovered = ethers.utils.verifyTypedData(domain, types, order, signature);
+    const recovered = ethers.verifyTypedData(domain, types, order, signature);
     return recovered.toLowerCase() === expectedSigner.toLowerCase();
   } catch (err) {
     return false;

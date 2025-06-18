@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface SwapConfirmModalProps {
   doTrade: () => void;
@@ -18,7 +18,7 @@ export function SwapConfirmModal({
   return (
     <div>
       <h3>Confirm Swap</h3>
-      <p>Recipient: {recipient || 'None'}</p>
+      <p>Recipient: {recipient || "None"}</p>
       <p>Price Impact: {priceImpact}%</p>
       <p>Input: {JSON.stringify(inputCurrencyInfo)}</p>
       <p>Output: {JSON.stringify(outputCurrencyInfo)}</p>

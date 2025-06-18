@@ -1,0 +1,150 @@
+version: '3.8'
+
+services:  # Main API service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: meta-aggregator-api
+    ports:
+      - "3003:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=${DATABASE_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - PROVIDER_URL=${PROVIDER_URL}
+      - ESCROW_CONTRACT_ADDRESS=${ESCROW_CONTRACT_ADDRESS}
+      - PRIVATE_KEY=${PRIVATE_KEY}
+      - ZEROX_API_KEY=${ZEROX_API_KEY}
+    volumes:
+      - ./logs:/app/logs
+      - ./.env.local:/app/.env.local:ro
+    networks:
+      - meta-aggregator
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+  # Event Listener service
+  listener-svc:
+    build:
+      context: .
+      dockerfile: Dockerfile.listener
+    container_name: meta-aggregator-listener
+    ports:
+      - "3004:3002"  # Health check port
+    environment:
+      - NODE_ENV=production
+      - HEALTH_PORT=3002
+      - PROVIDER_URL=${PROVIDER_URL}
+      - ESCROW_CONTRACT_ADDRESS=${ESCROW_CONTRACT_ADDRESS}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - MONITORING_INTERVAL=60
+    volumes:
+      - ./logs:/app/logs
+      - ./.env.local:/app/.env.local:ro
+    networks:
+      - meta-aggregator
+    restart: unless-stopped
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { hostname: 'localhost', port: 3002, path: '/health/listener', timeout: 5000 }; const req = http.request(options, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1)); req.on('timeout', () => process.exit(1)); req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Database (PostgreSQL) - optional if using external Supabase
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: meta-aggregator-db
+  #   environment:
+  #     - POSTGRES_DB=meta_aggregator
+  #     - POSTGRES_USER=${DB_USER:-postgres}
+  #     - POSTGRES_PASSWORD=${DB_PASSWORD}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #     - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+  #   networks:
+  #     - meta-aggregator
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # Redis for caching (optional)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: meta-aggregator-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - meta-aggregator
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # Monitoring and Logging (optional)
+  # monitoring:
+  #   image: grafana/grafana:latest
+  #   container_name: meta-aggregator-monitoring
+  #   ports:
+  #     - "3001:3000"
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+  #     - ./monitoring/grafana:/etc/grafana/provisioning
+  #   networks:
+  #     - meta-aggregator
+  #   restart: unless-stopped
+
+networks:
+  meta-aggregator:
+    driver: bridge
+    name: meta-aggregator-network
+
+volumes:
+  postgres_data:
+    name: meta-aggregator-postgres
+  redis_data:
+    name: meta-aggregator-redis
+  grafana_data:
+    name: meta-aggregator-grafana
+
+# Development override file example
+# Create docker-compose.override.yml for local development:
+#
+# version: '3.8'
+# services:
+#   api:
+#     build:
+#       target: development
+#     volumes:
+#       - .:/app
+#       - /app/node_modules
+#     environment:
+#       - NODE_ENV=development
+#     command: npm run dev
+#   
+#   listener-svc:
+#     volumes:
+#       - .:/app
+#       - /app/node_modules
+#     environment:
+#       - NODE_ENV=development
+#     command: node utils/escrowEventListener.js --simulate

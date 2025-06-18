@@ -1,48 +1,114 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import dynamic from 'next/dynamic';
 import SwapWidget from '../components/SwapWidget';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import styles from '../components/homepage.module.css';
+import { isOrderArray } from '../types/wallet';
+
+// Use Trust Wallet background with theme switching
+import TrustWalletBackground from '../src/components/TrustWalletBackground';
 
 export default function Home() {
   const [userAddress, setUserAddress] = useState('');
   const [orders, setOrders] = useState([]);
   const [toastMessage, setToastMessage] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
   const url = `${API_BASE_URL}/api/orders`;
 
   useEffect(() => {
-    refreshOrders();
-    const interval = setInterval(refreshOrders, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    // Temporarily disable auto-refresh to prevent request flooding
+    // refreshOrders();
+    // const interval = setInterval(() => {
+    //   if (!isRefreshing) {
+    //     refreshOrders();
+    //   }
+    // }, 30000); // Increased to 30 seconds
+    // return () => clearInterval(interval);
+  }, [isRefreshing]);
 
   const connectWallet = async () => {
-    if (!window.ethereum) {
-      console.error('MetaMask not installed.');
-      return;
-    }
-    try {
-      const { ethers } = await import('ethers');
-      const provider = new ethers.BrowserProvider(window.ethereum); // <-- v6 syntax
-      const signer = await provider.getSigner();
-      const walletAddress = await signer.getAddress();
-      setUserAddress(walletAddress);
-      showToast('Wallet connected');
-    } catch (error) {
-      console.error('Error connecting wallet:', error);
-      showToast('Wallet connection failed');
+    showToast('Connecting wallet...');
+    
+    const { connectWallet: connect } = await import('../utils/walletConnection');
+    const result = await connect({
+      timeout: 30000,
+      onPendingRequest: () => {
+        showToast('Connection pending. Please check MetaMask.');
+      }
+    });
+    
+    if (result.success) {
+      setUserAddress(result.address);
+      showToast(`Connected: ${result.address.slice(0, 6)}...${result.address.slice(-4)}`);
+    } else {
+      console.error('Wallet connection failed:', result.error);
+      showToast(result.error || 'Wallet connection failed');
     }
   };
 
   const refreshOrders = async () => {
+    if (isRefreshing) return; // Prevent concurrent requests
+    
+    setIsRefreshing(true);
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/api/orders`);
-      const orders = await response.json();
-      setOrders(orders);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
+      const response = await fetch(`${API_BASE_URL}/api/orders`, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Reset retry count on success
+      setRetryCount(0);
+      
+      // Ensure data is an array of valid orders before setting
+      if (Array.isArray(data)) {
+        setOrders(data);
+      } else {
+        console.warn('Orders API returned non-array data:', data);
+        setOrders([]);
+      }
+      
     } catch (err) {
-      console.error('Failed to refresh orders:', err);
+      console.warn('Failed to refresh orders:', err.message);
+      
+      // Implement exponential backoff for retries
+      const newRetryCount = retryCount + 1;
+      setRetryCount(newRetryCount);
+      
+      // Don't spam errors after multiple failures
+      if (newRetryCount <= 3) {
+        // Exponential backoff: 2^retryCount seconds
+        const retryDelay = Math.pow(2, newRetryCount) * 1000;
+        setTimeout(() => {
+          if (newRetryCount <= 3) { // Only retry if still under limit
+            refreshOrders();
+          }
+        }, retryDelay);
+      } else {
+        // After 3 failed attempts, just set empty orders and wait for next interval
+        setOrders([]);
+        console.warn('Max retry attempts reached. Will retry on next interval.');
+      }
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -99,31 +165,62 @@ export default function Home() {
   };
 
   return (
-    <>
+    <div style={{ 
+      margin: 0, 
+      padding: 0, 
+      height: '100vh', 
+      width: '100vw', 
+      overflow: 'hidden',
+      position: 'relative'
+    }}>
+      {/* Trust Wallet Animated Background with Theme Toggle */}
+      <TrustWalletBackground 
+        theme="dark" 
+        showThemeToggle={true}
+      />
+      
       <Nav account={userAddress} connectWallet={connectWallet} />
-      <div className={styles.container}>
+      <div style={{ 
+        position: 'absolute', 
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
         {toastMessage && <div className={styles.toast}>{toastMessage}</div>}
-        <main className={styles.main}>
-          <SwapWidget
-            userAddress={userAddress}
-            onConnect={connectWallet}
-            onSubmitOrder={handleSubmitOrder}
-            orders={orders}
-          />
-          {/* Example order book display */}
-          <div style={{ marginTop: 24 }}>
-            <h3>Order Book</h3>
-            <ul>
-              {orders.map((order, i) => (
-                <li key={i}>
-                  {order.side} {order.sellAmount} {order.sellToken} → {order.buyAmount} {order.buyToken} ({order.user?.slice(0, 6)}...)
-                </li>
-              ))}
-            </ul>
-          </div>
-        </main>
+        <SwapWidget
+          userAddress={userAddress}
+          onConnect={connectWallet}
+          onSubmitOrder={handleSubmitOrder}
+          orders={orders}
+        />
       </div>
-      <Footer />
-    </>
+    </div>
   );
 }
+
+// PropTypes for better type checking
+Home.propTypes = {
+  // This component doesn't receive props, but we can define internal state types
+};
+
+// Define PropTypes for child components if needed
+SwapWidget.propTypes = {
+  userAddress: PropTypes.string,
+  onConnect: PropTypes.func.isRequired,
+  onSubmitOrder: PropTypes.func.isRequired,
+  orders: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string,
+    sellToken: PropTypes.string.isRequired,
+    buyToken: PropTypes.string.isRequired,
+    sellAmount: PropTypes.string.isRequired,
+    buyAmount: PropTypes.string.isRequired,
+    user: PropTypes.string,
+    side: PropTypes.string
+  }))
+};

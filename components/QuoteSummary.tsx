@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BigNumber } from "@ethersproject/bignumber";
-import { formatUnits } from "@ethersproject/units";
+import { ethers } from "ethers";
 import styles from "./SwapWidget.module.css";
 import CountdownTimer from "./CountdownTimer"; // adjust path as needed
 
@@ -43,15 +42,14 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
   );
 
   useEffect(() => {
-    // Fetch data from the API
-    async function fetchQuote() {
-      const response = await fetch("/api/quote");
-      const data = await response.json();
-      setQuoteData(data);
-    }
-
-    fetchQuote();
-  }, []);
+    // Use the props passed from parent instead of making API call
+    setQuoteData({
+      lpFee: lpFeeAmount || "0",
+      slippage: slippageAmount || "0",
+      priceImpact: priceImpactAmount || "0",
+      minReceived: minReceived || "0",
+    });
+  }, [lpFeeAmount, slippageAmount, priceImpactAmount, minReceived]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -59,20 +57,19 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
     }, 1000);
     return () => clearInterval(interval);
   }, [validTo]);
-
   // Safely format values from wei to human-readable format
   const safeBigNumber = (val: any) => {
     try {
-      return val ? BigNumber.from(val) : BigNumber.from("0");
+      return val ? ethers.getBigInt(val) : ethers.getBigInt("0");
     } catch {
-      return BigNumber.from("0");
+      return ethers.getBigInt("0");
     }
   };
 
-  const formattedLpFee = formatUnits(safeBigNumber(quoteData.lpFee), 18);
-  const formattedSlippage = formatUnits(safeBigNumber(quoteData.slippage), 18);
-  const formattedPriceImpact = formatUnits(safeBigNumber(quoteData.priceImpact), 18);
-  const formattedMinReceived = formatUnits(safeBigNumber(quoteData.minReceived), 18);
+  const formattedLpFee = ethers.formatUnits(safeBigNumber(quoteData.lpFee), 18);
+  const formattedSlippage = ethers.formatUnits(safeBigNumber(quoteData.slippage), 18);
+  const formattedPriceImpact = ethers.formatUnits(safeBigNumber(quoteData.priceImpact), 18);
+  const formattedMinReceived = ethers.formatUnits(safeBigNumber(quoteData.minReceived), 18);
 
   // Format secondsLeft as mm:ss
   const minutes = Math.floor(secondsLeft / 60);
@@ -108,14 +105,14 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, color: "#2563eb" }}>
         <span>Min Received</span>
-        <span>{formattedMinReceived} {typeof buyToken === "object" ? buyToken.symbol : buyToken}</span>
+        <span>{formattedMinReceived} {buyToken}</span>
       </div>
       <div style={{ marginTop: 12, fontSize: "0.9rem", color: "#666" }}>
         <span>
           {minutes}:{seconds.toString().padStart(2, "0")} left
         </span>
       </div>
-      {quote?.validTo && <CountdownTimer validTo={quote.validTo} />}
+      {quote?.validTo && <CountdownTimer seconds={Math.max(0, Math.floor((quote.validTo - Date.now()) / 1000))} />}
     </div>
   );
 };

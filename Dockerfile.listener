@@ -1,0 +1,77 @@
+# Multi-stage Dockerfile for Event Listener Service
+# Optimized for production deployment
+
+# Stage 1: Build stage
+FROM node:18-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY package*.json ./
+
+# Install dependencies (including devDependencies for build)
+RUN npm ci --only=production && npm cache clean --force
+
+# Stage 2: Production stage
+FROM node:18-alpine AS production
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S eventlistener -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependencies from builder stage
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy application code
+COPY utils ./utils
+COPY artifacts ./artifacts
+COPY contracts ./contracts
+
+# Create logs directory with proper permissions
+RUN mkdir -p logs && \
+    chown -R eventlistener:nodejs logs && \
+    chmod 755 logs
+
+# Copy environment template
+COPY .env.template ./
+
+# Set proper ownership
+RUN chown -R eventlistener:nodejs /app
+
+# Switch to non-root user
+USER eventlistener
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD node -e "const http = require('http'); \
+    const options = { hostname: 'localhost', port: 3002, path: '/health/listener', timeout: 5000 }; \
+    const req = http.request(options, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); \
+    req.on('error', () => process.exit(1)); \
+    req.on('timeout', () => process.exit(1)); \
+    req.end();"
+
+# Expose health check port
+EXPOSE 3002
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV HEALTH_PORT=3002
+
+# Labels for metadata
+LABEL org.opencontainers.image.title="Meta Aggregator Event Listener"
+LABEL org.opencontainers.image.description="Ethereum event listener for escrow contract events"
+LABEL org.opencontainers.image.vendor="Meta Aggregator 2.0"
+LABEL org.opencontainers.image.version="1.0.0"
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Default command - run event listener with health service
+CMD ["node", "utils/escrowEventListener.js", "--with-health"]

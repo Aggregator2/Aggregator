@@ -1,7 +1,10 @@
 /* filepath: c:\Users\joeri\OneDrive\Desktop\Meta Aggregator 2.0\components\public\homepage.module.css */
 .container {
   padding: 20px;
-  background-color: #f0f0f0;
+  /* Remove background color to show animated background */
+  background-color: transparent;
+  position: relative;
+  z-index: 1;
 }
 .header {
   font-size: 24px;
@@ -12,4 +15,6 @@
 }
 .main {
   margin-top: 20px;
+  position: relative;
+  z-index: 2;
 }

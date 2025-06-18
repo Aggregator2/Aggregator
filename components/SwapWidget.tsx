@@ -1,44 +1,53 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { ethers, JsonRpcProvider } from "ethers";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { ethers } from "ethers";
 import styles from "./SwapWidget.module.css";
 import { useTokenPrice } from "../hooks/useTokenPrice";
+import { useToast } from "../hooks/useToast";
+import { useApi } from "../hooks/useApi";
+import { useNetworkStatus } from "../hooks/useFallback";
 import MarketOrderWidget from "./MarketOrderWidget";
 import QuoteSummary from "./QuoteSummary";
+import SkeletonLoader from "./SkeletonLoader";
+import ErrorBoundary from "./ErrorBoundary";
 import { hashOrder } from '../utils/hashOrder';
+import { getSigner } from '../utils/getSigner';
 import FixedEscrowABI from "../artifacts/contracts/FixedEscrow.sol/FixedEscrow.json";
 import { ESCROW_CONTRACT_ADDRESS } from "../frontend/src/config/escrowAddress";
-import { domain, types } from "../lib/eip712"; // <-- Add this line at the top
+import { connectWallet as connectWalletUtil } from '../utils/walletConnection';
+import type { Order, Quote, Token } from '../types/wallet';
 
 // Token list with symbol, name, and address
-const DEFAULT_TOKENS = [
+const DEFAULT_TOKENS: Token[] = [
   {
     symbol: "WETH",
     name: "Wrapped Ethereum",
     address: "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
-    logoURI: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xC02aaa39b223FE8D0A0E5C4F27eAD9083C756Cc2/logo.png", // WETH image
+    logoURI: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png",
   },
   {
     symbol: "DAI",
     name: "Dai Stablecoin",
     address: "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1",
-    logoURI: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x6B175474E89094C44Da98b954EedeAC495271d0F/logo.png", // DAI image
+    logoURI: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x6B175474E89094C44Da98b954EedeAC495271d0F/logo.png",
   },
 ];
 
 export interface SwapWidgetProps {
-  userWalletAddress: string;
-} 
+  userAddress?: string;
+  onConnect?: () => void;
+  onSubmitOrder?: (order: any) => void;
+  orders?: Order[];
+}
 
-const provider = new JsonRpcProvider(process.env.ARBITRUM_RPC || "https://arb1.arbitrum.io/rpc");
-
-const domain = {
+// EIP-712 definitions for orders
+const EIP712_DOMAIN = {
   name: 'MetaAggregator',
   version: '1',
   chainId: 31337,
   verifyingContract: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
 };
 
-const types = {
+const EIP712_TYPES = {
   Order: [
     { name: 'sellToken', type: 'address' },
     { name: 'buyToken', type: 'address' },
@@ -57,183 +66,319 @@ const types = {
   ],
 };
 
-export function useEscrowContract() {
-  return useMemo(() => {
-    if (typeof window === "undefined" || !window.ethereum) return null;
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    // Return a promise that resolves to the contract instance with signer
-    return provider.getSigner().then((signer) => {
-      return new ethers.Contract(
-        ESCROW_CONTRACT_ADDRESS,
-        FixedEscrowABI.abi,
-        signer
-      );
-    });
-  }, []);
+// Type declarations for window.ethereum
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
 }
 
-const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+/**
+ * Lazy escrow contract factory - only creates contract when needed
+ */
+export function useEscrowContract(walletAddress: string | null) {
+  return useMemo(() => {
+    if (!walletAddress) return null;
+    
+    return async () => {
+      try {
+        const signerResult = await getSigner();
+        if (!signerResult.success || !signerResult.signer) {
+          throw new Error(signerResult.error || 'Failed to get signer');
+        }
+        
+        return new ethers.Contract(
+          ESCROW_CONTRACT_ADDRESS,
+          FixedEscrowABI.abi,
+          signerResult.signer
+        );
+      } catch (error) {
+        console.error('Error creating escrow contract:', error);
+        throw error;
+      }
+    };
+  }, [walletAddress]);
+}
+
+const SwapWidget: React.FC<SwapWidgetProps> = ({ 
+  userAddress, 
+  onConnect, 
+  onSubmitOrder,
+  orders = []
+}) => {
+  // Basic state
+  const [walletAddress, setWalletAddress] = useState<string | null>(userAddress || null);
   const [tokens] = useState(DEFAULT_TOKENS);
   const [sellToken, setSellToken] = useState(DEFAULT_TOKENS[0].address);
   const [buyToken, setBuyToken] = useState(DEFAULT_TOKENS[1].address);
   const [sellAmount, setSellAmount] = useState("");
   const [activeTab, setActiveTab] = useState("swap");
   const [slippageTolerance, setSlippageTolerance] = useState("0.5");
-  const [showSlippage, setShowSlippage] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  
+  // Connection state
   const [connectingWallet, setConnectingWallet] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
-
-  // --- NEW: Quote state ---
-  const [quote, setQuote] = useState<any>(null);
-  const [quoteLoading, setQuoteLoading] = useState(false);
-  const [quoteError, setQuoteError] = useState<string | null>(null);
-
+  
+  // Settlement mode
   const [settlementMode, setSettlementMode] = useState<"offchain" | "escrow">("offchain");
-
-  // New state for escrow
+  
+  // Escrow state
   const [escrowLoading, setEscrowLoading] = useState(false);
   const [escrowError, setEscrowError] = useState<string | null>(null);
+  
+  // Ref to prevent unnecessary re-renders
+  const isInitialRender = useRef(true);
+  
+  // Quote state
+  const [currentQuote, setCurrentQuote] = useState<Quote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  
+  // Hooks
+  const { showError, showSuccess, showWarning, showInfo, ToastContainer } = useToast();
+  const networkStatus = useNetworkStatus();
+  const sellTokenPriceData = useTokenPrice(sellToken);
+  const buyTokenPriceData = useTokenPrice(buyToken);
+  const escrowContractFactory = useEscrowContract(walletAddress);
 
-  const escrowContractPromise = useEscrowContract();
+  // Update wallet address from props with stability check
+  useEffect(() => {
+    if (userAddress && userAddress !== walletAddress && userAddress.length === 42) {
+      setWalletAddress(userAddress);
+      if (isInitialRender.current) {
+        isInitialRender.current = false;
+      }
+    }
+  }, [userAddress, walletAddress]);
 
-  // Debounced connectWallet
-  const connectWallet = async () => {
-    if (connectingWallet) return;
+  /**
+   * Connect wallet with robust error handling
+   */
+  const connectWallet = useCallback(async () => {
+    if (connectingWallet) {
+      showWarning("Connection already in progress...");
+      return;
+    }
+    
     setConnectingWallet(true);
     setConnectError(null);
+    
     try {
-      if (window.ethereum) {
-        // ethers v6+ uses BrowserProvider instead of providers.Web3Provider
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = await provider.getSigner();
-        const address = await signer.getAddress();
-        setWalletAddress(address);
+      const result = await connectWalletUtil({
+        timeout: 30000,
+        requiredChainId: 31337, // Local development network
+        onPendingRequest: () => {
+          showWarning("Connection request already pending. Please check MetaMask.");
+          setConnectError("Connection request pending - check MetaMask");
+        }
+      });
+      
+      if (result.success && result.address) {
+        setWalletAddress(result.address);
+        showSuccess(`Wallet connected: ${result.address.slice(0, 6)}...${result.address.slice(-4)}`);
+        onConnect?.();
       } else {
-        setConnectError("MetaMask is not installed!");
+        const errorMsg = result.error || "Failed to connect wallet";
+        setConnectError(errorMsg);
+        showError(errorMsg);
       }
     } catch (error: any) {
-      if (error.code === -32002) {
-        setConnectError("MetaMask is already processing a connection request. Please check your wallet popup.");
-      } else {
-        setConnectError("Failed to connect wallet.");
-      }
-      console.error("Failed to connect wallet:", error);
+      console.error('Wallet connection error:', error);
+      const errorMsg = error.message || "Unexpected error connecting wallet";
+      setConnectError(errorMsg);
+      showError(errorMsg);
     } finally {
       setConnectingWallet(false);
     }
-  };
+  }, [connectingWallet, showWarning, showSuccess, showError, onConnect]);
 
-  // Only set walletAddress if userWalletAddress is provided, don't auto-connect
-  useEffect(() => {
-    if (userWalletAddress) {
-      setWalletAddress(userWalletAddress);
-    }
-  }, [userWalletAddress]);
-
-  // Swap tokens and amount
-  const handleSwitch = () => {
-    setSellToken(buyToken);
-    setBuyToken(sellToken);
-    // setSellAmount(""); // Remove this line to keep the value after switching
-  };
-
-  // Submit order
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!window.ethereum) {
-      alert("MetaMask is not installed!");
+  /**
+   * Enhanced quote fetching with retry and fallback
+   */
+  const fetchQuoteData = useCallback(async () => {
+    if (!sellAmount || isNaN(Number(sellAmount)) || Number(sellAmount) <= 0) {
+      setCurrentQuote(null);
+      setQuoteError(null);
       return;
     }
 
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const signer = await provider.getSigner();
-    const userAddress = await signer.getAddress();
+    setQuoteLoading(true);
+    setQuoteError(null);
 
-    if (!userAddress) {
-      alert("Please connect your wallet.");
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch("/api/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sellToken,
+          buyToken,
+          sellAmount: ethers.parseUnits(sellAmount, 18).toString(),
+          user: walletAddress || "0x000000000000000000000000000000000000dead",
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.warning) {
+        showWarning(data.warning);
+      }
+      
+      setCurrentQuote(data);
+      
+    } catch (error: any) {
+      let errorMessage = "Failed to get quote";
+      
+      if (error.name === 'AbortError') {
+        errorMessage = "Quote request timed out. Please try again.";
+      } else if (error.message?.includes("network")) {
+        errorMessage = "Network error. Please check your connection.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setQuoteError(errorMessage);
+      setCurrentQuote(null);
+      
+      if (!networkStatus.isOnline) {
+        showWarning("You appear to be offline. Please check your connection.");
+      }
+      
+    } finally {
+      setQuoteLoading(false);
+    }
+  }, [sellAmount, sellToken, buyToken, walletAddress, networkStatus.isOnline, showWarning]);
+
+  // Effect to fetch quotes when inputs change with longer debounce
+  useEffect(() => {
+    const debounceTimeout = setTimeout(() => {
+      if (sellAmount && parseFloat(sellAmount) > 0) {
+        fetchQuoteData();
+      }
+    }, 1000); // Increased to 1 second to reduce API calls
+
+    return () => clearTimeout(debounceTimeout);
+  }, [fetchQuoteData, sellAmount]);
+
+  // Token switching
+  const handleSwitch = () => {
+    setSellToken(buyToken);
+    setBuyToken(sellToken);
+  };
+
+  /**
+   * Order submission with comprehensive error handling
+   */
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!walletAddress) {
+      showError("Please connect your wallet first");
+      await connectWallet();
+      return;
+    }
+
+    if (!currentQuote) {
+      showError("No quote available. Please wait for quote to load.");
       return;
     }
 
     const amount = parseFloat(sellAmount);
     if (!amount || isNaN(amount) || amount <= 0) {
-      alert("Please enter a valid amount to sell.");
+      showError("Please enter a valid amount to sell");
       return;
     }
-
-    // Convert amount to base units (e.g., Wei for Ethereum)
-    const baseUnits = ethers.parseUnits(sellAmount, 18).toString();
-
-    const validTo = Number(Math.floor(Date.now() / 1000) + 1800); // ensures integer, safe for uint32
-
-    const order = {
-      sellToken,
-      buyToken,
-      sellAmount: baseUnits,
-      buyAmount: quote?.buyAmount || "0",
-      validTo, // ✅ now a proper uint32
-      user: userAddress, // ✅ use the address that is signing
-      receiver: userAddress,
-      wallet: userAddress,
-      appData: '0x' + '00'.repeat(32), // ✅ 32-byte zero hash for appData
-      feeAmount: quote?.lpFee || 0,
-      partiallyFillable: false,
-      kind: "sell",
-      signingScheme: "eip712",
-      nonce: 0,
-    };
-
-    // Validate that none of the order fields are undefined or empty
-    const missingFields = Object.entries(order)
-      .filter(([_, value]) => value === undefined || value === null || value === "")
-      .map(([key]) => key);
-
-    if (missingFields.length > 0) {
-      alert(`❌ Missing order fields: ${missingFields.join(", ")}`);
-      return;
-    }
-
-    console.log("Order submitted:", order);
-
-    // Compute the order hash
-    const orderHash = hashOrder(order);
-
-    // Add the orderHash to the order object
-    const signedOrder = {
-      ...order,
-      orderHash,
-    };
-
-    console.log("Signed order submitted:", signedOrder);
 
     try {
-      // 1. Sign the order using EIP-712
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const signerAddress = await signer.getAddress();
-      console.log("👤 Signing with:", signerAddress);
-      console.log("🧾 order.user is:", order.user);
-
-      if (signerAddress.toLowerCase() !== order.user.toLowerCase()) {
-        console.error("🚫 Mismatch between signer and order.user!");
-        return; // Optionally prevent signing if mismatch
+      // Get signer safely
+      const signerResult = await getSigner();
+      if (!signerResult.success || !signerResult.signer) {
+        showError(signerResult.error || "Failed to get wallet signer");
+        return;
       }
 
-      const signature = await signer.signTypedData(domain, types, order);
+      const { signer, address } = signerResult;
 
-      // Log the signed order for tracing
-      console.log("📦 submitting from signAndSubmitOrder:", { order, signature });
+      if (address.toLowerCase() !== walletAddress.toLowerCase()) {
+        showError("Connected wallet address doesn't match. Please reconnect.");
+        return;
+      }
 
-      // Now you can safely call:
-      await submitOrder({ order, signature }); // ✅ just once
-    } catch (err) {
-      console.error("Error submitting order:", err);
-      alert("❌ Error submitting order. Please try again.");
+      const baseUnits = ethers.parseUnits(sellAmount, 18).toString();
+      const validTo = Math.floor(Date.now() / 1000) + 1800; // 30 minutes
+
+      const order = {
+        sellToken,
+        buyToken,
+        sellAmount: baseUnits,
+        buyAmount: currentQuote.buyAmount || "0",
+        validTo,
+        user: address,
+        receiver: address,
+        wallet: address,
+        appData: '0x' + '00'.repeat(32),
+        feeAmount: currentQuote.lpFee || 0,
+        partiallyFillable: false,
+        kind: "sell",
+        signingScheme: "eip712",
+        nonce: 0,
+      };
+
+      // Validate order
+      const missingFields = Object.entries(order)
+        .filter(([_, value]) => value === undefined || value === null || value === "")
+        .map(([key]) => key);
+
+      if (missingFields.length > 0) {
+        throw new Error(`Missing order fields: ${missingFields.join(", ")}`);
+      }
+
+      showInfo("Please sign the transaction in your wallet...");
+
+      // Sign the order
+      const signature = await signer.signTypedData(EIP712_DOMAIN, EIP712_TYPES, order);
+
+      // Submit to backend or parent component
+      if (onSubmitOrder) {
+        await onSubmitOrder({ order, signature });
+      } else {
+        await submitOrder({ order, signature });
+      }
+
+    } catch (error: any) {
+      let errorMessage = "Failed to submit order";
+      
+      if (error.code === 4001) {
+        errorMessage = "Transaction rejected by user";
+      } else if (error.code === -32002) {
+        errorMessage = "Request already pending. Please check MetaMask.";
+      } else if (error.message?.includes("insufficient funds")) {
+        errorMessage = "Insufficient balance for this transaction";
+      } else if (error.message?.includes("gas")) {
+        errorMessage = "Transaction failed due to gas estimation error";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      showError(errorMessage);
+      console.error("Order submission error:", error);
     }
   };
 
+  /**
+   * Submit order to backend
+   */
   const submitOrder = async (signedOrder: any) => {
     try {
       const response = await fetch("/api/submitOrder", {
@@ -242,373 +387,444 @@ const SwapWidget = ({ userWalletAddress }: SwapWidgetProps) => {
         body: JSON.stringify(signedOrder),
       });
 
-      const contentType = response.headers.get("Content-Type");
-      if (contentType && contentType.includes("application/json")) {
-        const data = await response.json();
-        if (response.ok) {
-          console.log("✅ Order submitted successfully:", data);
-          alert("✅ Order submitted successfully!");
-        } else {
-          console.error("❌ Error submitting order:", data);
-          alert(`❌ Error submitting order: ${data.message || "Unknown error"}`);
-        }
-      } else {
-        const text = await response.text();
-        console.error("❌ Non-JSON response:", text);
-        alert("❌ Unexpected response from server.");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Submission failed");
       }
-    } catch (err) {
-      console.error("❌ Network error submitting order:", err);
-      alert("❌ Network error submitting order. Please try again.");
+
+      const data = await response.json();
+      showSuccess("Order submitted successfully!");
+      
+      // Reset form
+      setSellAmount("");
+      setCurrentQuote(null);
+      
+    } catch (error: any) {
+      throw new Error(error.message || "Network error during submission");
     }
   };
 
-  const { price: sellTokenPrice, loading: sellLoading } = useTokenPrice(sellToken);
-  const { price: buyTokenPrice, loading: buyLoading } = useTokenPrice(buyToken);
-
-  // Fetch quote from backend (with debug logging)
-  const fetchQuote = async () => {
-    if (!sellAmount || isNaN(Number(sellAmount))) {
-      console.error("❌ Invalid sellAmount:", sellAmount);
-      setQuote(null);
+  /**
+   * Escrow deposit handling
+   */
+  const handleEscrowDeposit = async () => {
+    if (!currentQuote) {
+      showError("No quote available for escrow deposit");
       return;
     }
-
+    
+    if (!escrowContractFactory) {
+      showError("Escrow not available. Please connect wallet first.");
+      return;
+    }
+    
+    setEscrowLoading(true);
+    setEscrowError(null);
+    
     try {
-      const res = await fetch("/api/quote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sellToken: sellToken || "",
-          buyToken: buyToken || "",
-          sellAmount: sellAmount ? ethers.parseUnits(sellAmount, 18).toString() : "0",
-          user: walletAddress || "0x000000000000000000000000000000000000dead",
-        }),
-      });
-
-      const contentType = res.headers.get("Content-Type");
-      if (contentType && contentType.includes("application/json")) {
-        const data = await res.json();
-        console.log("✅ Quote response:", data);
-
-        if (data.error) {
-          setQuoteError(data.error);
-          setQuote(null);
-        } else {
-          setQuote(data);
-        }
-      } else {
-        const text = await res.text();
-        console.error("❌ Non-JSON response:", text);
-        setQuoteError("Unexpected response from server.");
-        setQuote(null);
-      }
-    } catch (err) {
-      console.error("❌ fetchQuote error:", err);
-      setQuoteError((err as Error).message);
-      setQuote(null);
+      const contract = await escrowContractFactory();
+      const orderId = hashOrder(currentQuote);
+      const tx = await contract.deposit(currentQuote.sellToken, currentQuote.sellAmount);
+      
+      showInfo("Transaction submitted. Waiting for confirmation...");
+      await tx.wait();
+      
+      await submitEscrowTx(orderId, tx.hash);
+      showSuccess("Deposited to Escrow successfully!");
+      
+    } catch (error: any) {
+      const errorMessage = error.message || "Escrow deposit failed";
+      setEscrowError(errorMessage);
+      showError(errorMessage);
+    } finally {
+      setEscrowLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchQuote();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sellAmount, sellToken, buyToken, walletAddress]);
-
-  // Use backend quote for buyAmount and minReceived (format with ethers)
-  const buyAmount = quote?.buyAmount
-    ? ethers.formatUnits(quote.buyAmount, 18) // <-- changed here
+  // Calculate amounts and fees
+  const buyAmount = currentQuote?.buyAmount
+    ? ethers.formatUnits(currentQuote.buyAmount, 18)
     : "0";
-  const minReceived = quote?.minReceived
-    ? parseFloat(ethers.formatUnits(quote.minReceived, 18)).toFixed(4) // <-- changed here
+  const minReceived = currentQuote?.minReceived
+    ? parseFloat(ethers.formatUnits(currentQuote.minReceived, 18)).toFixed(4)
     : "0";
 
-  const sellUsd = sellAmount && quote?.sellTokenUsd
-    ? (parseFloat(sellAmount) * quote.sellTokenUsd).toLocaleString(undefined, { maximumFractionDigits: 2 })
-    : null;
-
-  const buyUsd = buyAmount && quote?.buyTokenUsd
-    ? (parseFloat(buyAmount) * quote.buyTokenUsd).toLocaleString(undefined, { maximumFractionDigits: 2 })
-    : null;
-
-  // Add this function inside the SwapWidget component, before the return statement
   const sellAmountNum = parseFloat(sellAmount) || 0;
-  const lpFeeRate = 0.003; // 0.3%
-  const slippageRate = 0.005; // 0.5%
-  const priceImpactRate = 0.0012; // 0.12%
+  const lpFeeRate = 0.003;
+  const slippageRate = 0.005;
+  const priceImpactRate = 0.0012;
 
   const lpFeeAmount = sellAmountNum * lpFeeRate;
   const slippageAmount = sellAmountNum * slippageRate;
   const priceImpactAmount = sellAmountNum * priceImpactRate;
 
-  const calculatedMinReceived = sellAmountNum - lpFeeAmount - slippageAmount - priceImpactAmount;
-
-  // --- NEW: Escrow deposit handling ---
-  async function handleEscrowDeposit() {
-    if (!quote) return;
-    setEscrowLoading(true);
-    setEscrowError(null);
-    try {
-      const contract = await escrowContractPromise;
-      if (!contract) throw new Error("Escrow contract not available");
-      // Use the order hash as orderId
-      const orderId = hashOrder(quote); // or use your order object if available
-      const tx = await contract.deposit(quote.sellToken, quote.sellAmount);
-      await tx.wait();
-      await submitEscrowTx(orderId, tx.hash);
-      alert("✅ Deposited to Escrow!");
-    } catch (err: any) {
-      setEscrowError(err.message || "Escrow deposit failed");
-    } finally {
-      setEscrowLoading(false);
-    }
-  }
-
-  /**
-   * Calls the backend to release escrowed funds using a signature.
-   * @param {string} makerReleaseSignature - The EIP-712 signature from the maker.
-   * @param {any} order - The order object (should contain receiver).
-   * @param {any} quote - The quote object (should contain escrowAddress, sellToken, sellAmount).
-   */
-  async function releaseEscrowFunds(makerReleaseSignature: string, order: any, quote: any) {
-    try {
-      const res = await fetch("/api/releaseFunds", {
-        method: "POST",
-        body: JSON.stringify({
-          escrowAddress: quote.escrowAddress,
-          to: order.receiver,
-          token: quote.sellToken,
-          amount: quote.sellAmount,
-          signature: makerReleaseSignature,
-        }),
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const contentType = res.headers.get("Content-Type");
-      if (contentType && contentType.includes("application/json")) {
-        const data = await res.json();
-        if (res.ok) {
-          alert(`✅ Funds released! Tx: ${data.txHash}`);
-        } else {
-          alert(`❌ Release failed: ${data.error || "Unknown error"}`);
-        }
-      } else {
-        const text = await res.text();
-        alert(`❌ Unexpected response: ${text}`);
-      }
-    } catch (err: any) {
-      alert(`❌ Network error: ${err.message}`);
-    }
-  }
+  // Ensure orders is always an array
+  const safeOrders = Array.isArray(orders) ? orders : [];
 
   return (
-    <div className={styles.tradeWrapper}>
-      <div className={styles.tradeCard}>
-        <div className={styles.tradeTitle}>Swap</div>
-        <div className={styles.tabRow}>
-          <button
-            className={`${styles.tab} ${activeTab === "swap" ? styles.active : ""}`}
-            onClick={() => setActiveTab("swap")}
-            type="button"
-          >
-            Swap
-          </button>
-          <button
-            className={`${styles.tab} ${activeTab === "limit" ? styles.active : ""}`}
-            onClick={() => setActiveTab("limit")}
-            type="button"
-          >
-            Limit
-          </button>
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>
-            <input
-              type="radio"
-              value="offchain"
-              checked={settlementMode === "offchain"}
-              onChange={() => setSettlementMode("offchain")}
-            />
-            Off-chain Settlement
-          </label>
-          <label style={{ marginLeft: 16 }}>
-            <input
-              type="radio"
-              value="escrow"
-              checked={settlementMode === "escrow"}
-              onChange={() => setSettlementMode("escrow")}
-            />
-            Escrow Settlement
-          </label>
-        </div>
-        {activeTab === "swap" ? (
-          <form onSubmit={handleSubmit}>
-            <div className={styles.panelGroup}>
-              <div className={styles.panelLabel}>Sell</div>
-              <div className={styles.tokenPanel}>
-                <div className={styles.tokenSelector}>
-                  {/* Sell token logo */}
-                  <img
-                    src={tokens.find(t => t.address === sellToken)?.logoURI || "/images/fallback.png"}
-                    onError={e => {
-                      const img = e.target as HTMLImageElement;
-                      if (!img.src.endsWith("/images/fallback.png")) {
-                        img.src = "/images/fallback.png"; // Use a local fallback image
-                      }
-                    }}
-                    className={styles.tokenIcon}
-                    alt={tokens.find(t => t.address === sellToken)?.symbol || "Token"}
-                  />
-                  <select
-                    value={sellToken}
-                    onChange={e => {
-                      const newSellToken = e.target.value || ""; // Always a string
-                      setSellToken(newSellToken);
-                      if (newSellToken === buyToken) {
-                        const otherToken = tokens.find(t => t.address !== newSellToken);
-                        if (otherToken) {
-                          setBuyToken(otherToken.address);
-                        }
-                      }
-                    }}
-                    className={styles.tokenSelect}
-                    disabled={connectingWallet}
-                  >
-                    {tokens.map(token => (
-                      <option key={token.address} value={token.address}>
-                        {token.symbol}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <input
-                  type="number"
-                  value={sellAmount}
-                  onChange={e => setSellAmount(e.target.value)}
-                  placeholder="0.0"
-                  className={styles.amountInput}
-                  disabled={connectingWallet}
-                />
-              </div>
-            </div>
-            <div className={styles.panelGroup}>
-              <div className={styles.panelLabel}>Buy</div>
-              <div className={styles.tokenPanel}>
-                <div className={styles.tokenSelector}>
-                  {/* Buy token logo */}
-                  <img
-                    src={tokens.find(t => t.address === buyToken)?.logoURI || "/images/fallback.png"}
-                    onError={e => {
-                      const img = e.target as HTMLImageElement;
-                      if (!img.src.endsWith("/images/fallback.png")) {
-                        img.src = "/images/fallback.png"; // Use a local fallback image
-                      }
-                    }}
-                    className={styles.tokenIcon}
-                    alt={tokens.find(t => t.address === buyToken)?.symbol || "Token"}
-                  />
-                  <select
-                    value={buyToken}
-                    onChange={e => setBuyToken(e.target.value)}
-                    className={styles.tokenSelect}
-                    disabled={connectingWallet}
-                  >
-                    {tokens.map(token => (
-                      <option key={token.address} value={token.address}>
-                        {token.symbol}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <input
-                  type="text"
-                  value={buyAmount}
-                  readOnly
-                  className={styles.amountInput}
-                />
-              </div>
-            </div>
-            <div className={styles.panelGroup}>
-              <div className={styles.panelLabel}>Slippage Tolerance</div>
-              <div className={styles.slippagePanel}>
-                <input
-                  type="number"
-                  value={slippageTolerance}
-                  onChange={e => setSlippageTolerance(e.target.value)}
-                  placeholder="0.5"
-                  className={styles.slippageInput}
-                  disabled={connectingWallet}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowSlippage(!showSlippage)}
-                  className={styles.slippageToggle}
-                >
-                  {showSlippage ? "Hide" : "Show"} Details
-                </button>
-              </div>
-              {showSlippage && (
-                <div className={styles.slippageDetails}>
-                  <div>LP Fee: {lpFeeAmount.toFixed(4)} {tokens.find(t => t.address === sellToken)?.symbol}</div>
-                  <div>Slippage: {slippageAmount.toFixed(4)} {tokens.find(t => t.address === sellToken)?.symbol}</div>
-                  <div>Price Impact: {priceImpactAmount.toFixed(4)} {tokens.find(t => t.address === sellToken)?.symbol}</div>
-                </div>
+    <ErrorBoundary>
+      <div className={styles.tradeWrapper}>
+        <ToastContainer />
+        <div className={styles.tradeCard}>
+          <div className={styles.tradeHeader}>
+            <div className={styles.tradeTitle}>
+              Swap
+              {!networkStatus.isOnline && (
+                <span className={styles.offlineIndicator}>⚠️ Offline</span>
               )}
             </div>
-            <button
-              type="submit"
-              className={styles.submitButton}
-              disabled={connectingWallet || !sellAmount || !quote?.buyAmount || !quote?.minReceived}
+            <button 
+              type="button"
+              className={styles.settingsButton}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowSettings(!showSettings);
+              }}
+              onMouseDown={(e) => e.preventDefault()}
+              title="Settings"
             >
-              {connectingWallet ? "Connecting..." : "Swap"}
+              ⚙️
             </button>
-          </form>
-        ) : (
-          <MarketOrderWidget
-            tokens={tokens}
-            walletAddress={walletAddress}
-            onSubmitOrder={submitOrder}
-            connectingWallet={connectingWallet}
-            onSellAmountChange={setSellAmount} // <-- Add this line!
-          />
-        )}
-        {quoteError && <div className={styles.error}>{quoteError}</div>}
-        <div className={styles.quoteSummary}>
-          <QuoteSummary
-            sellToken={tokens.find(t => t.address === sellToken)?.symbol || sellToken}
-            buyToken={tokens.find(t => t.address === buyToken)?.symbol || buyToken}
-            sellAmount={sellAmount}
-            buyAmount={buyAmount}
-            minReceived={minReceived}
-            slippageTolerance={slippageTolerance}
-            priceImpactAmount={priceImpactAmount}
-            lpFeeAmount={lpFeeAmount}
-            slippageAmount={slippageAmount}
-            quote={quote}
-          />
+          </div>
+          
+          <div className={styles.tabRow}>
+            <button
+              className={`${styles.tab} ${activeTab === "swap" ? styles.active : ""}`}
+              onClick={() => setActiveTab("swap")}
+              type="button"
+            >
+              Swap
+            </button>
+            <button
+              className={`${styles.tab} ${activeTab === "limit" ? styles.active : ""}`}
+              onClick={() => setActiveTab("limit")}
+              type="button"
+            >
+              Limit
+            </button>
+          </div>
+          
+          {showSettings && (
+            <div className={styles.settingsPanel}>
+              <div className={styles.settingGroup}>
+                <div className={styles.settingLabel}>
+                  Slippage Tolerance
+                  <span 
+                    className={styles.infoIcon}
+                    title="Usually none but important for on-chain settlement if solver can't match"
+                  >
+                    !
+                  </span>
+                </div>
+                <div className={styles.slippageInputContainer}>
+                  <input
+                    type="text"
+                    value={slippageTolerance}
+                    onChange={e => setSlippageTolerance(e.target.value)}
+                    className={styles.slippageInput}
+                    placeholder="0.5"
+                  />
+                  <span className={styles.slippagePercent}>%</span>
+                </div>
+              </div>
+              
+              <div className={styles.settingGroup}>
+                <div className={styles.settingLabel}>
+                  If No Match Found
+                  <span 
+                    className={styles.infoIcon}
+                    title="What happens if solver can't match your trade"
+                  >
+                    !
+                  </span>
+                </div>
+                <div className={styles.settlementButtons}>
+                  <button
+                    type="button"
+                    className={`${styles.settlementButton} ${settlementMode === 'offchain' ? styles.active : ''}`}
+                    onClick={() => setSettlementMode('offchain')}
+                  >
+                    Return Funds
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.settlementButton} ${settlementMode === 'escrow' ? styles.active : ''}`}
+                    onClick={() => setSettlementMode('escrow')}
+                  >
+                    On-chain Settlement
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "swap" ? (
+            <form onSubmit={handleSubmit}>
+              <div className={styles.panelGroup}>
+                <div className={styles.panelLabel}>Sell</div>
+                <div className={styles.tokenPanel}>
+                  <div className={styles.tokenSelector}>
+                    <img
+                      src={tokens.find(t => t.address === sellToken)?.logoURI || "/images/fallback.png"}
+                      onError={e => {
+                        const img = e.target as HTMLImageElement;
+                        if (!img.src.endsWith("/images/fallback.png")) {
+                          img.src = "/images/fallback.png";
+                        }
+                      }}
+                      className={styles.tokenIcon}
+                      alt={tokens.find(t => t.address === sellToken)?.symbol || "Token"}
+                    />
+                    <select
+                      value={sellToken}
+                      onChange={e => {
+                        const newSellToken = e.target.value || "";
+                        setSellToken(newSellToken);
+                        if (newSellToken === buyToken) {
+                          const otherToken = tokens.find(t => t.address !== newSellToken);
+                          if (otherToken) {
+                            setBuyToken(otherToken.address);
+                          }
+                        }
+                      }}
+                      className={styles.tokenSelect}
+                      disabled={connectingWallet || quoteLoading}
+                    >
+                      {tokens.map(token => (
+                        <option key={token.address} value={token.address}>
+                          {token.symbol}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <input
+                    type="number"
+                    value={sellAmount}
+                    onChange={e => setSellAmount(e.target.value)}
+                    placeholder="0.0"
+                    className={styles.amountInput}
+                    disabled={connectingWallet || quoteLoading}
+                  />
+                </div>
+                {sellTokenPriceData.error && (
+                  <div className={styles.priceError}>
+                    Price unavailable: {sellTokenPriceData.error}
+                    <button type="button" onClick={sellTokenPriceData.retry}>Retry</button>
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.switchContainer}>
+                <button
+                  type="button"
+                  onClick={handleSwitch}
+                  className={styles.switchButton}
+                  disabled={connectingWallet || quoteLoading}
+                >
+                  ⇅
+                </button>
+              </div>
+
+              <div className={styles.panelGroup}>
+                <div className={styles.panelLabel}>Buy</div>
+                <div className={styles.tokenPanel}>
+                  <div className={styles.tokenSelector}>
+                    <img
+                      src={tokens.find(t => t.address === buyToken)?.logoURI || "/images/fallback.png"}
+                      onError={e => {
+                        const img = e.target as HTMLImageElement;
+                        if (!img.src.endsWith("/images/fallback.png")) {
+                          img.src = "/images/fallback.png";
+                        }
+                      }}
+                      className={styles.tokenIcon}
+                      alt={tokens.find(t => t.address === buyToken)?.symbol || "Token"}
+                    />
+                    <select
+                      value={buyToken}
+                      onChange={e => setBuyToken(e.target.value)}
+                      className={styles.tokenSelect}
+                      disabled={connectingWallet || quoteLoading}
+                    >
+                      {tokens.map(token => (
+                        <option key={token.address} value={token.address}>
+                          {token.symbol}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className={styles.buyAmountContainer}>
+                    {quoteLoading ? (
+                      <SkeletonLoader variant="text" width="120px" height="24px" />
+                    ) : (
+                      <input
+                        type="text"
+                        value={buyAmount}
+                        readOnly
+                        className={styles.amountInput}
+                        placeholder="0.0"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {quoteError && (
+                <div className={styles.error}>
+                  {quoteError}
+                  <button type="button" onClick={fetchQuoteData} className={styles.retryButton}>
+                    Retry
+                  </button>
+                </div>
+              )}
+
+
+              {!walletAddress ? (
+                <button
+                  type="button"
+                  onClick={connectWallet}
+                  className={styles.connectButton}
+                  disabled={connectingWallet}
+                >
+                  {connectingWallet ? (
+                    <>
+                      <SkeletonLoader variant="text" width="80px" height="16px" />
+                      Connecting...
+                    </>
+                  ) : (
+                    "Connect Wallet"
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className={styles.submitButton}
+                  disabled={
+                    connectingWallet || 
+                    !sellAmount || 
+                    !currentQuote?.buyAmount || 
+                    quoteLoading ||
+                    !!quoteError
+                  }
+                >
+                  {quoteLoading ? (
+                    <>
+                      <SkeletonLoader variant="text" width="60px" height="16px" />
+                      Getting Quote...
+                    </>
+                  ) : (
+                    "Swap"
+                  )}
+                </button>
+              )}
+
+              {connectError && (
+                <div className={styles.error}>
+                  {connectError}
+                  <button type="button" onClick={connectWallet} className={styles.retryButton}>
+                    Try Again
+                  </button>
+                </div>
+              )}
+            </form>
+          ) : (
+            <MarketOrderWidget
+              tokens={tokens}
+              sellToken={sellToken}
+              buyToken={buyToken}
+              sellAmount={sellAmount}
+              onSellTokenChange={setSellToken}
+              onBuyTokenChange={setBuyToken}
+              onSellAmountChange={setSellAmount}
+              onSubmit={handleSubmit}
+              rate={parseFloat(buyAmount) / parseFloat(sellAmount) || 0}
+              showSlippage={showSettings}
+              slippageTolerance={slippageTolerance}
+              onSlippageClick={() => setShowSettings(!showSettings)}
+              onSlippageChange={setSlippageTolerance}
+              walletAddress={walletAddress}
+              onConnect={connectWallet}
+              connectingWallet={connectingWallet}
+            />
+          )}
+
+          {currentQuote && !quoteLoading ? (
+            <div className={styles.quoteSummary}>
+              <QuoteSummary
+                sellToken={tokens.find(t => t.address === sellToken)?.symbol || sellToken}
+                buyToken={tokens.find(t => t.address === buyToken)?.symbol || buyToken}
+                sellAmount={sellAmount}
+                buyAmount={buyAmount}
+                minReceived={minReceived}
+                slippageTolerance={slippageTolerance}
+                priceImpactAmount={priceImpactAmount.toFixed(4)}
+                lpFeeAmount={lpFeeAmount.toFixed(4)}
+                slippageAmount={slippageAmount.toFixed(4)}
+                quote={currentQuote}
+                validTo={currentQuote?.validTo || Math.floor(Date.now() / 1000) + 3600}
+              />
+            </div>
+          ) : quoteLoading ? (
+            <div className={styles.quoteSummary}>
+              <SkeletonLoader variant="quote" />
+            </div>
+          ) : null}
+
+          {settlementMode === "escrow" && currentQuote && (
+            <button
+              type="button"
+              className={styles.escrowButton}
+              onClick={handleEscrowDeposit}
+              disabled={escrowLoading || !currentQuote}
+            >
+              {escrowLoading ? (
+                <>
+                  <SkeletonLoader variant="text" width="120px" height="16px" />
+                  Depositing...
+                </>
+              ) : (
+                "Use Escrow"
+              )}
+            </button>
+          )}
+
+          {escrowError && (
+            <div className={styles.error}>
+              {escrowError}
+              <button type="button" onClick={handleEscrowDeposit} className={styles.retryButton}>
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {/* Order Book Display - with defensive checks */}
+          {safeOrders.length > 0 && (
+            <div className={styles.orderBook}>
+              <h3>Recent Orders</h3>
+              <div className={styles.orderList}>
+                {safeOrders.slice(0, 5).map((order, index) => (
+                  <div key={order.id || index} className={styles.orderItem}>
+                    {order.side || 'SELL'} {order.sellAmount || '0'} {
+                      tokens.find(t => t.address === order.sellToken)?.symbol || 'Unknown'
+                    } → {order.buyAmount || '0'} {
+                      tokens.find(t => t.address === order.buyToken)?.symbol || 'Unknown'
+                    }
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        {settlementMode === "escrow" && (
-          <button
-            type="button"
-            className={styles.submitButton}
-            onClick={handleEscrowDeposit}
-            disabled={escrowLoading || !quote}
-          >
-            {escrowLoading ? "Depositing to Escrow..." : "Use Escrow"}
-          </button>
-        )}
-        {escrowError && <div className={styles.error}>{escrowError}</div>}
       </div>
-    </div>
+    </ErrorBoundary>
   );
 };
 
 export default SwapWidget;
 
 /**
- * Submits the escrow deposit transaction hash to the backend.
- * @param orderId - The order ID associated with the deposit.
- * @param txHash - The transaction hash from the escrow deposit.
+ * Helper function to submit escrow transaction
  */
 export async function submitEscrowTx(orderId: string, txHash: string) {
   await fetch("/api/markEscrowDeposit", {
@@ -617,4 +833,3 @@ export async function submitEscrowTx(orderId: string, txHash: string) {
     headers: { "Content-Type": "application/json" },
   });
 }
-

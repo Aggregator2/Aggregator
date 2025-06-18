@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - name: Cache Prisma
+      uses: actions/cache@v3
+      with:
+        path: ~/.prisma
+        key: ${{ runner.OS }}-prisma-${{ hashFiles('prisma/schema.prisma') }}
+    - name: Cache Hardhat artifacts
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.hardhat-artifacts
+          ~/.hardhat-cache
+        key: ${{ runner.OS }}-hardhat-${{ hashFiles('hardhat.config.ts') }}
+    - run: npm ci
+    - run: npm run build
+    - uses: actions/upload-artifact@v3
+      with:
+        name: dist
+        path: dist
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18.x
+        cache: 'npm'
+    - run: npm ci  
+    - run: npm run lint
+
+  test:
+    runs-on: ubuntu-latest  
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18.x
+        cache: 'npm'
+    - run: npm ci
+    - run: npm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v3
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18.x
+        cache: 'npm'
+    - run: npm ci
+    - run: npm run test:e2e
+
+  notify:
+    needs: [build, lint, test, e2e]
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+    - name: Slack Notification
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        fields: repo,message,commit,author,action,eventName,ref,workflow
+        author_name: Failure in CI workflow
+        mention: here
+        if_mention: failure,cancelled
+        job_name: Notify failure to #dev-alerts
+        channel: dev-alerts
+        icon_emoji: ':github:'
+        username: GitHub Actions Workflow
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

@@ -1,0 +1,74 @@
+.skeletonContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+.text {
+  border-radius: 4px;
+}
+
+.rectangular {
+  border-radius: 8px;
+}
+
+.circular {
+  border-radius: 50%;
+}
+
+.button {
+  border-radius: 12px;
+}
+
+.quoteContainer {
+  padding: 1rem;
+  background: #f9f9f9;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+}
+
+.tokenContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.tokenInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .skeleton {
+    background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+    background-size: 200% 100%;
+  }
+  
+  .quoteContainer {
+    background: #1a1a1a;
+    border-color: #333;
+  }
+  
+  .tokenContainer {
+    background: #1a1a1a;
+  }
+}

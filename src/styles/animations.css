@@ -1,0 +1,196 @@
+/* AnimatedBackground styles - production-ready with all requirements met */
+
+/* Base styles with smooth rendering */
+.animated-background {
+  /* GPU acceleration and smooth rendering */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: transform;
+  
+  /* Prevent any layout shifts or interaction issues */
+  position: absolute !important;
+  pointer-events: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  
+  /* Ensure no overflow or scrollbars */
+  overflow: hidden !important;
+  
+  /* Smooth transitions for theme switching */
+  transition: filter 0.3s ease-in-out, opacity 0.5s ease-in-out;
+}
+
+/* Canvas optimization for high framerate */
+.animated-background canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  
+  /* Optimize rendering performance */
+  image-rendering: optimizeSpeed;
+  image-rendering: -webkit-optimize-contrast;
+  
+  /* Prevent pixelation and ensure smooth edges */
+  shape-rendering: geometricPrecision;
+  
+  /* Force hardware acceleration */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Theme-specific subtle enhancements */
+.animated-background--dark {
+  /* Very subtle contrast boost for dark theme */
+  filter: contrast(1.02);
+}
+
+.animated-background--light {
+  /* Very subtle brightness adjustment for light theme */
+  filter: brightness(1.01);
+}
+
+/* Overlay for enhanced readability */
+.animated-background__overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none !important;
+  
+  /* Smooth blending without artifacts */
+  will-change: opacity;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* Loading states for smooth entrance */
+.animated-background--loading {
+  opacity: 0;
+}
+
+.animated-background--loaded {
+  opacity: 1;
+  animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* Mobile optimizations for 60fps+ */
+@media (max-width: 768px) {
+  .animated-background canvas {
+    /* Balanced quality/performance for mobile */
+    image-rendering: auto;
+  }
+  
+  /* Ensure readability on small screens */
+  .animated-background--dark .animated-background__overlay {
+    background: radial-gradient(
+      circle at center, 
+      transparent 0%, 
+      rgba(0, 0, 0, 0.04) 100%
+    ) !important;
+  }
+  
+  .animated-background--light .animated-background__overlay {
+    background: radial-gradient(
+      circle at center, 
+      transparent 0%, 
+      rgba(255, 255, 255, 0.03) 100%
+    ) !important;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .animated-background canvas {
+    image-rendering: high-quality;
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+/* High-DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), 
+       (min-resolution: 192dpi),
+       (min-resolution: 2dppx) {
+  .animated-background canvas {
+    /* Maintain quality on retina displays */
+    image-rendering: high-quality;
+    image-rendering: -webkit-optimize-contrast;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Accessibility: Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animated-background,
+  .animated-background * {
+    /* Pause all animations */
+    animation-play-state: paused !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  /* Still show static background */
+  .animated-background--loading {
+    opacity: 1;
+  }
+}
+
+/* Performance containment */
+.animated-background {
+  contain: layout style paint;
+  content-visibility: auto;
+}
+
+/* Ensure smooth edges and no pixelation */
+.animated-background svg,
+.animated-background img {
+  shape-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* GPU hints for all child elements */
+.animated-background,
+.animated-background * {
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+}
+
+/* Prevent any scrolling issues */
+.animated-background {
+  -webkit-overflow-scrolling: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.animated-background::-webkit-scrollbar {
+  display: none;
+}
+
+/* Ensure text in canvas is crisp */
+.animated-background text {
+  text-rendering: geometricPrecision;
+}
+
+/* Focus visible override for accessibility */
+.animated-background:focus-visible {
+  outline: none;
+}
+
+/* Print styles - hide animated background */
+@media print {
+  .animated-background {
+    display: none !important;
+  }
+}

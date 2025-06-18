@@ -1,0 +1,192 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage
+.grunt
+
+# Bower dependency directory
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons
+build/Release
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# parcel-bundler cache
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build output
+.nuxt
+
+# Gatsby files
+.cache/
+# public  # Commented out - we need the public directory for Next.js
+
+# Vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# VS Code
+.vscode/
+
+# IDE
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*
+
+# Logs
+*.log
+logs/
+monitoring.log
+alerts.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+offchain_dex.db
+test.db.js
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+
+# Hardhat/Ethereum artifacts (keep artifacts/ and contracts/ for listener service)
+cache/
+.openzeppelin/
+
+# Build artifacts
+build/
+dist/
+
+# Cypress
+cypress/
+
+# Generated files
+generated/
+
+# Test files
+test/
+*.test.js
+*.spec.js
+
+# Documentation
+*.md
+DOCUMENTATION_*
+PROJECT_*
+OPERATIONAL_*
+IMPLEMENTATION_*
+KEY_ROTATION_*
+RELEASE_*
+QUICK_COMMANDS.md
+README.md
+
+# Scripts
+*.bat
+*.ps1
+*.sh
+
+# Large directories that aren't needed for runtime
+Backend server/
+Backend server (2).zip
+Frontend UI/
+Frontend UI.zip
+Intitial code/
+deployment-project/
+prisma-orm-project/
+pure/
+Hardhat/
+
+# SQLite executables
+sqlite3*
+sqldiff.exe
+
+# Config files that shouldn't be in container
+cypress.config.ts
+hardhat.config.js
+vercel.json
+tsconfig.json
+next-env.d.ts
+
+# Emergency and monitoring scripts
+emergency-response.ps1
+monitoring.ps1
+run-event-demo.ps1
+file_watcher.py
+fix_postgres.bat
+
+# Health check results
+health-check-results.json
+alert-history.json
+
+# Key files (security)
+*.pem
+*.key
+generateWallet.js
+key-rotation.js
+signRelease.js
+
+# Checksums
+checksum.js
