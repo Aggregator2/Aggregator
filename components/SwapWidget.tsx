@@ -9,6 +9,8 @@ import MarketOrderWidget from "./MarketOrderWidget";
 import QuoteSummary from "./QuoteSummary";
 import SkeletonLoader from "./SkeletonLoader";
 import ErrorBoundary from "./ErrorBoundary";
+import TokenPicker from "./TokenPicker";
+import TokenSelector from "./TokenSelector";
 import { hashOrder } from '../utils/hashOrder';
 import { getSigner } from '../utils/getSigner';
 import FixedEscrowABI from "../artifacts/contracts/FixedEscrow.sol/FixedEscrow.json";
@@ -23,12 +25,20 @@ const DEFAULT_TOKENS: Token[] = [
     name: "Wrapped Ethereum",
     address: "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
     logoURI: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png",
+    chainId: 1,
+    type: 'ERC-20',
+    decimals: 18,
+    tags: ['wrapped']
   },
   {
     symbol: "DAI",
     name: "Dai Stablecoin",
     address: "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1",
     logoURI: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x6B175474E89094C44Da98b954EedeAC495271d0F/logo.png",
+    chainId: 1,
+    type: 'ERC-20',
+    decimals: 18,
+    tags: ['stablecoin']
   },
 ];
 
@@ -109,12 +119,16 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   // Basic state
   const [walletAddress, setWalletAddress] = useState<string | null>(userAddress || null);
   const [tokens] = useState(DEFAULT_TOKENS);
-  const [sellToken, setSellToken] = useState(DEFAULT_TOKENS[0].address);
-  const [buyToken, setBuyToken] = useState(DEFAULT_TOKENS[1].address);
+  const [sellToken, setSellToken] = useState<Token>(DEFAULT_TOKENS[0]);
+  const [buyToken, setBuyToken] = useState<Token>(DEFAULT_TOKENS[1]);
   const [sellAmount, setSellAmount] = useState("");
   const [activeTab, setActiveTab] = useState("swap");
   const [slippageTolerance, setSlippageTolerance] = useState("0.5");
   const [showSettings, setShowSettings] = useState(false);
+  
+  // Token picker state
+  const [showSellTokenPicker, setShowSellTokenPicker] = useState(false);
+  const [showBuyTokenPicker, setShowBuyTokenPicker] = useState(false);
   
   // Connection state
   const [connectingWallet, setConnectingWallet] = useState(false);
@@ -138,8 +152,8 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   // Hooks
   const { showError, showSuccess, showWarning, showInfo, ToastContainer } = useToast();
   const networkStatus = useNetworkStatus();
-  const sellTokenPriceData = useTokenPrice(sellToken);
-  const buyTokenPriceData = useTokenPrice(buyToken);
+  const sellTokenPriceData = useTokenPrice(sellToken.address);
+  const buyTokenPriceData = useTokenPrice(buyToken.address);
   const escrowContractFactory = useEscrowContract(walletAddress);
 
   // Update wallet address from props with stability check
@@ -214,8 +228,8 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sellToken,
-          buyToken,
+          sellToken: sellToken.address,
+          buyToken: buyToken.address,
           sellAmount: ethers.parseUnits(sellAmount, 18).toString(),
           user: walletAddress || "0x000000000000000000000000000000000000dead",
         }),
@@ -273,8 +287,28 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
 
   // Token switching
   const handleSwitch = () => {
+    const tempToken = sellToken;
     setSellToken(buyToken);
-    setBuyToken(sellToken);
+    setBuyToken(tempToken);
+  };
+
+  // Token selection handlers
+  const handleSellTokenSelect = (token: Token) => {
+    setSellToken(token);
+    setShowSellTokenPicker(false);
+    // If selecting the same token as buy token, swap them
+    if (token.address.toLowerCase() === buyToken.address.toLowerCase()) {
+      setBuyToken(sellToken);
+    }
+  };
+
+  const handleBuyTokenSelect = (token: Token) => {
+    setBuyToken(token);
+    setShowBuyTokenPicker(false);
+    // If selecting the same token as sell token, swap them
+    if (token.address.toLowerCase() === sellToken.address.toLowerCase()) {
+      setSellToken(buyToken);
+    }
   };
 
   /**
@@ -319,8 +353,8 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       const validTo = Math.floor(Date.now() / 1000) + 1800; // 30 minutes
 
       const order = {
-        sellToken,
-        buyToken,
+        sellToken: sellToken.address,
+        buyToken: buyToken.address,
         sellAmount: baseUnits,
         buyAmount: currentQuote.buyAmount || "0",
         validTo,
@@ -564,40 +598,12 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
               <div className={styles.panelGroup}>
                 <div className={styles.panelLabel}>Sell</div>
                 <div className={styles.tokenPanel}>
-                  <div className={styles.tokenSelector}>
-                    <img
-                      src={tokens.find(t => t.address === sellToken)?.logoURI || "/images/fallback.png"}
-                      onError={e => {
-                        const img = e.target as HTMLImageElement;
-                        if (!img.src.endsWith("/images/fallback.png")) {
-                          img.src = "/images/fallback.png";
-                        }
-                      }}
-                      className={styles.tokenIcon}
-                      alt={tokens.find(t => t.address === sellToken)?.symbol || "Token"}
-                    />
-                    <select
-                      value={sellToken}
-                      onChange={e => {
-                        const newSellToken = e.target.value || "";
-                        setSellToken(newSellToken);
-                        if (newSellToken === buyToken) {
-                          const otherToken = tokens.find(t => t.address !== newSellToken);
-                          if (otherToken) {
-                            setBuyToken(otherToken.address);
-                          }
-                        }
-                      }}
-                      className={styles.tokenSelect}
-                      disabled={connectingWallet || quoteLoading}
-                    >
-                      {tokens.map(token => (
-                        <option key={token.address} value={token.address}>
-                          {token.symbol}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <TokenSelector
+                    selectedToken={sellToken}
+                    onClick={() => setShowSellTokenPicker(true)}
+                    disabled={connectingWallet || quoteLoading}
+                    className={styles.tokenSelectorButton}
+                  />
                   <input
                     type="number"
                     value={sellAmount}
@@ -629,31 +635,12 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
               <div className={styles.panelGroup}>
                 <div className={styles.panelLabel}>Buy</div>
                 <div className={styles.tokenPanel}>
-                  <div className={styles.tokenSelector}>
-                    <img
-                      src={tokens.find(t => t.address === buyToken)?.logoURI || "/images/fallback.png"}
-                      onError={e => {
-                        const img = e.target as HTMLImageElement;
-                        if (!img.src.endsWith("/images/fallback.png")) {
-                          img.src = "/images/fallback.png";
-                        }
-                      }}
-                      className={styles.tokenIcon}
-                      alt={tokens.find(t => t.address === buyToken)?.symbol || "Token"}
-                    />
-                    <select
-                      value={buyToken}
-                      onChange={e => setBuyToken(e.target.value)}
-                      className={styles.tokenSelect}
-                      disabled={connectingWallet || quoteLoading}
-                    >
-                      {tokens.map(token => (
-                        <option key={token.address} value={token.address}>
-                          {token.symbol}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <TokenSelector
+                    selectedToken={buyToken}
+                    onClick={() => setShowBuyTokenPicker(true)}
+                    disabled={connectingWallet || quoteLoading}
+                    className={styles.tokenSelectorButton}
+                  />
                   <div className={styles.buyAmountContainer}>
                     {quoteLoading ? (
                       <SkeletonLoader variant="text" width="120px" height="24px" />
@@ -752,8 +739,8 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
           {currentQuote && !quoteLoading ? (
             <div className={styles.quoteSummary}>
               <QuoteSummary
-                sellToken={tokens.find(t => t.address === sellToken)?.symbol || sellToken}
-                buyToken={tokens.find(t => t.address === buyToken)?.symbol || buyToken}
+                sellToken={sellToken.symbol}
+                buyToken={buyToken.symbol}
                 sellAmount={sellAmount}
                 buyAmount={buyAmount}
                 minReceived={minReceived}
@@ -815,6 +802,25 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
               </div>
             </div>
           )}
+
+          {/* Token Picker Modals */}
+          <TokenPicker
+            isOpen={showSellTokenPicker}
+            onClose={() => setShowSellTokenPicker(false)}
+            onTokenSelect={handleSellTokenSelect}
+            selectedToken={sellToken}
+            otherToken={buyToken}
+            title="Select token to sell"
+          />
+
+          <TokenPicker
+            isOpen={showBuyTokenPicker}
+            onClose={() => setShowBuyTokenPicker(false)}
+            onTokenSelect={handleBuyTokenSelect}
+            selectedToken={buyToken}
+            otherToken={sellToken}
+            title="Select token to buy"
+          />
         </div>
       </div>
     </ErrorBoundary>

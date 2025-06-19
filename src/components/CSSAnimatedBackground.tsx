@@ -125,7 +125,7 @@ export default function CSSAnimatedBackground({
       )}
       
       {/* CSS Animations */}
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes float-0 {
           0%, 100% { 
             transform: translateY(0px) rotate(0deg); 
@@ -211,7 +211,7 @@ export default function CSSAnimatedBackground({
             animation: none !important;
           }
         }
-      `}</style>
+      ` }} />
     </div>
   )
 }

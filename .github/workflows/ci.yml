@@ -33,11 +33,24 @@ jobs:
           ~/.hardhat-cache
         key: ${{ runner.OS }}-hardhat-${{ hashFiles('hardhat.config.ts') }}
     - run: npm ci
+    - run: npm run compile
     - run: npm run build
-    - uses: actions/upload-artifact@v3
+    - name: Upload dist artifacts
+      uses: actions/upload-artifact@v3
       with:
-        name: dist
-        path: dist
+        name: dist-${{ matrix.node-version }}
+        path: |
+          .next/
+          out/
+        if-no-files-found: warn
+    - name: Upload contract artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: contract-artifacts-${{ matrix.node-version }}
+        path: |
+          artifacts/
+          typechain-types/
+        if-no-files-found: warn
 
   lint:
     runs-on: ubuntu-latest
@@ -48,11 +61,11 @@ jobs:
       with:
         node-version: 18.x
         cache: 'npm'
-    - run: npm ci  
+    - run: npm ci
     - run: npm run lint
 
   test:
-    runs-on: ubuntu-latest  
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Use Node.js 18.x
@@ -61,11 +74,12 @@ jobs:
         node-version: 18.x
         cache: 'npm'
     - run: npm ci
+    - run: npm run compile
     - run: npm test
 
   e2e:
     runs-on: ubuntu-latest
-    steps:  
+    steps:
     - uses: actions/checkout@v3
     - name: Use Node.js 18.x
       uses: actions/setup-node@v3
@@ -73,8 +87,40 @@ jobs:
         node-version: 18.x
         cache: 'npm'
     - run: npm ci
-    - run: npm run test:e2e
+    - run: npm run build
+    - name: Run Cypress E2E tests
+      uses: cypress-io/github-action@v6
+      with:
+        command: npm run test:e2e
+        start: npm start
+        wait-on: 'http://localhost:3000'
+        wait-on-timeout: 120
 
+  summary:
+    needs: [build, lint, test, e2e]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+    - name: Generate summary
+      run: |
+        echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- **Dist files**: Available in artifacts dist-*" >> $GITHUB_STEP_SUMMARY
+        echo "- **Contract ABIs**: Available in artifacts contract-artifacts-*" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Build Matrix" >> $GITHUB_STEP_SUMMARY
+        echo "- Node 18.x: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Node 20.x: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "- Lint: ${{ needs.lint.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Unit Tests: ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- E2E Tests: ${{ needs.e2e.result }}" >> $GITHUB_STEP_SUMMARY
+    
   notify:
     needs: [build, lint, test, e2e]
     runs-on: ubuntu-latest
@@ -92,6 +138,6 @@ jobs:
         channel: dev-alerts
         icon_emoji: ':github:'
         username: GitHub Actions Workflow
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

@@ -2,6 +2,7 @@
   "/_document": "pages/_document.js",
   "/_error": "pages/_error.js",
   "/_app": "pages/_app.js",
+  "/api/quote": "pages/api/quote.js",
   "/": "pages/index.js",
   "/api/tokenPrice": "pages/api/tokenPrice.js"
 }

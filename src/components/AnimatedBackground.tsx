@@ -217,10 +217,12 @@ function FloatingTokens({
         new THREE.Vector3(instance.scale, instance.scale, instance.scale)
       )
       
-      meshRef.current.setMatrixAt(i, matrix)
+      meshRef.current?.setMatrixAt(i, matrix)
     })
     
-    meshRef.current.instanceMatrix.needsUpdate = true
+    if (meshRef.current) {
+      meshRef.current.instanceMatrix.needsUpdate = true
+    }
   })
 
   return (

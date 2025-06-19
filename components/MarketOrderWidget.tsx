@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 import styles from "./SwapWidget.module.css";
+import TokenSelector from "./TokenSelector";
+import TokenPicker from "./TokenPicker";
+import { Token } from "../types/wallet";
 
 const EXPIRY_OPTIONS = [
   { label: "1 day", value: 60 * 60 * 24 },
@@ -8,19 +11,13 @@ const EXPIRY_OPTIONS = [
   { label: "1 year", value: 60 * 60 * 24 * 365 },
 ];
 
-interface Token {
-  symbol: string;
-  address: string;
-  logoURI?: string;
-}
-
 export interface MarketOrderWidgetProps {
   tokens: Token[];
-  sellToken: string;
-  buyToken: string;
+  sellToken: Token;
+  buyToken: Token;
   sellAmount: string;
-  onSellTokenChange: (v: string) => void;
-  onBuyTokenChange: (v: string) => void;
+  onSellTokenChange: (token: Token) => void;
+  onBuyTokenChange: (token: Token) => void;
   onSellAmountChange: (v: string) => void;
   onSubmit: (order: any) => void;
   rate: number;
@@ -50,12 +47,16 @@ const MarketOrderWidget: React.FC<MarketOrderWidgetProps> = ({
   const [limitPrice, setLimitPrice] = useState("");
   const [expiry, setExpiry] = useState(EXPIRY_OPTIONS[0].value);
   const [buyAmount, setBuyAmount] = useState("");
+  
+  // Token picker state
+  const [showSellTokenPicker, setShowSellTokenPicker] = useState(false);
+  const [showBuyTokenPicker, setShowBuyTokenPicker] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
-      sellToken,
-      buyToken,
+      sellToken: sellToken.address,
+      buyToken: buyToken.address,
       sellAmount,
       buyAmount,
       limitPrice,
@@ -64,14 +65,34 @@ const MarketOrderWidget: React.FC<MarketOrderWidgetProps> = ({
     });
   };
 
-  // Handle token switching
+  // Handle token switching  
   const handleSwitch = () => {
+    const tempToken = sellToken;
     onSellTokenChange(buyToken);
-    onBuyTokenChange(sellToken);
+    onBuyTokenChange(tempToken);
     // Clear amounts when switching
     onSellAmountChange("");
     setBuyAmount("");
     setLimitPrice("");
+  };
+
+  // Token selection handlers
+  const handleSellTokenSelect = (token: Token) => {
+    onSellTokenChange(token);
+    setShowSellTokenPicker(false);
+    // If selecting the same token as buy token, swap them
+    if (token.address.toLowerCase() === buyToken.address.toLowerCase()) {
+      onBuyTokenChange(sellToken);
+    }
+  };
+
+  const handleBuyTokenSelect = (token: Token) => {
+    onBuyTokenChange(token);
+    setShowBuyTokenPicker(false);
+    // If selecting the same token as sell token, swap them
+    if (token.address.toLowerCase() === sellToken.address.toLowerCase()) {
+      onSellTokenChange(buyToken);
+    }
   };
 
   // Calculate buy amount based on sell amount and limit price
@@ -108,36 +129,19 @@ const MarketOrderWidget: React.FC<MarketOrderWidgetProps> = ({
       <div className={styles.panelGroup}>
         <div className={styles.panelLabel}>You pay</div>
         <div className={styles.tokenPanel}>
-          <div className={styles.tokenSelector}>
-            <img
-              src={tokens.find(t => t.address === sellToken)?.logoURI || "/images/fallback.png"}
-              onError={e => {
-                const img = e.target as HTMLImageElement;
-                if (!img.src.endsWith("/images/fallback.png")) {
-                  img.src = "/images/fallback.png";
-                }
-              }}
-              className={styles.tokenIcon}
-              alt={tokens.find(t => t.address === sellToken)?.symbol || "Token"}
-            />
-            <select
-              value={sellToken}
-              onChange={e => onSellTokenChange(e.target.value)}
-              className={styles.tokenSelect}
-            >
-              {tokens.map(token => (
-                <option key={token.address} value={token.address}>
-                  {token.symbol}
-                </option>
-              ))}
-            </select>
-          </div>
+          <TokenSelector
+            selectedToken={sellToken}
+            onClick={() => setShowSellTokenPicker(true)}
+            disabled={connectingWallet}
+            className={styles.tokenSelectorButton}
+          />
           <input
             type="text"
             value={sellAmount}
             onChange={e => handleSellAmountChange(e.target.value)}
             placeholder="0.0"
             className={styles.amountInput}
+            disabled={connectingWallet}
           />
         </div>
       </div>
@@ -148,6 +152,7 @@ const MarketOrderWidget: React.FC<MarketOrderWidgetProps> = ({
           type="button"
           onClick={handleSwitch}
           className={styles.switchButton}
+          disabled={connectingWallet}
         >
           ⇅
         </button>
@@ -157,36 +162,19 @@ const MarketOrderWidget: React.FC<MarketOrderWidgetProps> = ({
       <div className={styles.panelGroup}>
         <div className={styles.panelLabel}>You receive</div>
         <div className={styles.tokenPanel}>
-          <div className={styles.tokenSelector}>
-            <img
-              src={tokens.find(t => t.address === buyToken)?.logoURI || "/images/fallback.png"}
-              onError={e => {
-                const img = e.target as HTMLImageElement;
-                if (!img.src.endsWith("/images/fallback.png")) {
-                  img.src = "/images/fallback.png";
-                }
-              }}
-              className={styles.tokenIcon}
-              alt={tokens.find(t => t.address === buyToken)?.symbol || "Token"}
-            />
-            <select
-              value={buyToken}
-              onChange={e => onBuyTokenChange(e.target.value)}
-              className={styles.tokenSelect}
-            >
-              {tokens.map(token => (
-                <option key={token.address} value={token.address}>
-                  {token.symbol}
-                </option>
-              ))}
-            </select>
-          </div>
+          <TokenSelector
+            selectedToken={buyToken}
+            onClick={() => setShowBuyTokenPicker(true)}
+            disabled={connectingWallet}
+            className={styles.tokenSelectorButton}
+          />
           <input
             type="text"
             value={buyAmount}
             onChange={e => handleBuyAmountChange(e.target.value)}
             placeholder="0.0"
             className={styles.amountInput}
+            disabled={connectingWallet}
           />
         </div>
       </div>
@@ -194,7 +182,7 @@ const MarketOrderWidget: React.FC<MarketOrderWidgetProps> = ({
       {/* Limit Price */}
       <div className={styles.panelGroup}>
         <div className={styles.panelLabel}>
-          Limit Price ({tokens.find(t => t.address === buyToken)?.symbol} per {tokens.find(t => t.address === sellToken)?.symbol})
+          Limit Price ({buyToken.symbol} per {sellToken.symbol})
         </div>
         <div className={styles.limitPricePanel}>
           <input
@@ -241,6 +229,25 @@ const MarketOrderWidget: React.FC<MarketOrderWidgetProps> = ({
           Place Limit Order
         </button>
       )}
+
+      {/* Token Picker Modals */}
+      <TokenPicker
+        isOpen={showSellTokenPicker}
+        onClose={() => setShowSellTokenPicker(false)}
+        onTokenSelect={handleSellTokenSelect}
+        selectedToken={sellToken}
+        otherToken={buyToken}
+        title="Select token to sell"
+      />
+
+      <TokenPicker
+        isOpen={showBuyTokenPicker}
+        onClose={() => setShowBuyTokenPicker(false)}
+        onTokenSelect={handleBuyTokenSelect}
+        selectedToken={buyToken}
+        otherToken={sellToken}
+        title="Select token to buy"
+      />
     </form>
   );
 };

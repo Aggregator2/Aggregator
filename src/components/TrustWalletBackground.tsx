@@ -191,7 +191,7 @@ export default function TrustWalletBackground({
       )}
 
       {/* CSS Styles */}
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .token {
           position: absolute;
           width: 70px;
@@ -417,7 +417,7 @@ export default function TrustWalletBackground({
             right: 10px !important;
           }
         }
-      `}</style>
+      ` }} />
     </>
   )
 }
