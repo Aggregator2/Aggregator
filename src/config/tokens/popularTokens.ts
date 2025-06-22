@@ -339,16 +339,6 @@ export const POPULAR_TOKENS: Record<number, Token[]> = {
       type: 'BEP-20',
       decimals: 18,
       tags: ['lending', 'defi']
-    },
-    {
-      symbol: 'SAFEMOON',
-      name: 'SafeMoon',
-      address: '0x8076C74C5e3F5852037F31Ff0093Eeb8c8ADd8D3',
-      logoURI: 'https://coin-images.coingecko.com/coins/images/14362/thumb/174x174-white.png',
-      chainId: 56,
-      type: 'BEP-20',
-      decimals: 9,
-      tags: ['meme']
     }
   ],
 
@@ -471,16 +461,6 @@ export const POPULAR_TOKENS: Record<number, Token[]> = {
       type: 'SPL',
       decimals: 6,
       tags: ['dex', 'defi']
-    },
-    {
-      symbol: 'FTT',
-      name: 'FTX Token',
-      address: 'AGFEad2et2ZJif9jaGpdMixQqvW5i81aBdvKe7PHNfz3',
-      logoURI: 'https://coin-images.coingecko.com/coins/images/9026/thumb/F.png',
-      chainId: 101,
-      type: 'SPL',
-      decimals: 6,
-      tags: ['exchange']
     }
   ],
 

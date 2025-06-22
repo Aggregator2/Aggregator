@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styles from './TokenPicker.module.css';
 import { Token } from '../types/wallet';
-import { ALL_TOKENS, searchTokens } from './tokenData';
+import { lifiService } from '../src/services/lifiService';
+import { isTokenBlacklisted } from '../src/config/tokenRegistry';
+import { TokenMonitoringService } from '../src/services/tokenMonitoringService';
+import { tokenLogger } from '../src/utils/devLogger';
 
 interface TokenPickerProps {
   isOpen: boolean;
@@ -12,6 +15,75 @@ interface TokenPickerProps {
   title?: string;
 }
 
+// Popular tokens to show first
+const POPULAR_TOKENS = ['ETH', 'WETH', 'USDC', 'USDT', 'DAI', 'WBTC', 'UNI', 'LINK', 'AAVE', 'MATIC'];
+
+// Chain info - All 47 chains supported by LiFi
+export const CHAIN_INFO: Record<number, { name: string; logo: string }> = {
+  // Major EVM Chains
+  1: { name: 'Ethereum', logo: '⟠' },
+  56: { name: 'BSC', logo: '🔶' },
+  137: { name: 'Polygon', logo: '🟣' },
+  42161: { name: 'Arbitrum', logo: '🔷' },
+  10: { name: 'Optimism', logo: '🔴' },
+  43114: { name: 'Avalanche', logo: '🔺' },
+  250: { name: 'Fantom', logo: '👻' },
+  8453: { name: 'Base', logo: '🔵' },
+  
+  // Layer 2s and Sidechains
+  100: { name: 'Gnosis', logo: '🦉' },
+  1284: { name: 'Moonbeam', logo: '🌙' },
+  1285: { name: 'Moonriver', logo: '🌘' },
+  1313161554: { name: 'Aurora', logo: '🌅' },
+  42220: { name: 'Celo', logo: '🟨' },
+  
+  // zkEVM Chains
+  324: { name: 'zkSync', logo: '⚡' },
+  1101: { name: 'Polygon zkEVM', logo: '🟪' },
+  534352: { name: 'Scroll', logo: '📜' },
+  59144: { name: 'Linea', logo: '🔗' },
+  
+  // Newer Chains
+  81457: { name: 'Blast', logo: '💥' },
+  34443: { name: 'Mode', logo: '🟢' },
+  167000: { name: 'Taiko', logo: '⛩️' },
+  5000: { name: 'Mantle', logo: '🛡️' },
+  
+  // Alternative L1s
+  25: { name: 'Cronos', logo: '💎' },
+  122: { name: 'FUSE', logo: '🔥' },
+  288: { name: 'Boba', logo: '🫧' },
+  1088: { name: 'Metis', logo: '🏛️' },
+  8217: { name: 'Kaia', logo: '🎋' },
+  
+  // New/Emerging Chains
+  146: { name: 'Sonic', logo: '🎵' },
+  204: { name: 'opBNB', logo: '🟡' },
+  232: { name: 'Lens', logo: '🌿' },
+  480: { name: 'World Chain', logo: '🌍' },
+  999: { name: 'HyperEVM', logo: '🚀' },
+  1135: { name: 'Lisk', logo: '📐' },
+  1329: { name: 'Sei', logo: '🌊' },
+  1625: { name: 'Gravity', logo: '🪐' },
+  1868: { name: 'Soneium', logo: '🎮' },
+  1923: { name: 'Swellchain', logo: '🌊' },
+  2741: { name: 'Abstract', logo: '🎨' },
+  13371: { name: 'Immutable zkEVM', logo: '♾️' },
+  21000000: { name: 'Corn', logo: '🌽' },
+  30: { name: 'Rootstock', logo: '🌳' },
+  33139: { name: 'Apechain', logo: '🦍' },
+  50: { name: 'XDC', logo: '❌' },
+  55244: { name: 'Superposition', logo: '🔀' },
+  57073: { name: 'Ink', logo: '🖋️' },
+  60808: { name: 'BOB', logo: '🤖' },
+  80094: { name: 'Berachain', logo: '🐻' },
+  130: { name: 'Unichain', logo: '🦄' },
+  
+  // Non-EVM Chains
+  195: { name: 'Tron', logo: '🔷' },
+  101: { name: 'Solana', logo: '☀️' },
+};
+
 export const TokenPicker: React.FC<TokenPickerProps> = ({
   isOpen,
   onClose,
@@ -21,25 +93,18 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
   title = "Select a token"
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [allTokens, setAllTokens] = useState<Token[]>(ALL_TOKENS); // Initialize with static data
-  const [comprehensiveTokens, setComprehensiveTokens] = useState<Token[]>([]);
-  const [searchResults, setSearchResults] = useState<Token[]>([]);
+  const [allTokens, setAllTokens] = useState<Token[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingComprehensive, setIsLoadingComprehensive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [importAddress, setImportAddress] = useState('');
-  const [showImport, setShowImport] = useState(false);
-  const [recentTokens, setRecentTokens] = useState<Token[]>([]);
-  const [tokenStats, setTokenStats] = useState<any>(null);
-  const [selectedChainId, setSelectedChainId] = useState<number>(1); // Default to Ethereum
+  const [selectedChain, setSelectedChain] = useState<number | 'all'>('all');
+  const [tokensByChain, setTokensByChain] = useState<Map<number, Token[]>>(new Map());
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Load recent tokens and comprehensive tokens on mount
+  // Load all tokens from LI.FI when modal opens
   useEffect(() => {
     if (isOpen) {
-      loadRecentTokens();
-      loadComprehensiveTokens();
+      loadLifiTokens();
       // Focus search input when modal opens
       setTimeout(() => {
         searchInputRef.current?.focus();
@@ -47,407 +112,327 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
     }
   }, [isOpen]);
 
-  // Reload tokens when chain changes
-  useEffect(() => {
-    if (isOpen) {
-      loadComprehensiveTokens();
+  // Get filtered and sorted tokens
+  const displayTokens = useMemo(() => {
+    let tokens = allTokens;
+    
+    // Filter by chain if not 'all'
+    if (selectedChain !== 'all') {
+      tokens = tokens.filter(token => token.chainId === selectedChain);
     }
-  }, [selectedChainId]);
-
-  // Instant client-side search
-  useEffect(() => {
+    
+    // Filter by search query
     if (searchQuery.trim()) {
-      const results = searchTokens(searchQuery.trim());
-      setSearchResults(results);
-      
-      // Show import option if query looks like an address and no results
-      const isAddress = /^0x[a-fA-F0-9]{40}$/i.test(searchQuery);
-      setShowImport(isAddress && results.length === 0);
-    } else {
-      setSearchResults([]);
-      setError(null);
-      setShowImport(false);
-    }
-  }, [searchQuery]);
-
-  const loadComprehensiveTokens = async () => {
-    try {
-      setIsLoadingComprehensive(true);
-      
-      // Try comprehensive v2 API first, then fallback to v1, then static
-      let response = await fetch(`/api/tokens/comprehensive-v2?limit=1000&chainId=${selectedChainId}&includeTopTokens=true&includeTrending=true`);
-      
-      // If v2 API fails, try v1
-      if (!response.ok) {
-        console.log('Comprehensive v2 API failed, trying v1...');
-        response = await fetch(`/api/tokens/comprehensive?limit=1000&chainId=${selectedChainId}`);
-      }
-      
-      // If both comprehensive APIs fail, use static fallback
-      if (!response.ok || (await response.clone().json()).tokens.length === 0) {
-        console.log('Comprehensive APIs failed or empty, using static fallback...');
-        response = await fetch(`/api/tokens/static-comprehensive?limit=1000&chainId=${selectedChainId}`);
-      }
-      
-      if (!response.ok) {
-        throw new Error('Failed to load tokens');
-      }
-      
-      const data = await response.json();
-      
-      if (data.tokens && data.tokens.length > 0) {
-        // Merge with existing tokens, prioritizing new list
-        const mergedTokens = [...data.tokens, ...allTokens];
-        const uniqueTokens = Array.from(
-          new Map(mergedTokens.map(token => [`${token.chainId}-${token.address.toLowerCase()}`, token])).values()
-        );
-        
-        setAllTokens(uniqueTokens);
-        setComprehensiveTokens(data.tokens);
-        setTokenStats(data.stats);
-        
-        console.log(`Loaded ${data.tokens.length} tokens from ${data.metadata?.version || 'API'}`);
-        console.log('Token sources:', data.metadata?.sources);
-        console.log('Token stats:', data.stats);
-        
-        // Show capabilities if available
-        if (data.metadata?.capabilities) {
-          console.log('API capabilities:', data.metadata.capabilities);
-        }
-      }
-      
-    } catch (err) {
-      console.error('Failed to load comprehensive tokens:', err);
-      // Keep using static tokens as fallback
-    } finally {
-      setIsLoadingComprehensive(false);
-    }
-  };
-
-  const loadRecentTokens = () => {
-    try {
-      const stored = localStorage.getItem('recentTokens');
-      if (stored) {
-        const recent = JSON.parse(stored);
-        setRecentTokens(recent.slice(0, 5)); // Last 5 tokens
-      }
-    } catch (err) {
-      console.error('Error loading recent tokens:', err);
-    }
-  };
-
-  const saveRecentToken = (token: Token) => {
-    try {
-      const stored = localStorage.getItem('recentTokens');
-      let recent: Token[] = stored ? JSON.parse(stored) : [];
-      
-      // Remove if already exists
-      recent = recent.filter(t => t.address.toLowerCase() !== token.address.toLowerCase());
-      
-      // Add to beginning
-      recent.unshift(token);
-      
-      // Keep only last 10
-      recent = recent.slice(0, 10);
-      
-      localStorage.setItem('recentTokens', JSON.stringify(recent));
-      setRecentTokens(recent.slice(0, 5));
-    } catch (err) {
-      console.error('Error saving recent token:', err);
-    }
-  };
-
-  // No longer need performInstantSearch - using searchTokens from tokenData
-
-  const handleTokenSelect = (token: Token) => {
-    // Prevent selecting the same token on both sides
-    if (otherToken && token.address.toLowerCase() === otherToken.address.toLowerCase()) {
-      return;
+      const query = searchQuery.toLowerCase();
+      tokens = tokens.filter(
+        token =>
+          token.symbol.toLowerCase().includes(query) ||
+          token.name.toLowerCase().includes(query) ||
+          token.address.toLowerCase().includes(query)
+      );
     }
     
-    saveRecentToken(token);
-    onTokenSelect(token);
-    onClose();
-    setSearchQuery('');
-    setSearchResults([]);
-  };
-
-  const handleImportToken = async () => {
-    if (!importAddress.trim()) return;
+    // Sort tokens
+    tokens.sort((a, b) => {
+      // Popular tokens first
+      const aPopular = POPULAR_TOKENS.includes(a.symbol.toUpperCase());
+      const bPopular = POPULAR_TOKENS.includes(b.symbol.toUpperCase());
+      
+      if (aPopular && !bPopular) return -1;
+      if (!aPopular && bPopular) return 1;
+      
+      // If both popular, sort by popularity order
+      if (aPopular && bPopular) {
+        const aIndex = POPULAR_TOKENS.indexOf(a.symbol.toUpperCase());
+        const bIndex = POPULAR_TOKENS.indexOf(b.symbol.toUpperCase());
+        return aIndex - bIndex;
+      }
+      
+      // Then alphabetically by symbol
+      return a.symbol.localeCompare(b.symbol);
+    });
     
+    return tokens;
+  }, [allTokens, selectedChain, searchQuery]);
+
+  const loadLifiTokens = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('/api/tokens/import-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          address: importAddress.trim(),
-          chainId: selectedChainId,
-          userAddress: 'anonymous' // Could be from wallet context
-        })
-      });
+      // First try to use cached tokens from monitoring service
+      const cachedTokens = TokenMonitoringService.getCachedTokens();
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Import failed');
+      if (cachedTokens.size > 0) {
+        // Use cached tokens for instant loading
+        tokenLogger.info('Using cached tokens from monitoring service');
+        processCachedTokens(cachedTokens);
+        
+        // Check if cache needs update in background
+        if (TokenMonitoringService.needsUpdate()) {
+          tokenLogger.info('Cache is stale, updating in background...');
+          TokenMonitoringService.forceUpdate().then(() => {
+            // Reload with fresh data
+            const freshTokens = TokenMonitoringService.getCachedTokens();
+            processCachedTokens(freshTokens);
+          });
+        }
+      } else {
+        // No cache, load directly from LI.FI
+        tokenLogger.info('No cached tokens, loading from LI.FI...');
+        const chains = await lifiService.getChains();
+        tokenLogger.info(`Loading tokens from ${chains.length} chains...`);
+        
+        // Get tokens from all chains
+        const allTokensMap = await lifiService.getAllTokens();
+        processCachedTokens(allTokensMap);
       }
       
-      const data = await response.json();
+    } catch (error) {
+      tokenLogger.error('Failed to load LI.FI tokens:', error);
+      setError('Failed to load tokens. Please try again.');
       
-      // Add the imported token to our local list
-      if (data.token) {
-        setAllTokens(prevTokens => [data.token, ...prevTokens]);
-        handleTokenSelect(data.token);
+      // Try to use cached tokens as fallback from all chains
+      const cachedTokens = lifiService.getCachedTokens();
+      if (cachedTokens.length > 0) {
+        const tokens: Token[] = cachedTokens.map(token => ({
+          symbol: token.symbol,
+          name: token.name,
+          address: token.address,
+          logoURI: token.logoURI || '/fallback.svg',
+          chainId: token.chainId,
+          decimals: token.decimals,
+          type: 'ERC-20' as const,
+          tags: []
+        }));
+        setAllTokens(tokens);
       }
-      
-    } catch (err: any) {
-      console.error('Import error:', err);
-      setError(err.message || 'Failed to import token');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+  // Process tokens from cache or API
+  const processCachedTokens = (tokensMap: Map<number, any[]>) => {
+    const allTokensArray: Token[] = [];
+    const chainMap = new Map<number, Token[]>();
+    
+    tokensMap.forEach((chainTokens, chainId) => {
+      const mappedTokens = chainTokens.map(token => ({
+        symbol: token.symbol,
+        name: token.name,
+        address: token.address,
+        logoURI: token.logoURI || '/fallback.svg',
+        chainId: token.chainId || chainId,
+        decimals: token.decimals,
+        type: 'ERC-20' as const,
+        tags: []
+      }));
+      
+      // Store tokens by chain
+      chainMap.set(chainId, mappedTokens);
+      allTokensArray.push(...mappedTokens);
+    });
+    
+    // Remove duplicates based on address + chainId combination
+    const uniqueTokens = Array.from(
+      new Map(allTokensArray.map(token => [`${token.address}-${token.chainId}`, token])).values()
+    );
+    
+    // Filter out blacklisted tokens
+    const safeTokens = uniqueTokens.filter(token => 
+      !isTokenBlacklisted(token.address, token.chainId)
+    );
+    
+    setTokensByChain(chainMap);
+    setAllTokens(safeTokens);
+    
+    tokenLogger.info(`Loaded ${safeTokens.length} safe tokens from ${tokensMap.size} chains`);
   };
 
-  const tokensToDisplay = useMemo(() => {
-    if (searchQuery.trim()) {
-      return searchResults.filter(token => token.chainId === selectedChainId);
-    }
-    // Show tokens from selected chain
-    const chainTokens = allTokens.filter(token => token.chainId === selectedChainId);
-    return chainTokens.slice(0, 20);
-  }, [searchQuery, searchResults, allTokens, selectedChainId]);
-
-  const filteredTokens = useMemo(() => {
-    return tokensToDisplay.filter(token => {
-      // Filter out the other selected token
-      if (otherToken && token.address.toLowerCase() === otherToken.address.toLowerCase()) {
-        return false;
-      }
-      return true;
+  const handleTokenSelect = (token: Token) => {
+    onTokenSelect(token);
+    setSearchQuery('');
+    onClose();
+  };
+  
+  // Get ALL chains from CHAIN_INFO, not just ones with tokens
+  const availableChains = useMemo(() => {
+    // Get all chain IDs from CHAIN_INFO
+    const allChainIds = Object.keys(CHAIN_INFO).map(Number);
+    
+    // Sort by popularity - major chains first
+    return allChainIds.sort((a, b) => {
+      const order = [
+        1, // Ethereum
+        56, // BSC
+        137, // Polygon
+        42161, // Arbitrum
+        10, // Optimism
+        8453, // Base
+        43114, // Avalanche
+        250, // Fantom
+        324, // zkSync
+        534352, // Scroll
+        59144, // Linea
+        100, // Gnosis
+        42220, // Celo
+        1284, // Moonbeam
+        5000, // Mantle
+        25, // Cronos
+        999, // HyperEVM
+        // Add more chains in priority order as needed
+      ];
+      const aIndex = order.indexOf(a);
+      const bIndex = order.indexOf(b);
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      return a - b;
     });
-  }, [tokensToDisplay, otherToken]);
+  }, []); // No dependency on tokensByChain - show all chains always
 
   if (!isOpen) return null;
 
   return (
-    <div className={styles.backdrop} onClick={handleBackdropClick}>
-      <div className={styles.modal}>
+    <div className={styles.backdrop} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <h2 className={styles.title}>{title}</h2>
-          <button 
-            className={styles.closeButton}
-            onClick={onClose}
-            type="button"
-          >
-            ✕
+          <button className={styles.closeButton} onClick={onClose}>
+            <span className={styles.closeIcon}>×</span>
           </button>
         </div>
-
+        
         <div className={styles.searchContainer}>
-          <div className={styles.chainSelector}>
-            <select 
-              value={selectedChainId} 
-              onChange={(e) => {
-                setSelectedChainId(Number(e.target.value));
-                setSearchQuery(''); // Clear search when changing chains
-              }}
-              className={styles.chainSelect}
-            >
-              <option value={1}>🔷 Ethereum</option>
-              <option value={56}>🟡 BSC</option>
-              <option value={137}>🟣 Polygon</option>
-              <option value={101}>🌞 Solana</option>
-              <option value={43114}>🔺 Avalanche</option>
-              <option value={42161}>🔵 Arbitrum</option>
-              <option value={10}>🔴 Optimism</option>
-              <option value={250}>👻 Fantom</option>
-              <option value={195}>🅣 Tron</option>
-            </select>
-          </div>
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Search by name or paste address"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={styles.searchInput}
+          />
           
-          <div className={styles.searchWrapper}>
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder={
-                isLoadingComprehensive 
-                  ? `Loading tokens...` 
-                  : tokenStats && tokenStats.byChain[selectedChainId]
-                    ? `Search ${tokenStats.byChain[selectedChainId].toLocaleString()} tokens`
-                    : `Search tokens by name or address`
-              }
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={styles.searchInput}
-            />
-            {(searchQuery || isLoadingComprehensive) && (
-              <div className={styles.searchLoader}>
-                {isLoadingComprehensive ? '⏳' : '🔍'}
-              </div>
-            )}
+          {/* Chain filter pills */}
+          <div className={styles.chainFilter}>
+            <button
+              className={`${styles.chainPill} ${selectedChain === 'all' ? styles.active : ''}`}
+              onClick={() => setSelectedChain('all')}
+            >
+              All Chains
+            </button>
+            {availableChains.map(chainId => (
+              <button
+                key={chainId}
+                className={`${styles.chainPill} ${selectedChain === chainId ? styles.active : ''}`}
+                onClick={() => setSelectedChain(chainId)}
+              >
+                {CHAIN_INFO[chainId]?.logo} {CHAIN_INFO[chainId]?.name || `Chain ${chainId}`}
+              </button>
+            ))}
           </div>
         </div>
 
-        {error && (
-          <div className={styles.error}>
-            {error}
-            <button 
-              onClick={() => setError(null)}
-              className={styles.dismissError}
-            >
-              ✕
-            </button>
-          </div>
-        )}
+        <div className={styles.divider} />
 
-        {/* Recent tokens */}
-        {!searchQuery && recentTokens.length > 0 && (
-          <div className={styles.section}>
-            <h3 className={styles.sectionTitle}>Recent</h3>
-            <div className={styles.tokenList}>
-              {recentTokens.map((token) => (
-                <TokenRow
-                  key={token.address}
-                  token={token}
-                  onSelect={handleTokenSelect}
-                  isSelected={selectedToken?.address.toLowerCase() === token.address.toLowerCase()}
-                  isDisabled={otherToken?.address.toLowerCase() === token.address.toLowerCase()}
-                />
+        {/* Popular tokens section */}
+        {!searchQuery && selectedChain === 'all' && (
+          <div className={styles.popularSection}>
+            <div className={styles.sectionTitle}>Popular tokens</div>
+            <div className={styles.popularTokens}>
+              {displayTokens.slice(0, 6).map((token) => (
+                <button
+                  key={`popular-${token.chainId}-${token.address}`}
+                  className={styles.popularToken}
+                  onClick={() => handleTokenSelect(token)}
+                >
+                  <img 
+                    src={token.logoURI} 
+                    alt={token.symbol}
+                    className={styles.popularTokenIcon}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/fallback.svg';
+                    }}
+                  />
+                  <span>{token.symbol}</span>
+                </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Popular/Search results */}
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>
-            {searchQuery ? `Search Results (${filteredTokens.length})` : 'Popular Tokens'}
-          </h3>
-          
+        <div className={styles.tokenListWrapper}>
           <div className={styles.tokenList}>
-            {filteredTokens.length > 0 ? (
-              filteredTokens.map((token) => (
-                <TokenRow
-                  key={`${token.chainId}-${token.address}`}
-                  token={token}
-                  onSelect={handleTokenSelect}
-                  isSelected={selectedToken?.address.toLowerCase() === token.address.toLowerCase()}
-                  isDisabled={otherToken?.address.toLowerCase() === token.address.toLowerCase()}
-                />
-              ))
-            ) : searchQuery ? (
+            {isLoading ? (
+              <div className={styles.loading}>
+                <div className={styles.spinner} />
+                <p>Loading tokens...</p>
+              </div>
+            ) : error ? (
+              <div className={styles.error}>
+                <p>{error}</p>
+                <button onClick={loadLifiTokens} className={styles.retryButton}>
+                  Try Again
+                </button>
+              </div>
+            ) : displayTokens.length === 0 ? (
               <div className={styles.noResults}>
-                No tokens found for "{searchQuery}"
+                {searchQuery 
+                  ? 'No tokens found' 
+                  : selectedChain !== 'all' 
+                    ? `No tokens loaded for ${CHAIN_INFO[selectedChain]?.name || 'this chain'} yet`
+                    : 'No tokens available'}
               </div>
             ) : (
-              <div className={styles.noResults}>
-                No tokens available
-              </div>
+              displayTokens.map((token) => {
+                const isSelected = selectedToken?.address.toLowerCase() === token.address.toLowerCase() && 
+                                  selectedToken?.chainId === token.chainId;
+                const isOtherToken = otherToken?.address.toLowerCase() === token.address.toLowerCase() && 
+                                     otherToken?.chainId === token.chainId;
+                
+                return (
+                  <button
+                    key={`${token.chainId}-${token.address}`}
+                    className={`${styles.tokenRow} ${isSelected ? styles.selected : ''} ${isOtherToken ? styles.disabled : ''}`}
+                    onClick={() => !isOtherToken && handleTokenSelect(token)}
+                    disabled={isOtherToken}
+                  >
+                    <div className={styles.tokenLeft}>
+                      <img 
+                        src={token.logoURI || '/fallback.svg'} 
+                        alt={token.symbol}
+                        className={styles.tokenIcon}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/fallback.svg';
+                        }}
+                      />
+                      <div className={styles.tokenInfo}>
+                        <div className={styles.tokenSymbol}>{token.symbol}</div>
+                        <div className={styles.tokenName}>{token.name}</div>
+                      </div>
+                    </div>
+                    <div className={styles.tokenRight}>
+                      <div className={styles.chainBadge}>
+                        {CHAIN_INFO[token.chainId]?.logo} {CHAIN_INFO[token.chainId]?.name || `Chain ${token.chainId}`}
+                      </div>
+                      {isOtherToken && (
+                        <div className={styles.selectedBadge}>Selected</div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })
             )}
           </div>
         </div>
-
-        {/* Import token */}
-        {showImport && (
-          <div className={styles.section}>
-            <div className={styles.importContainer}>
-              <div className={styles.importHeader}>
-                <span>⚠️ Token not found</span>
-              </div>
-              <p className={styles.importText}>
-                This token is not in our list. You can import it by pasting the contract address.
-              </p>
-              <div className={styles.importInputContainer}>
-                <input
-                  type="text"
-                  placeholder="0x..."
-                  value={importAddress}
-                  onChange={(e) => setImportAddress(e.target.value)}
-                  className={styles.importInput}
-                />
-                <button
-                  onClick={handleImportToken}
-                  disabled={!importAddress.trim() || isLoading}
-                  className={styles.importButton}
-                >
-                  {isLoading ? 'Importing...' : 'Import'}
-                </button>
-              </div>
-            </div>
+        
+        {/* Token count */}
+        <div className={styles.footer}>
+          <div className={styles.tokenCount}>
+            {displayTokens.length} tokens {selectedChain !== 'all' && `on ${CHAIN_INFO[selectedChain]?.name}`}
           </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-interface TokenRowProps {
-  token: Token;
-  onSelect: (token: Token) => void;
-  isSelected: boolean;
-  isDisabled: boolean;
-}
-
-const TokenRow: React.FC<TokenRowProps> = ({ 
-  token, 
-  onSelect, 
-  isSelected, 
-  isDisabled 
-}) => {
-  const handleClick = () => {
-    if (!isDisabled) {
-      onSelect(token);
-    }
-  };
-
-  return (
-    <div 
-      className={`${
-        styles.tokenRow
-      } ${
-        isSelected ? styles.selected : ''
-      } ${
-        isDisabled ? styles.disabled : ''
-      }`}
-      onClick={handleClick}
-    >
-      <div className={styles.tokenInfo}>
-        <img 
-          src={token.logoURI || '/images/fallback-token.png'}
-          alt={token.symbol}
-          className={styles.tokenIcon}
-          onError={(e) => {
-            const img = e.target as HTMLImageElement;
-            if (!img.src.endsWith('/images/fallback-token.png')) {
-              img.src = '/images/fallback-token.png';
-            }
-          }}
-        />
-        <div className={styles.tokenDetails}>
-          <div className={styles.tokenSymbol}>{token.symbol}</div>
-          <div className={styles.tokenName}>{token.name}</div>
         </div>
-      </div>
-      
-      <div className={styles.tokenMeta}>
-        {token.extensions?.verified && (
-          <span className={styles.verifiedBadge} title="Verified token">
-            ✓
-          </span>
-        )}
-        {isSelected && (
-          <span className={styles.selectedBadge}>✓</span>
-        )}
       </div>
     </div>
   );

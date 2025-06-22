@@ -1,20 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import styles from "./SwapWidget.module.css";
-import CountdownTimer from "./CountdownTimer"; // adjust path as needed
+import type { Quote } from "../types/wallet";
 
 interface QuoteSummaryProps {
   buyToken: string;
-  sellToken: string; // Added sellToken prop
-  sellAmount: string; // Added sellAmount prop
-  buyAmount: string; // Added buyAmount prop
-  minReceived: string; // Added minReceived prop
-  slippageTolerance: string; // Added slippageTolerance prop
-  priceImpactAmount: string; // Added priceImpactAmount prop
-  lpFeeAmount: string; // Added lpFeeAmount prop
-  slippageAmount: string; // Added slippageAmount prop
-  quote: any; // Added quote prop
-  validTo: number; // Added validTo prop for countdown timer
+  sellToken: string;
+  sellAmount: string;
+  buyAmount: string;
+  minReceived: string;
+  slippageTolerance: string;
+  priceImpactAmount: string;
+  lpFeeAmount: string;
+  slippageAmount: string;
+  quote: Quote | null;
+  validTo: number;
 }
 
 const QuoteSummary: React.FC<QuoteSummaryProps> = ({
@@ -37,10 +37,6 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
     minReceived: "0",
   });
 
-  const [secondsLeft, setSecondsLeft] = useState(() =>
-    Math.max(0, validTo - Math.floor(Date.now() / 1000))
-  );
-
   useEffect(() => {
     // Use the props passed from parent instead of making API call
     setQuoteData({
@@ -50,69 +46,189 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
       minReceived: minReceived || "0",
     });
   }, [lpFeeAmount, slippageAmount, priceImpactAmount, minReceived]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSecondsLeft(Math.max(0, validTo - Math.floor(Date.now() / 1000)));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [validTo]);
-  // Safely format values from wei to human-readable format
-  const safeBigNumber = (val: any) => {
-    try {
-      return val ? ethers.getBigInt(val) : ethers.getBigInt("0");
-    } catch {
-      return ethers.getBigInt("0");
-    }
-  };
-
-  const formattedLpFee = ethers.formatUnits(safeBigNumber(quoteData.lpFee), 18);
-  const formattedSlippage = ethers.formatUnits(safeBigNumber(quoteData.slippage), 18);
-  const formattedPriceImpact = ethers.formatUnits(safeBigNumber(quoteData.priceImpact), 18);
-  const formattedMinReceived = ethers.formatUnits(safeBigNumber(quoteData.minReceived), 18);
-
-  // Format secondsLeft as mm:ss
-  const minutes = Math.floor(secondsLeft / 60);
-  const seconds = secondsLeft % 60;
+  // Values are already formatted as decimal strings, no need to convert from wei
+  const formattedLpFee = parseFloat(quoteData.lpFee).toFixed(6);
+  const formattedSlippage = parseFloat(quoteData.slippage).toFixed(6);
+  const formattedPriceImpact = parseFloat(quoteData.priceImpact).toFixed(6);
+  const formattedMinReceived = parseFloat(quoteData.minReceived).toFixed(6);
 
   return (
     <div
       style={{
-        fontFamily: "'Inter', sans-serif",
-        background: "#f6f8fa",
-        borderRadius: 16,
-        padding: "18px 20px",
-        margin: "24px 0 12px 0",
-        boxShadow: "0 2px 12px 0 rgba(31,35,40,0.06)",
-        fontSize: "1.05rem",
-        color: "#181a20",
-        maxWidth: 380,
-        marginLeft: "auto",
-        marginRight: "auto",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+        background: "rgba(255, 255, 255, 0.02)",
+        borderRadius: 12,
+        padding: "16px",
+        margin: "0",
+        boxShadow: "none",
+        fontSize: "14px",
+        color: "#ffffff",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-        <span>LP Fee</span>
-        <span>{formattedLpFee} {buyToken}</span>
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-        <span>Slippage</span>
-        <span>{formattedSlippage}</span>
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-        <span>Price Impact</span>
-        <span>{formattedPriceImpact}</span>
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, color: "#2563eb" }}>
-        <span>Min Received</span>
-        <span>{formattedMinReceived} {buyToken}</span>
-      </div>
-      <div style={{ marginTop: 12, fontSize: "0.9rem", color: "#666" }}>
-        <span>
-          {minutes}:{seconds.toString().padStart(2, "0")} left
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "space-between", 
+        alignItems: "center",
+        marginBottom: 12,
+        paddingBottom: 12,
+        borderBottom: "1px solid rgba(255,255,255,0.08)"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ 
+            width: 4, 
+            height: 4, 
+            borderRadius: "50%", 
+            background: "#10b981" 
+          }} />
+          <span style={{ 
+            color: "#ffffff", 
+            fontSize: "13px",
+            fontWeight: 500,
+            letterSpacing: "0.02em"
+          }}>
+            LP Fee (0.3%)
+          </span>
+        </div>
+        <span style={{ 
+          fontSize: "13px",
+          fontWeight: 500,
+          color: "#ffffff"
+        }}>
+          {formattedLpFee} {sellToken}
         </span>
       </div>
-      {quote?.validTo && <CountdownTimer seconds={Math.max(0, Math.floor((quote.validTo - Date.now()) / 1000))} />}
+      
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "space-between",
+        alignItems: "center", 
+        marginBottom: 12 
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ 
+            width: 4, 
+            height: 4, 
+            borderRadius: "50%", 
+            background: "#3b82f6" 
+          }} />
+          <span style={{ 
+            color: "#ffffff", 
+            fontSize: "13px",
+            fontWeight: 500,
+            letterSpacing: "0.02em"
+          }}>
+            Max Slippage ({slippageTolerance}%)
+          </span>
+        </div>
+        <span style={{ 
+          fontSize: "13px",
+          fontWeight: 500,
+          color: "#ffffff"
+        }}>
+          {formattedSlippage} {sellToken}
+        </span>
+      </div>
+      
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "space-between",
+        alignItems: "center", 
+        marginBottom: 12 
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ 
+            width: 4, 
+            height: 4, 
+            borderRadius: "50%", 
+            background: parseFloat(formattedPriceImpact) > 0.05 ? "#ef4444" : "#10b981" 
+          }} />
+          <span style={{ 
+            color: "#ffffff", 
+            fontSize: "13px",
+            fontWeight: 500,
+            letterSpacing: "0.02em"
+          }}>
+            Price Impact
+          </span>
+        </div>
+        <span style={{ 
+          fontSize: "13px",
+          fontWeight: 500,
+          color: parseFloat(formattedPriceImpact) > 0.05 ? "#ef4444" : "#10b981"
+        }}>
+          {(parseFloat(formattedPriceImpact) * 100).toFixed(2)}%
+        </span>
+      </div>
+      
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingTop: 12,
+        borderTop: "1px solid rgba(255,255,255,0.08)",
+      }}>
+        <span style={{
+          fontSize: "14px",
+          fontWeight: 600,
+          color: "#ffffff",
+          display: "flex",
+          alignItems: "center",
+          gap: 6
+        }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path 
+              d="M8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5Z" 
+              stroke="#ffffff" 
+              strokeWidth="1.5"
+            />
+            <path 
+              d="M5.5 8L7 9.5L10.5 6" 
+              stroke="#ffffff" 
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Minimum Received
+        </span>
+        <span style={{
+          fontSize: "14px",
+          fontWeight: 600,
+          color: "#ffffff",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis"
+        }}>
+          {formattedMinReceived} {buyToken}
+        </span>
+      </div>
+      
+      {quote?.source && (
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 12,
+          padding: "8px 12px",
+          background: "rgba(59, 130, 246, 0.05)",
+          borderRadius: 8
+        }}>
+          <span style={{ 
+            color: "#ffffff", 
+            fontSize: "12px",
+            fontWeight: 500
+          }}>
+            Route
+          </span>
+          <span style={{ 
+            fontSize: "12px",
+            fontWeight: 500,
+            color: "#3b82f6"
+          }}>
+            {quote.source}
+          </span>
+        </div>
+      )}
     </div>
   );
 };

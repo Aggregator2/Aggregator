@@ -1,0 +1,25 @@
+{
+  "fetchedAt": "2025-06-21T00:37:35.058Z",
+  "apis": [
+    {
+      "name": "0x",
+      "url": "https://api.0x.org/swap/v1/tokens",
+      "file": "0x-ethereum-tokens.json"
+    },
+    {
+      "name": "Jupiter",
+      "url": "https://token.jup.ag/all",
+      "file": "jupiter-solana-tokens.json"
+    },
+    {
+      "name": "OpenOcean BSC",
+      "url": "https://open-api.openocean.finance/v3/bsc/tokenList",
+      "file": "openocean-bsc-tokens.json"
+    },
+    {
+      "name": "OpenOcean Ethereum",
+      "url": "https://open-api.openocean.finance/v3/eth/tokenList",
+      "file": "openocean-ethereum-tokens.json"
+    }
+  ]
+}

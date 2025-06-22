@@ -6,18 +6,42 @@ import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import styles from '../components/homepage.module.css';
 import { isOrderArray } from '../types/wallet';
+import Link from 'next/link';
 
 // Use Trust Wallet background with theme switching
 import TrustWalletBackground from '../src/components/TrustWalletBackground';
 
 export default function Home() {
   const [userAddress, setUserAddress] = useState('');
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState([
+    // Add some test orders for development
+    {
+      id: '1',
+      status: 'filled',
+      timestamp: new Date(Date.now() - 2 * 60 * 1000), // 2 minutes ago
+      sellToken: 'ETH',
+      buyToken: 'USDC',
+      sellAmount: '1.5',
+      buyAmount: '3000',
+      txHash: '0x123...abc'
+    },
+    {
+      id: '2',
+      status: 'pending',
+      timestamp: new Date(Date.now() - 1 * 60 * 1000), // 1 minute ago
+      sellToken: 'USDC',
+      buyToken: 'DAI',
+      sellAmount: '1000',
+      buyAmount: '999.5',
+      txHash: undefined
+    }
+  ]);
   const [toastMessage, setToastMessage] = useState('');
   const [retryCount, setRetryCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  // Use relative URL to work with any port
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
   const url = `${API_BASE_URL}/api/orders`;
 
   useEffect(() => {
@@ -117,35 +141,37 @@ export default function Home() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // Example: expects SwapWidget to call this with an order object
-  const handleSubmitOrder = async (order) => {
+  // Handle EIP-712 signed orders from SwapWidget
+  const handleSubmitOrder = async (signedOrderData) => {
     try {
-      const { ethers } = await import('ethers');
-      const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-      const signer = provider.getSigner();
-
-      const encoded = ethers.utils.defaultAbiCoder.encode(
-        ['string', 'string', 'uint256', 'uint256', 'uint256', 'address', 'string'],
-        [
-          order.sellToken,
-          order.buyToken,
-          order.sellAmount,
-          order.buyAmount,
-          order.validTo,
-          order.user,
-          order.side,
-        ]
-      );
-      const hash = ethers.utils.keccak256(encoded);
-      const signature = await signer.signMessage(ethers.utils.arrayify(hash));
-      const signedOrder = { ...order, signature };
-
-      const url = `${API_BASE_URL}/api/orders`;
+      // SwapWidget already provides the signed order with signature
+      const { order, signature } = signedOrderData;
+      
+      // Submit to the proper solver endpoint
+      const url = `${API_BASE_URL}/api/submitOrder`;
+      console.log('Submitting order to solver:', url);
+      console.log('Order data:', order);
+      console.log('Signature:', signature);
+      
+      // Send order and signature separately as the API expects
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(signedOrder),
+        body: JSON.stringify({ order, signature }),
       });
+      
+      if (!response.ok) {
+        let errorMessage = 'Unknown error';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || response.statusText;
+        } catch {
+          errorMessage = await response.text() || response.statusText;
+        }
+        console.error('Order submission failed:', response.status, errorMessage);
+        throw new Error(`Failed to submit order: ${errorMessage}`);
+      }
+      
       const result = await response.json();
 
       // Show different toast messages based on API response status
@@ -221,6 +247,6 @@ SwapWidget.propTypes = {
     sellAmount: PropTypes.string.isRequired,
     buyAmount: PropTypes.string.isRequired,
     user: PropTypes.string,
-    side: PropTypes.string
+    kind: PropTypes.string
   }))
 };

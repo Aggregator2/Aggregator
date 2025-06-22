@@ -1,0 +1,239 @@
+{
+  "timestamp": "2025-06-21T15:43:01.565Z",
+  "summary": {
+    "totalTests": 33,
+    "passed": 0,
+    "failed": 33
+  },
+  "results": [
+    {
+      "test": "Token Pair Quote",
+      "pair": "ETH → USDC (Ethereum)",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Token Pair Quote",
+      "pair": "USDC → USDT (Stables)",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Token Pair Quote",
+      "pair": "ETH → WBTC (Major)",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Token Pair Quote",
+      "pair": "ROPE → ETH (Weird token)",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Token Pair Quote",
+      "pair": "SHIB → USDC (Meme)",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Token Pair Quote",
+      "pair": "DAI → USDC (Stables)",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Token Pair Quote",
+      "pair": "UNI → AAVE (DeFi)",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Token Pair Quote",
+      "pair": "LINK → ETH",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Token Pair Quote",
+      "pair": "MATIC → USDC (Polygon)",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Token Pair Quote",
+      "pair": "ETH → ARB (Arbitrum)",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Real-Time Updates",
+      "success": false,
+      "message": "Quotes not proportional"
+    },
+    {
+      "test": "Amount Range",
+      "amount": "$1",
+      "success": false,
+      "precision": 0,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Amount Range",
+      "amount": "$10",
+      "success": false,
+      "precision": 0,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Amount Range",
+      "amount": "$100",
+      "success": false,
+      "precision": 0,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Amount Range",
+      "amount": "$1,000",
+      "success": false,
+      "precision": 0,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Amount Range",
+      "amount": "$10,000",
+      "success": false,
+      "precision": 0,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Amount Range",
+      "amount": "$100,000",
+      "success": false,
+      "precision": 0,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Slippage Setting",
+      "slippage": "0.1%",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Slippage Setting",
+      "slippage": "0.5%",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Slippage Setting",
+      "slippage": "1%",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Slippage Setting",
+      "slippage": "3%",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Cross-Chain Quote",
+      "pair": "ETH (Ethereum) → MATIC (Polygon)",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Cross-Chain Quote",
+      "pair": "USDC (Ethereum) → USDC (Polygon)",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Cross-Chain Quote",
+      "pair": "MATIC (Polygon) → ETH (Arbitrum)",
+      "success": false,
+      "quote": null,
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Gas Estimate",
+      "pair": "Simple swap",
+      "success": false,
+      "reasonable": false
+    },
+    {
+      "test": "Gas Estimate",
+      "pair": "Multi-hop swap",
+      "success": false,
+      "reasonable": false
+    },
+    {
+      "test": "Gas Estimate",
+      "pair": "Complex route",
+      "success": false,
+      "reasonable": false
+    },
+    {
+      "test": "Route Visualization",
+      "pair": "ROPE → WBTC",
+      "success": false,
+      "route": "No route info",
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Route Visualization",
+      "pair": "SHIB → DAI",
+      "success": false,
+      "route": "No route info",
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "Route Visualization",
+      "pair": "AAVE → LINK",
+      "success": false,
+      "route": "No route info",
+      "error": "connect ECONNREFUSED 127.0.0.1:3000"
+    },
+    {
+      "test": "DEX Price Comparison",
+      "pair": "ethereum.ETH → ethereum.USDC",
+      "success": false,
+      "details": {
+        "optimized": false
+      }
+    },
+    {
+      "test": "DEX Price Comparison",
+      "pair": "ethereum.USDC → ethereum.DAI",
+      "success": false,
+      "details": {
+        "optimized": false
+      }
+    },
+    {
+      "test": "DEX Price Comparison",
+      "pair": "ethereum.ETH → ethereum.WBTC",
+      "success": false,
+      "details": {
+        "optimized": false
+      }
+    }
+  ]
+}

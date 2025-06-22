@@ -1,4 +1,4 @@
-import { Token } from '../../types/wallet';
+import { Token, TokenType } from '../types/token';
 
 export interface CoinGeckoToken {
   id: string;
@@ -76,7 +76,22 @@ class CoinGeckoService {
 
       if (!response.ok) {
         if (response.status === 429) {
-          throw new Error('Rate limit exceeded. Please upgrade to CoinGecko Pro API.');
+          console.warn('CoinGecko rate limit exceeded, falling back to metadata-only mode');
+          // Don't throw error, return cached data or empty data
+          const cached = this.cache.get(cacheKey);
+          if (cached) {
+            console.log('Returning cached data due to rate limit');
+            return cached.data;
+          }
+          // Return empty data structure based on URL
+          if (url.includes('/coins/markets')) {
+            return [];
+          } else if (url.includes('/search')) {
+            return { coins: [] };
+          } else if (url.includes('/coins/list')) {
+            return [];
+          }
+          return null;
         }
         throw new Error(`CoinGecko API error: ${response.statusText}`);
       }
@@ -118,7 +133,7 @@ class CoinGeckoService {
             id: token.id,
             symbol: token.symbol,
             name: token.name,
-            platforms: platformData?.platforms || {},
+            platforms: (platformData as any)?.platforms || {},
             image: token.image,
             market_cap_rank: token.market_cap_rank,
             current_price: token.current_price
@@ -203,7 +218,7 @@ class CoinGeckoService {
           chainId: chainId,
           type: this.getTokenType(chainId),
           decimals: 18, // Default, should be fetched from contract
-          logoURI: cgToken.image?.large || cgToken.image?.small || cgToken.image?.thumb,
+          logoURI: cgToken.image?.large || cgToken.image?.small || cgToken.image?.thumb || '',
           tags: ['coingecko'],
           extensions: {
             coingeckoId: cgToken.id,
@@ -218,15 +233,15 @@ class CoinGeckoService {
     return tokens;
   }
 
-  private getTokenType(chainId: number): string {
-    const typeMap: Record<number, string> = {
+  private getTokenType(chainId: number): TokenType {
+    const typeMap: Record<number, TokenType> = {
       1: 'ERC-20',
       56: 'BEP-20',
       137: 'ERC-20',
-      43114: 'ARC-20',
+      43114: 'ERC-20',
       42161: 'ERC-20',
       10: 'ERC-20',
-      250: 'FTM-20',
+      250: 'ERC-20',
       195: 'TRC-20',
       101: 'SPL'
     };

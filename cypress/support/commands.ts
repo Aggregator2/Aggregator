@@ -1,4 +1,4 @@
-/// <reference types="cypress" />
+// Cypress commands file
 // ***********************************************
 // This example commands.ts shows you how to
 // create various custom commands and overwrite

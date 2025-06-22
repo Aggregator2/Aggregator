@@ -1,0 +1,268 @@
+{
+  "timestamp": "2025-06-21T15:52:12.919Z",
+  "summary": {
+    "total": 33,
+    "passed": 3,
+    "failed": 30
+  },
+  "categories": {
+    "Token Pair": {
+      "passed": 3,
+      "failed": 7
+    },
+    "Amount $1": {
+      "passed": 0,
+      "failed": 1
+    },
+    "Amount $10": {
+      "passed": 0,
+      "failed": 1
+    },
+    "Amount $100": {
+      "passed": 0,
+      "failed": 1
+    },
+    "Amount $1000": {
+      "passed": 0,
+      "failed": 1
+    },
+    "Amount $10000": {
+      "passed": 0,
+      "failed": 1
+    },
+    "Amount $100000": {
+      "passed": 0,
+      "failed": 1
+    },
+    "Slippage 0.1%": {
+      "passed": 0,
+      "failed": 1
+    },
+    "Slippage 0.5%": {
+      "passed": 0,
+      "failed": 1
+    },
+    "Slippage 1%": {
+      "passed": 0,
+      "failed": 1
+    },
+    "Slippage 3%": {
+      "passed": 0,
+      "failed": 1
+    },
+    "Slippage 5%": {
+      "passed": 0,
+      "failed": 1
+    },
+    "Cross-chain": {
+      "passed": 0,
+      "failed": 3
+    },
+    "Gas estimate": {
+      "passed": 0,
+      "failed": 3
+    },
+    "Route info": {
+      "passed": 0,
+      "failed": 3
+    },
+    "DEX comparison": {
+      "passed": 0,
+      "failed": 3
+    }
+  },
+  "details": [
+    {
+      "test": "Token Pair: ETH → USDC",
+      "success": true,
+      "data": {
+        "buyAmount": "3489500000000000000000",
+        "sources": [
+          {
+            "name": "fallback",
+            "proportion": "1"
+          }
+        ],
+        "gas": "N/A"
+      }
+    },
+    {
+      "test": "Token Pair: USDC → USDT (Stables)",
+      "success": true,
+      "data": {
+        "buyAmount": "997000000",
+        "sources": [
+          {
+            "name": "fallback",
+            "proportion": "1"
+          }
+        ],
+        "gas": "N/A"
+      }
+    },
+    {
+      "test": "Token Pair: ETH → WBTC",
+      "success": true,
+      "data": {
+        "buyAmount": "997000000000000000",
+        "sources": [
+          {
+            "name": "fallback",
+            "proportion": "1"
+          }
+        ],
+        "gas": "N/A"
+      }
+    },
+    {
+      "test": "Token Pair: ROPE → ETH (Weird token)",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Token Pair: KNC → USDC (Weird token)",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Token Pair: SHIB → USDC (Meme)",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Token Pair: DAI → USDC (Stables)",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Token Pair: UNI → LINK (DeFi)",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Token Pair: MATIC → USDC (Polygon)",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Token Pair: ETH → DAI",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Amount $1",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Amount $10",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Amount $100",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Amount $1000",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Amount $10000",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Amount $100000",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Slippage 0.1%",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Slippage 0.5%",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Slippage 1%",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Slippage 3%",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Slippage 5%",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Cross-chain: ETH (Ethereum) → MATIC (Polygon)",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Cross-chain: USDC (Ethereum) → USDC (Polygon)",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Cross-chain: MATIC (Polygon) → ETH (Ethereum)",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Gas estimate: Simple swap",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Gas estimate: Multi-hop swap",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Gas estimate: Complex route",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Route info: ROPE → WBTC",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Route info: SHIB → DAI",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "Route info: KNC → LINK",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "DEX comparison: WETH → USDC",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "DEX comparison: USDC → DAI",
+      "success": false,
+      "message": "Request failed with status code 500"
+    },
+    {
+      "test": "DEX comparison: WETH → WBTC",
+      "success": false,
+      "message": "Request failed with status code 500"
+    }
+  ]
+}

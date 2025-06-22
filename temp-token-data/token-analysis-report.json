@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2025-06-21T00:40:07.228Z",
+  "summary": {
+    "jupiterFormat": "address (mint), symbol, name, decimals, logoURI, chainId",
+    "openOceanFormat": "address, symbol, name, decimals, icon, chainId",
+    "coinGeckoFormat": "address, symbol, name, decimals, logoURI, chainId",
+    "notes": [
+      "Jupiter uses \"address\" field for Solana mint addresses",
+      "OpenOcean wraps tokens in a \"data\" array",
+      "CoinGecko wraps tokens in a \"tokens\" array",
+      "0x API does not provide a direct token list endpoint"
+    ]
+  }
+}

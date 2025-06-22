@@ -35,33 +35,65 @@ export default async function handler(req, res) {
 
   const { order, signature } = req.body;
 
+  console.log("📦 Received order submission:", {
+    order: order,
+    signature: signature ? `${signature.substring(0, 10)}...` : "missing",
+    hasOrder: !!order,
+    hasSignature: !!signature
+  });
+
   if (!order || !signature) {
     return res.status(400).json({ error: "Missing order or signature" });
   }
 
+  // Ensure numeric fields are strings for EIP-712
+  const orderForSigning = {
+    ...order,
+    sellAmount: order.sellAmount.toString(),
+    buyAmount: order.buyAmount.toString(),
+    validTo: parseInt(order.validTo),
+    feeAmount: order.feeAmount.toString(),
+    nonce: parseInt(order.nonce || 0),
+  };
+
   // Verify taker signature (EIP-712)
   let recovered;
   try {
-    recovered = ethers.verifyTypedData(domain, types, order, signature);
+    console.log("🔐 Verifying EIP-712 signature...");
+    console.log("Domain:", domain);
+    console.log("Order for signing:", orderForSigning);
+    recovered = ethers.verifyTypedData(domain, types, orderForSigning, signature);
+    console.log("✅ Recovered address:", recovered);
   } catch (err) {
     console.error("❌ Taker signature verification threw:", err);
-    return res.status(400).json({ error: "Taker signature verification failed" });
+    console.error("Error details:", err.message);
+    console.error("Order data that failed:", orderForSigning);
+    return res.status(400).json({ error: `Taker signature verification failed: ${err.message}` });
   }
 
-  const isValid = recovered.toLowerCase() === order.user.toLowerCase();
+  const isValid = recovered.toLowerCase() === orderForSigning.user.toLowerCase();
 
   if (!isValid) {
+    console.error("❌ Signature mismatch!");
+    console.error("Expected (order.user):", orderForSigning.user.toLowerCase());
+    console.error("Recovered from signature:", recovered.toLowerCase());
     return res.status(400).json({ error: "Invalid taker signature" });
   }
 
+  const orderId = Date.now().toString();
+  
   addSettledOrder({
     order,
     signature,
+    orderId,
     settledAt: Date.now(),
   });
+
+  console.log(`✅ Order ${orderId} validated and settled (simulated)`);
 
   return res.status(200).json({
     status: "settled_offchain",
     message: "Order fully matched and settled (simulated).",
+    orderId: orderId,
   });
 }

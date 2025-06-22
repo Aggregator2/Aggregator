@@ -32,7 +32,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
             
             console.log('Order stored:', orderWithMetadata.id);
-            return res.status(200).json({ ok: true, orderId: orderWithMetadata.id });
+            
+            // Return response matching what the frontend expects
+            return res.status(200).json({ 
+                ok: true, 
+                orderId: orderWithMetadata.id,
+                status: 'settled_offchain', // Simulate off-chain settlement
+                message: 'Order submitted successfully'
+            });
         } else {
             res.setHeader('Allow', ['GET', 'POST']);
             return res.status(405).json({ error: `Method ${req.method} Not Allowed` });

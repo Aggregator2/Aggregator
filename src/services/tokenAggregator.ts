@@ -1,4 +1,4 @@
-import { Token } from '../types/token';
+import { Token, TokenType } from '../types/token';
 import { logger } from '../utils/logger';
 
 // Token list sources for different chains
@@ -204,13 +204,13 @@ export class TokenAggregator {
     return 1;
   }
 
-  getTokenType(chainId: number, tokenData: any): string {
+  getTokenType(chainId: number, tokenData: any): TokenType {
     // Determine token standard based on chain
     switch (chainId) {
       case 1: // Ethereum
       case 42161: // Arbitrum
       case 10: // Optimism
-        return tokenData.type || 'ERC-20';
+        return (tokenData.type as TokenType) || 'ERC-20';
       case 56: // BSC
         return 'BEP-20';
       case 137: // Polygon
@@ -218,9 +218,9 @@ export class TokenAggregator {
       case 101: // Solana
         return 'SPL';
       case 43114: // Avalanche
-        return 'ARC-20';
+        return 'ERC-20';
       case 250: // Fantom
-        return 'FTM-20';
+        return 'ERC-20';
       case 1001: // Tron
         return 'TRC-20';
       default:

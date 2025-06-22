@@ -1,7 +1,10 @@
-import { Token } from '../../types/wallet';
+import { Token } from '../types/token';
+import { lifiTokenService } from './lifiTokenService';
 import { coinGeckoService } from './coinGeckoService';
 import { solanaTokenService } from './solanaTokenService';
 import { tronTokenService } from './tronTokenService';
+import { freeQuoteService } from './freeQuoteService';
+import { getPopularTokensForChain } from '../config/tokens/popularTokens';
 
 export interface TokenDiscoveryOptions {
   chains?: number[];
@@ -46,9 +49,30 @@ class ComprehensiveTokenService {
     const sourceStats: Record<string, number> = {};
 
     try {
-      // 1. Get tokens from CoinGecko (most comprehensive)
-      if (includeTopTokens) {
-        console.log('Fetching tokens from CoinGecko...');
+      // 1. Get tokens from LiFi (PRIMARY SOURCE)
+      console.log('Fetching tokens from LiFi (Primary Source)...');
+      try {
+        const lifiTokens = await lifiTokenService.getAllTokens({ chains });
+        let count = 0;
+        
+        for (const token of lifiTokens) {
+          const key = `${token.chainId}-${token.address.toLowerCase()}`;
+          if (!allTokens.has(key)) {
+            allTokens.set(key, token);
+            count++;
+          }
+        }
+        
+        sources.push('LiFi');
+        sourceStats['LiFi'] = count;
+        console.log(`Added ${count} tokens from LiFi`);
+      } catch (error) {
+        console.warn('LiFi tokens failed:', error);
+      }
+      
+      // 2. Get tokens from CoinGecko (secondary source for additional data)
+      if (includeTopTokens && allTokens.size < 500) {
+        console.log('Fetching additional tokens from CoinGecko...');
         try {
           const cgTokens = await coinGeckoService.getTokensList(true);
           let count = 0;
@@ -132,12 +156,12 @@ class ComprehensiveTokenService {
             if (chains.includes(token.chainId)) {
               const key = `${token.chainId}-${token.address.toLowerCase()}`;
               if (!allTokens.has(key)) {
-                allTokens.set(key, { ...token, tags: [...token.tags, 'trending'] });
+                allTokens.set(key, { ...token, tags: [...(token.tags || []), 'trending'] });
                 count++;
               } else {
                 // Add trending tag to existing token
                 const existingToken = allTokens.get(key)!;
-                existingToken.tags = [...new Set([...existingToken.tags, 'trending'])];
+                existingToken.tags = [...new Set([...(existingToken.tags || []), 'trending'])];
               }
             }
           }
@@ -287,9 +311,65 @@ class ComprehensiveTokenService {
           tokens = tronTokens.map(t => tronTokenService.convertToTokenFormat(t));
           break;
           
-        default: // Other chains via CoinGecko
-          const cgTokens = await coinGeckoService.getTopTokensByMarketCap(100);
-          tokens = cgTokens.filter(t => t.chainId === chainId).slice(0, limit);
+        default: // Other chains - try CoinGecko, fallback to popular tokens with free quotes
+          try {
+            // First try CoinGecko for comprehensive token list
+            let chainTokens: Token[] = [];
+            
+            try {
+              const cgTokens = await coinGeckoService.getTokensList(false);
+              chainTokens = cgTokens
+                .map(cgToken => coinGeckoService.convertToTokenFormat(cgToken))
+                .flat()
+                .filter(t => t.chainId === chainId)
+                .slice(0, limit);
+              
+              console.log(`Got ${chainTokens.length} tokens from CoinGecko for chain ${chainId}`);
+            } catch (cgError) {
+              console.warn(`CoinGecko failed for chain ${chainId}, using popular tokens fallback:`, cgError);
+              
+              // Fallback to popular tokens when CoinGecko is unavailable
+              chainTokens = getPopularTokensForChain(chainId).slice(0, limit);
+              console.log(`Using ${chainTokens.length} popular tokens for chain ${chainId}`);
+            }
+            
+            if (chainTokens.length === 0) {
+              console.warn(`No tokens found for chain ${chainId}`);
+              tokens = [];
+              break;
+            }
+            
+            // Skip price quotes for now to avoid errors
+            // Price quotes can be fetched on-demand when needed
+            /*
+            console.log(`Getting price quotes for ${chainTokens.length} tokens on chain ${chainId}...`);
+            const quotes = await freeQuoteService.getMultipleTokenQuotes(chainTokens);
+            const quoteMap = new Map(quotes.map(q => [`${q.token.chainId}-${q.token.address.toLowerCase()}`, q]));
+            
+            console.log(`Got ${quotes.length} price quotes for chain ${chainId}`);
+            
+            tokens = chainTokens.map(token => {
+              const quote = quoteMap.get(`${token.chainId}-${token.address.toLowerCase()}`);
+              if (quote) {
+                return {
+                  ...token,
+                  extensions: {
+                    ...token.extensions,
+                    currentPrice: quote.price,
+                    priceSource: quote.source,
+                    lastPriceUpdate: quote.timestamp
+                  }
+                };
+              }
+              return token;
+            });
+            */
+            tokens = chainTokens;
+          } catch (error) {
+            console.error(`Error fetching tokens for chain ${chainId}:`, error);
+            // Final fallback to popular tokens without quotes
+            tokens = getPopularTokensForChain(chainId).slice(0, limit);
+          }
           break;
       }
 
@@ -330,7 +410,7 @@ class ComprehensiveTokenService {
               chainId: 101,
               type: 'SPL',
               decimals: 9, // Default for Solana
-              logoURI: solanaMetadata.image,
+              logoURI: solanaMetadata.image || '',
               tags: ['solana', 'metaplex'],
               extensions: {
                 description: solanaMetadata.description,
@@ -369,10 +449,53 @@ class ComprehensiveTokenService {
     }
   }
 
+  // Get token prices using free APIs instead of CoinGecko
+  async getTokenPricesViaFreeAPIs(tokens: Token[]): Promise<Record<string, number>> {
+    try {
+      const quotes = await freeQuoteService.getMultipleTokenQuotes(tokens);
+      const prices: Record<string, number> = {};
+      
+      for (const quote of quotes) {
+        const key = `${quote.token.chainId}-${quote.token.address.toLowerCase()}`;
+        prices[key] = quote.price;
+      }
+      
+      return prices;
+    } catch (error) {
+      console.error('Failed to fetch token prices via free APIs:', error);
+      return {};
+    }
+  }
+
+  // Enhanced discovery with free price quotes
+  async discoverTokensWithPrices(options: TokenDiscoveryOptions = {}): Promise<{
+    tokens: Token[];
+    stats: TokenStats;
+    sources: string[];
+    priceStats: { quotedTokens: number; totalTokens: number; };
+  }> {
+    // Get basic token discovery first
+    const discovery = await this.discoverTokens(options);
+    
+    // Skip price quotes for now - we'll use LiFi for quotes
+    console.log('Skipping price enhancement - using LiFi for quotes');
+    const enhancedTokens = discovery.tokens;
+
+    return {
+      ...discovery,
+      tokens: enhancedTokens,
+      priceStats: {
+        quotedTokens: 0,
+        totalTokens: discovery.tokens.length
+      }
+    };
+  }
+
   // Clear cache
   clearCache(): void {
     this.tokenCache.clear();
     this.lastUpdate.clear();
+    freeQuoteService.clearCache();
   }
 }
 

@@ -1,0 +1,300 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { ethers } from 'ethers';
+import styles from './WalletHeader.module.css';
+import type { Order } from '../types/wallet';
+
+interface OrderWithStatus extends Omit<Order, 'status'> {
+  status: 'pending' | 'filled' | 'failed';
+  timestamp: Date;
+  txHash?: string;
+}
+
+interface WalletHeaderProps {
+  walletAddress: string | null;
+  onConnect: () => void;
+  onDisconnect: () => void;
+  orders?: OrderWithStatus[];
+}
+
+const WalletHeader: React.FC<WalletHeaderProps> = ({
+  walletAddress,
+  onConnect,
+  onDisconnect,
+  orders = []
+}) => {
+  const [showWalletDropdown, setShowWalletDropdown] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  const [balance, setBalance] = useState<string>('');
+  const [showBalance, setShowBalance] = useState(false);
+  const walletRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  // Format wallet address
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  // Copy address to clipboard
+  const copyAddress = async () => {
+    if (walletAddress) {
+      await navigator.clipboard.writeText(walletAddress);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    }
+  };
+
+  // Get current network
+  const [network, setNetwork] = useState<string>('');
+  
+  useEffect(() => {
+    if (walletAddress && window.ethereum) {
+      const getNetwork = async () => {
+        try {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const network = await provider.getNetwork();
+          setNetwork(network.name || `Chain ${network.chainId}`);
+        } catch (error) {
+          console.error('Failed to get network:', error);
+        }
+      };
+      getNetwork();
+    }
+  }, [walletAddress]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (walletRef.current && !walletRef.current.contains(event.target as Node)) {
+        setShowWalletDropdown(false);
+        setShowBalance(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Update unread count when new orders come in
+  useEffect(() => {
+    if (!showNotifications) {
+      const recentOrders = orders.filter(order => {
+        const orderTime = new Date(order.timestamp).getTime();
+        const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+        return orderTime > fiveMinutesAgo && order.status === 'pending';
+      });
+      setUnreadCount(recentOrders.length);
+    }
+  }, [orders, showNotifications]);
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'filled':
+        return '✅';
+      case 'failed':
+        return '❌';
+      case 'pending':
+        return '⏳';
+      default:
+        return '📝';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'filled':
+        return '#4caf50';
+      case 'failed':
+        return '#f44336';
+      case 'pending':
+        return '#ff9800';
+      default:
+        return '#2196f3';
+    }
+  };
+
+  return (
+    <div className={styles.walletHeader}>
+      {/* Wallet Section */}
+      <div className={styles.walletSection} ref={walletRef}>
+        {walletAddress ? (
+          <>
+            <button
+              className={`${styles.walletButton} ${showWalletDropdown ? styles.active : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowWalletDropdown(!showWalletDropdown);
+              }}
+            >
+              <div className={styles.walletInfo}>
+                <div className={styles.walletIcon}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                </div>
+                <span className={styles.walletAddress}>{formatAddress(walletAddress)}</span>
+                <svg className={styles.chevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
+
+            {showWalletDropdown && (
+              <div className={styles.dropdown}>
+                <div className={styles.dropdownHeader}>
+                  <div className={styles.networkBadge}>
+                    <div className={styles.networkDot} />
+                    {network}
+                  </div>
+                </div>
+                <div className={styles.dropdownItem}>
+                  <span className={styles.fullAddress}>{walletAddress}</span>
+                </div>
+                <button className={styles.dropdownButton} onClick={(e) => {
+                  e.stopPropagation();
+                  copyAddress();
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  {copiedAddress ? 'Copied!' : 'Copy Address'}
+                </button>
+                <button className={styles.dropdownButton} onClick={async (e) => {
+                  e.stopPropagation();
+                  if (window.ethereum && !showBalance) {
+                    setShowBalance(true);
+                    try {
+                      const provider = new ethers.BrowserProvider(window.ethereum);
+                      const balanceWei = await provider.getBalance(walletAddress);
+                      setBalance(ethers.formatEther(balanceWei));
+                    } catch (error) {
+                      console.error('Failed to get balance:', error);
+                      setBalance('Error loading balance');
+                    }
+                  }
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  View Wallet
+                </button>
+                {showBalance && (
+                  <div className={styles.balanceInfo}>
+                    <div className={styles.balanceLabel}>Balance</div>
+                    <div className={styles.balanceAmount}>{balance} ETH</div>
+                  </div>
+                )}
+                <div className={styles.dropdownDivider} />
+                <button className={styles.dropdownButton} onClick={(e) => {
+                  e.stopPropagation();
+                  onDisconnect();
+                  setShowWalletDropdown(false);
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Disconnect
+                </button>
+                <button className={styles.dropdownButton} onClick={(e) => {
+                  e.stopPropagation();
+                  onDisconnect();
+                  setTimeout(() => onConnect(), 100);
+                  setShowWalletDropdown(false);
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  Switch Wallet
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <button className={styles.connectButton} onClick={onConnect}>
+            Connect Wallet
+          </button>
+        )}
+      </div>
+
+      {/* Notifications Section */}
+      {walletAddress && (
+        <div className={styles.notificationSection} ref={notifRef}>
+          <button
+            className={`${styles.notificationButton} ${showNotifications ? styles.active : ''}`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowNotifications(!showNotifications);
+              if (!showNotifications) {
+                setUnreadCount(0);
+              }
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            {unreadCount > 0 && (
+              <span className={styles.notificationBadge}>{unreadCount}</span>
+            )}
+          </button>
+
+          {showNotifications && (
+            <div className={styles.notificationDropdown}>
+              <div className={styles.notificationHeader}>
+                <h3>Order History</h3>
+                {orders.length > 0 && (
+                  <span className={styles.orderCount}>{orders.length} orders</span>
+                )}
+              </div>
+              <div className={styles.notificationList}>
+                {orders.length === 0 ? (
+                  <div className={styles.emptyState}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" opacity="0.3">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <p>No orders yet</p>
+                  </div>
+                ) : (
+                  orders.slice(0, 10).map(order => (
+                    <div key={order.id} className={styles.notificationItem}>
+                      <div className={styles.orderStatus} style={{ color: getStatusColor(order.status) }}>
+                        {getStatusIcon(order.status)}
+                      </div>
+                      <div className={styles.orderDetails}>
+                        <div className={styles.orderTokens}>
+                          {order.sellAmount} {order.sellToken} → {order.buyAmount} {order.buyToken}
+                        </div>
+                        <div className={styles.orderMeta}>
+                          <span className={styles.orderTime}>
+                            {new Date(order.timestamp).toLocaleTimeString()}
+                          </span>
+                          {order.txHash && (
+                            <a 
+                              href={`https://etherscan.io/tx/${order.txHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={styles.txLink}
+                            >
+                              View tx →
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default WalletHeader;

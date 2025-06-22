@@ -1,4 +1,4 @@
-import { Token } from '../../types/wallet';
+import { Token } from '../types/token';
 
 export interface TronTokenInfo {
   tokenId: string;
@@ -138,7 +138,7 @@ class TronTokenService {
     try {
       const url = `${this.baseUrl}/token_trc20?sort=-market_info.volume24hInUsd&limit=${limit}&start=0&verifier=all&showAll=1`;
       const response = await this.fetchWithCache(url, 'trending_tron_tokens');
-      return response.data.filter(token => 
+      return response.data.filter((token: any) => 
         token.market_info && 
         token.market_info.volume24hInUsd > 1000
       );

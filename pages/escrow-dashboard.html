@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escrow State Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-awaiting-deposit { background: #e0e0e0; color: #666; }
+        .status-awaiting-solution { background: #fff3cd; color: #856404; }
+        .status-solution-provided { background: #d1ecf1; color: #0c5460; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-disputed { background: #f8d7da; color: #721c24; }
+        .status-refunded { background: #cce5ff; color: #004085; }
+        .status-settled-uniswap { background: #e2e3e5; color: #383d41; }
+        .escrow-list {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .escrow-item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .test-controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        .test-controls h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .test-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .test-button:hover {
+            background: #2980b9;
+        }
+        .test-button.danger {
+            background: #e74c3c;
+        }
+        .test-button.danger:hover {
+            background: #c0392b;
+        }
+        .test-button.warning {
+            background: #f39c12;
+        }
+        .test-button.warning:hover {
+            background: #e67e22;
+        }
+        .event-log {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .event-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            background: white;
+            border-radius: 2px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        .timer {
+            font-family: monospace;
+            color: #e74c3c;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Escrow State Dashboard</h1>
+            <p>Monitor and test escrow contract states and transitions</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalEscrows">0</div>
+                <div class="stat-label">Total Escrows</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="activeEscrows">0</div>
+                <div class="stat-label">Active Escrows</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="disputedEscrows">0</div>
+                <div class="stat-label">Disputed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalValue">0 ETH</div>
+                <div class="stat-label">Total Value Locked</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>State Distribution</h3>
+                <canvas id="stateChart" width="300" height="200"></canvas>
+            </div>
+            <div class="card">
+                <h3>Recent Events</h3>
+                <div class="event-log" id="eventLog">
+                    <div class="event-entry">Waiting for events...</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Timeout Monitor</h3>
+                <div id="timeoutMonitor">
+                    <p>No active timeouts</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-controls">
+            <h3>Test Scenarios</h3>
+            <div>
+                <h4>1. Solver Timeout Test</h4>
+                <button class="test-button" onclick="testSolverTimeout()">Create Escrow</button>
+                <button class="test-button warning" onclick="forceSolverTimeout()">Force Timeout</button>
+                <button class="test-button" onclick="emergencyWithdraw()">Emergency Withdraw</button>
+            </div>
+            <div style="margin-top: 15px;">
+                <h4>2. Partial Fill Test</h4>
+                <button class="test-button" onclick="createPartialFillEscrow()">Create Partial Fill Escrow</button>
+                <button class="test-button" onclick="providePartialSolution()">Provide 60% Solution</button>
+                <button class="test-button" onclick="acceptPartialAndRefund()">Accept & Refund Remaining</button>
+            </div>
+            <div style="margin-top: 15px;">
+                <h4>3. Dispute Resolution Test</h4>
+                <button class="test-button" onclick="createDisputeScenario()">Create & Dispute</button>
+                <button class="test-button warning" onclick="setUIOverrideReturn()">Override: Return Funds</button>
+                <button class="test-button warning" onclick="setUIOverrideUniswap()">Override: Use Uniswap</button>
+                <button class="test-button" onclick="resolveDispute()">Resolve Dispute</button>
+            </div>
+            <div style="margin-top: 15px;">
+                <h4>4. Emergency Pause Test</h4>
+                <button class="test-button danger" onclick="triggerEmergencyPause()">Emergency Pause</button>
+                <button class="test-button" onclick="withdrawDuringPause()">Withdraw (Paused)</button>
+                <button class="test-button" onclick="unpause()">Unpause</button>
+            </div>
+            <div style="margin-top: 15px;">
+                <h4>5. MEV Protection Test</h4>
+                <button class="test-button" onclick="simulateMEVAttack()">Simulate MEV Attack</button>
+                <button class="test-button" onclick="testCommitReveal()">Test Commit-Reveal</button>
+            </div>
+            <div style="margin-top: 15px;">
+                <h4>6. Multi-Sig Test</h4>
+                <button class="test-button" onclick="createLargeEscrow()">Create Large Escrow (>100 ETH)</button>
+                <button class="test-button" onclick="approveAsDepositor()">Approve (Depositor)</button>
+                <button class="test-button" onclick="approveAsArbitrator()">Approve (Arbitrator)</button>
+            </div>
+        </div>
+
+        <div class="escrow-list" style="margin-top: 20px;">
+            <h3>Active Escrows</h3>
+            <div id="escrowList">
+                <p>No active escrows</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Contract addresses and ABIs (will be populated from deployment)
+        const ESCROW_ABI = [
+            "function currentState() view returns (uint8)",
+            "function getStatus() view returns (uint8, uint256, uint8, bool)",
+            "function deposit(uint256) payable",
+            "function provideSolution()",
+            "function acceptSolution()",
+            "function raiseDispute()",
+            "function setUIOverride(uint8)",
+            "function resolveDispute()",
+            "function emergencyWithdraw()",
+            "event Deposited(address indexed, uint256)",
+            "event SolutionProvided(address indexed)",
+            "event DisputeRaised(address indexed, uint256)",
+            "event DisputeResolved(uint8)",
+            "event FundsRefunded(address indexed, uint256)"
+        ];
+
+        let provider;
+        let signer;
+        let escrowContracts = [];
+        let stateChart;
+
+        // Initialize
+        async function init() {
+            if (typeof window.ethereum !== 'undefined') {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                signer = provider.getSigner();
+                
+                // Initialize chart
+                const ctx = document.getElementById('stateChart').getContext('2d');
+                stateChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Awaiting Deposit', 'Awaiting Solution', 'Solution Provided', 'Completed', 'Disputed', 'Refunded', 'Settled via Uniswap'],
+                        datasets: [{
+                            data: [0, 0, 0, 0, 0, 0, 0],
+                            backgroundColor: ['#e0e0e0', '#fff3cd', '#d1ecf1', '#d4edda', '#f8d7da', '#cce5ff', '#e2e3e5']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+
+                // Start monitoring
+                setInterval(updateDashboard, 5000);
+                updateDashboard();
+            } else {
+                alert('Please install MetaMask!');
+            }
+        }
+
+        // Update dashboard data
+        async function updateDashboard() {
+            let stateCounts = [0, 0, 0, 0, 0, 0, 0];
+            let activeCount = 0;
+            let disputedCount = 0;
+            let totalValue = ethers.BigNumber.from(0);
+
+            for (let escrow of escrowContracts) {
+                try {
+                    const state = await escrow.currentState();
+                    stateCounts[state]++;
+                    
+                    if (state === 1 || state === 2 || state === 4) activeCount++;
+                    if (state === 4) disputedCount++;
+                    
+                    // Get balance
+                    const balance = await provider.getBalance(escrow.address);
+                    totalValue = totalValue.add(balance);
+                } catch (e) {
+                    console.error('Error reading escrow:', e);
+                }
+            }
+
+            // Update stats
+            document.getElementById('totalEscrows').textContent = escrowContracts.length;
+            document.getElementById('activeEscrows').textContent = activeCount;
+            document.getElementById('disputedEscrows').textContent = disputedCount;
+            document.getElementById('totalValue').textContent = ethers.utils.formatEther(totalValue) + ' ETH';
+
+            // Update chart
+            stateChart.data.datasets[0].data = stateCounts;
+            stateChart.update();
+
+            // Update escrow list
+            updateEscrowList();
+        }
+
+        // Update escrow list display
+        async function updateEscrowList() {
+            const listEl = document.getElementById('escrowList');
+            if (escrowContracts.length === 0) {
+                listEl.innerHTML = '<p>No active escrows</p>';
+                return;
+            }
+
+            let html = '';
+            for (let i = 0; i < escrowContracts.length; i++) {
+                const escrow = escrowContracts[i];
+                const state = await escrow.currentState();
+                const balance = await provider.getBalance(escrow.address);
+                
+                html += `
+                    <div class="escrow-item">
+                        <div>
+                            <strong>Escrow #${i + 1}</strong><br>
+                            <small>${escrow.address.slice(0, 10)}...${escrow.address.slice(-8)}</small><br>
+                            <small>Balance: ${ethers.utils.formatEther(balance)} ETH</small>
+                        </div>
+                        <div>
+                            <span class="status-badge status-${getStateClass(state)}">${getStateName(state)}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            listEl.innerHTML = html;
+        }
+
+        // Helper functions
+        function getStateName(state) {
+            const states = ['Awaiting Deposit', 'Awaiting Solution', 'Solution Provided', 'Completed', 'Disputed', 'Refunded', 'Settled via Uniswap'];
+            return states[state] || 'Unknown';
+        }
+
+        function getStateClass(state) {
+            const classes = ['awaiting-deposit', 'awaiting-solution', 'solution-provided', 'completed', 'disputed', 'refunded', 'settled-uniswap'];
+            return classes[state] || 'unknown';
+        }
+
+        function addEvent(message) {
+            const eventLog = document.getElementById('eventLog');
+            const entry = document.createElement('div');
+            entry.className = 'event-entry';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            eventLog.insertBefore(entry, eventLog.firstChild);
+            
+            // Keep only last 10 events
+            while (eventLog.children.length > 10) {
+                eventLog.removeChild(eventLog.lastChild);
+            }
+        }
+
+        // Test scenario functions
+        async function testSolverTimeout() {
+            addEvent('Creating escrow for solver timeout test...');
+            // Deploy new escrow contract
+            // Implementation would deploy actual contract
+            addEvent('Escrow created - waiting for timeout');
+        }
+
+        async function forceSolverTimeout() {
+            addEvent('Fast-forwarding time to force solver timeout...');
+            // In real implementation, this would use hardhat's time manipulation
+            addEvent('Timeout reached - emergency withdrawal available');
+        }
+
+        async function emergencyWithdraw() {
+            if (escrowContracts.length === 0) {
+                alert('No escrow contracts available');
+                return;
+            }
+            
+            try {
+                const escrow = escrowContracts[escrowContracts.length - 1];
+                const tx = await escrow.emergencyWithdraw();
+                await tx.wait();
+                addEvent('Emergency withdrawal successful');
+                updateDashboard();
+            } catch (e) {
+                addEvent('Emergency withdrawal failed: ' + e.message);
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

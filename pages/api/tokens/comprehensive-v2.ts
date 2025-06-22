@@ -84,11 +84,11 @@ export default async function handler(
         sources: [`Chain-${chainIdNum}-specific`]
       };
     } else {
-      // Get comprehensive token discovery
-      console.log('Getting comprehensive token discovery');
+      // Get comprehensive token discovery with free price quotes
+      console.log('Getting comprehensive token discovery with free price quotes');
       
       const chains = chainIdNum ? [chainIdNum] : undefined;
-      const discoveryResult = await comprehensiveTokenService.discoverTokens({
+      const discoveryResult = await comprehensiveTokenService.discoverTokensWithPrices({
         chains,
         includeTopTokens: includeTop,
         includeTrending: includeTrend,
@@ -100,8 +100,11 @@ export default async function handler(
       
       result = {
         tokens: paginatedTokens,
-        stats: discoveryResult.stats,
-        sources: discoveryResult.sources
+        stats: {
+          ...discoveryResult.stats,
+          priceStats: discoveryResult.priceStats
+        },
+        sources: [...discoveryResult.sources, 'Free Quote APIs']
       };
     }
 
@@ -130,8 +133,11 @@ export default async function handler(
           'real-time-search',
           'trending-tokens',
           'verified-tokens',
-          'market-data',
-          'cross-source-aggregation'
+          'free-price-quotes',
+          'cross-source-aggregation',
+          '0x-api-pricing',
+          'jupiter-pricing',
+          'paraswap-pricing'
         ]
       }
     };

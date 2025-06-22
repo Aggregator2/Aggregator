@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cross-Chain Router Test Interface</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        select:focus, input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        .route-card {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #e1e5e9;
+        }
+        .step {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .chain-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            font-size: 12px;
+            margin: 2px;
+        }
+        .badge.bridge { background: #d1ecf1; color: #0c5460; }
+        .badge.swap { background: #d4edda; color: #155724; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Cross-Chain Router Test Interface</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Test cross-chain swaps using mock data (no external API dependencies)
+        </p>
+
+        <form id="swapForm">
+            <div class="chain-selector">
+                <div class="form-group">
+                    <label for="sourceChain">Source Chain</label>
+                    <select id="sourceChain" required>
+                        <option value="">Select source chain...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="destChain">Destination Chain</label>
+                    <select id="destChain" required>
+                        <option value="">Select destination chain...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="chain-selector">
+                <div class="form-group">
+                    <label for="sourceToken">Source Token</label>
+                    <select id="sourceToken" required>
+                        <option value="">Select token...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="destToken">Destination Token</label>
+                    <select id="destToken" required>
+                        <option value="">Select token...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="amount">Amount</label>
+                <input type="number" id="amount" step="0.000001" placeholder="Enter amount..." required>
+            </div>
+
+            <div class="form-group">
+                <label for="recipient">Recipient Address</label>
+                <input type="text" id="recipient" placeholder="0x..." value="0x742d35Cc6634C0532925a3b844Bc9e7595f2bD7e" required>
+            </div>
+
+            <div class="form-group">
+                <label for="slippage">Slippage Tolerance (%)</label>
+                <input type="number" id="slippage" step="0.1" value="3" min="0.1" max="50">
+            </div>
+
+            <div style="text-align: center;">
+                <button type="button" onclick="findRoutes()">Find Routes</button>
+                <button type="button" onclick="getQuote()">Get Quote</button>
+                <button type="button" onclick="simulateSwap()">Simulate Swap</button>
+                <button type="button" onclick="loadQuickTest()">Quick Test</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        let chainConfig = {};
+        let isLoading = false;
+
+        // Load configuration on page load
+        window.onload = async function() {
+            await loadConfig();
+        };
+
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/crosschain-test/config');
+                const data = await response.json();
+                chainConfig = data.config;
+                
+                populateChainSelectors();
+                showResults('Configuration loaded successfully!', 'success');
+            } catch (error) {
+                showResults('Failed to load configuration: ' + error.message, 'error');
+            }
+        }
+
+        function populateChainSelectors() {
+            const sourceChain = document.getElementById('sourceChain');
+            const destChain = document.getElementById('destChain');
+            
+            chainConfig.supportedChains.forEach(chain => {
+                const option1 = new Option(`${chain.name} (${chain.nativeCurrency.symbol})`, chain.chainId);
+                const option2 = new Option(`${chain.name} (${chain.nativeCurrency.symbol})`, chain.chainId);
+                sourceChain.add(option1);
+                destChain.add(option2);
+            });
+
+            // Set default values
+            sourceChain.value = '1'; // Ethereum
+            destChain.value = '56';  // BSC
+            
+            updateTokenSelectors();
+        }
+
+        function updateTokenSelectors() {
+            const sourceChainId = document.getElementById('sourceChain').value;
+            const destChainId = document.getElementById('destChain').value;
+            
+            updateTokenSelector('sourceToken', sourceChainId);
+            updateTokenSelector('destToken', destChainId);
+        }
+
+        function updateTokenSelector(selectorId, chainId) {
+            const selector = document.getElementById(selectorId);
+            selector.innerHTML = '<option value="">Select token...</option>';
+            
+            const chain = chainConfig.supportedChains.find(c => c.chainId == chainId);
+            if (chain && chain.popularTokens) {
+                chain.popularTokens.forEach(token => {
+                    const option = new Option(
+                        `${token.symbol} - ${token.name}`, 
+                        token.address
+                    );
+                    selector.add(option);
+                });
+            }
+        }
+
+        // Event listeners for chain changes
+        document.getElementById('sourceChain').onchange = function() {
+            updateTokenSelector('sourceToken', this.value);
+        };
+        
+        document.getElementById('destChain').onchange = function() {
+            updateTokenSelector('destToken', this.value);
+        };
+
+        function getFormData() {
+            const sourceToken = document.getElementById('sourceToken').value;
+            const sourceTokenInfo = getTokenInfo(document.getElementById('sourceChain').value, sourceToken);
+            const amount = document.getElementById('amount').value;
+            
+            return {
+                sourceChainId: parseInt(document.getElementById('sourceChain').value),
+                destinationChainId: parseInt(document.getElementById('destChain').value),
+                sourceToken: sourceToken,
+                destinationToken: document.getElementById('destToken').value,
+                sourceAmount: ethers.utils.parseUnits(amount, sourceTokenInfo?.decimals || 18).toString(),
+                recipientAddress: document.getElementById('recipient').value,
+                slippageTolerance: parseFloat(document.getElementById('slippage').value) * 100
+            };
+        }
+
+        function getTokenInfo(chainId, tokenAddress) {
+            const chain = chainConfig.supportedChains.find(c => c.chainId == chainId);
+            return chain?.popularTokens.find(t => t.address === tokenAddress);
+        }
+
+        async function findRoutes() {
+            if (isLoading) return;
+            setLoading(true);
+            
+            try {
+                const data = getFormData();
+                const response = await fetch('/api/crosschain-test/routes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    displayRoutes(result.routes);
+                } else {
+                    showResults('Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showResults('Failed to find routes: ' + error.message, 'error');
+            }
+            
+            setLoading(false);
+        }
+
+        async function getQuote() {
+            if (isLoading) return;
+            setLoading(true);
+            
+            try {
+                const data = getFormData();
+                const response = await fetch('/api/crosschain-test/quote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    displayQuote(result.quote);
+                } else {
+                    showResults('Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showResults('Failed to get quote: ' + error.message, 'error');
+            }
+            
+            setLoading(false);
+        }
+
+        async function simulateSwap() {
+            if (isLoading) return;
+            setLoading(true);
+            
+            try {
+                const data = getFormData();
+                const response = await fetch('/api/crosschain-test/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    displaySimulation(result.simulation);
+                } else {
+                    showResults('Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showResults('Failed to simulate swap: ' + error.message, 'error');
+            }
+            
+            setLoading(false);
+        }
+
+        function loadQuickTest() {
+            // Load ETH to USDC example
+            document.getElementById('sourceChain').value = '1';
+            document.getElementById('destChain').value = '56';
+            updateTokenSelectors();
+            
+            setTimeout(() => {
+                document.getElementById('sourceToken').value = '0x0000000000000000000000000000000000000000';
+                document.getElementById('destToken').value = '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d';
+                document.getElementById('amount').value = '1';
+            }, 100);
+        }
+
+        function displayRoutes(routes) {
+            let html = '<h3>🛣️ Available Routes</h3>';
+            
+            routes.forEach((route, index) => {
+                html += `
+                    <div class="route-card">
+                        <h4>Route ${index + 1} (Reliability: ${route.reliability}%)</h4>
+                        <p><strong>Output:</strong> ${(parseFloat(route.estimatedOutput) / 1e18).toFixed(6)} tokens</p>
+                        <p><strong>Cost:</strong> $${(route.totalFeeUSD + route.totalGasCostUSD).toFixed(2)} | 
+                           <strong>Time:</strong> ${Math.round(route.estimatedTime / 60)} min</p>
+                        <div>
+                `;
+                
+                route.steps.forEach((step, stepIndex) => {
+                    html += `
+                        <div class="step">
+                            <span class="badge ${step.type}">${step.type}</span>
+                            ${step.protocol}: ${step.fromToken.symbol} → ${step.toToken.symbol} (Chain ${step.chainId})
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            });
+            
+            showResults(html, 'success');
+        }
+
+        function displayQuote(quote) {
+            const html = `
+                <h3>💰 Best Route Quote</h3>
+                <div class="route-card">
+                    <p><strong>Input:</strong> ${quote.inputAmount} ${quote.inputToken}</p>
+                    <p><strong>Output:</strong> ${quote.outputAmount} ${quote.outputToken}</p>
+                    <p><strong>Price Impact:</strong> ${quote.priceImpactPercent}%</p>
+                    <p><strong>Execution Time:</strong> ${quote.executionTimeMinutes} minutes</p>
+                    <p><strong>Total Fees:</strong> $${quote.totalFeeUSD.toFixed(2)}</p>
+                    <p><strong>Gas Cost:</strong> $${quote.gasEstimate.totalGasCostUSD.toFixed(2)}</p>
+                    <p><strong>Bridges:</strong> ${quote.route.bridgesUsed.join(', ')}</p>
+                    <p><strong>DEXs:</strong> ${quote.route.dexesUsed.join(', ')}</p>
+                    
+                    <h4>Route Path:</h4>
+                    ${quote.route.path.map(step => 
+                        `<span class="badge ${step.type}">${step.protocol}: ${step.fromSymbol} → ${step.toSymbol}</span>`
+                    ).join(' ')}
+                </div>
+            `;
+            
+            showResults(html, 'success');
+        }
+
+        function displaySimulation(simulation) {
+            let warningsHtml = '';
+            if (simulation.risks.warnings.length > 0) {
+                warningsHtml = `
+                    <h4>⚠️ Warnings:</h4>
+                    <ul>
+                        ${simulation.risks.warnings.map(w => `<li>${w}</li>`).join('')}
+                    </ul>
+                `;
+            }
+
+            const html = `
+                <h3>🧪 Swap Simulation</h3>
+                <div class="route-card">
+                    <h4>Route Summary</h4>
+                    <p><strong>Input:</strong> ${simulation.route.inputAmount} ${simulation.route.inputToken}</p>
+                    <p><strong>Output:</strong> ${simulation.route.outputAmount} ${simulation.route.outputToken}</p>
+                    <p><strong>Steps:</strong> ${simulation.route.numberOfSteps}</p>
+                    <p><strong>Price Impact:</strong> ${(simulation.route.priceImpact / 100).toFixed(2)}%</p>
+                    <p><strong>Reliability:</strong> ${simulation.route.reliability}%</p>
+                    
+                    <h4>Execution Plan</h4>
+                    <p><strong>Total Time:</strong> ${simulation.execution.totalEstimatedTimeMinutes} minutes</p>
+                    <p><strong>Total Gas Cost:</strong> $${simulation.execution.totalEstimatedGasUSD.toFixed(2)}</p>
+                    <p><strong>Risk Level:</strong> ${simulation.risks.riskLevel}</p>
+                    
+                    ${warningsHtml}
+                    
+                    <h4>Steps:</h4>
+                    ${simulation.execution.steps.map((step, index) => `
+                        <div class="step">
+                            <span class="badge ${step.stepType}">${step.stepType}</span>
+                            Step ${index + 1}: ${step.protocol} on Chain ${step.chainId}
+                            (Gas: ${step.estimatedGas} units, ~$${step.estimatedGasCostUSD})
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            showResults(html, 'success');
+        }
+
+        function showResults(content, type = '') {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<div class="container"><div class="results ${type}">${content}</div></div>`;
+        }
+
+        function setLoading(loading) {
+            isLoading = loading;
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.disabled = loading;
+                if (loading && btn.textContent === 'Find Routes') {
+                    btn.innerHTML = '<span class="loading"></span> Loading...';
+                } else if (!loading) {
+                    btn.innerHTML = btn.innerHTML.replace(/<span class="loading"><\/span> Loading\.\.\./, btn.textContent);
+                }
+            });
+        }
+
+        // Simple ethers utils for parsing
+        const ethers = {
+            utils: {
+                parseUnits: function(value, decimals) {
+                    const factor = Math.pow(10, decimals);
+                    return { toString: () => Math.floor(parseFloat(value) * factor).toString() };
+                }
+            }
+        };
+    </script>
+</body>
+</html>

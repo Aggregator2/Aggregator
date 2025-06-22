@@ -13,6 +13,9 @@ export interface Token {
   address: string;
   decimals?: number;
   logoURI?: string;
+  chainId?: number;
+  type?: "ERC-20" | "SPL";
+  tags?: string[];
 }
 
 export interface Order {
@@ -28,7 +31,7 @@ export interface Order {
   appData: string;
   feeAmount: string | number;
   partiallyFillable: boolean;
-  kind: 'sell' | 'buy';
+  kind: "sell" | "buy";
   signingScheme: string;
   nonce: string | number;
   signature?: string;
@@ -45,6 +48,11 @@ export interface Quote {
   lpFee?: string | number;
   validTo?: number;
   warning?: string;
+  source?: string;
+  price?: number;
+  slippage?: string;
+  priceImpact?: string;
+  networkFeeUsd?: string;
 }
 
 export interface SwapFormState {
@@ -66,12 +74,12 @@ export interface ApiResponse<T> {
 export function isOrder(obj: any): obj is Order {
   return (
     obj &&
-    typeof obj === 'object' &&
-    typeof obj.sellToken === 'string' &&
-    typeof obj.buyToken === 'string' &&
-    typeof obj.sellAmount === 'string' &&
-    typeof obj.buyAmount === 'string' &&
-    typeof obj.user === 'string'
+    typeof obj === "object" &&
+    typeof obj.sellToken === "string" &&
+    typeof obj.buyToken === "string" &&
+    typeof obj.sellAmount === "string" &&
+    typeof obj.buyAmount === "string" &&
+    typeof obj.user === "string"
   );
 }
 
@@ -82,10 +90,10 @@ export function isOrderArray(obj: any): obj is Order[] {
 export function isQuote(obj: any): obj is Quote {
   return (
     obj &&
-    typeof obj === 'object' &&
-    typeof obj.sellToken === 'string' &&
-    typeof obj.buyToken === 'string' &&
-    typeof obj.sellAmount === 'string' &&
-    typeof obj.buyAmount === 'string'
+    typeof obj === "object" &&
+    typeof obj.sellToken === "string" &&
+    typeof obj.buyToken === "string" &&
+    typeof obj.sellAmount === "string" &&
+    typeof obj.buyAmount === "string"
   );
 }

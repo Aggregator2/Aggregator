@@ -1,0 +1,331 @@
+[
+  {
+    "id": 1,
+    "name": "Ethereum",
+    "key": "eth",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/ethereum.svg"
+  },
+  {
+    "id": 56,
+    "name": "BSC",
+    "key": "bsc",
+    "coin": "BNB",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/bsc.svg"
+  },
+  {
+    "id": 42161,
+    "name": "Arbitrum",
+    "key": "arb",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/arbitrum.svg"
+  },
+  {
+    "id": 8453,
+    "name": "Base",
+    "key": "bas",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/base.svg"
+  },
+  {
+    "id": 81457,
+    "name": "Blast",
+    "key": "bls",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/blast.svg"
+  },
+  {
+    "id": 43114,
+    "name": "Avalanche",
+    "key": "ava",
+    "coin": "AVAX",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/avalanche.svg"
+  },
+  {
+    "id": 137,
+    "name": "Polygon",
+    "key": "pol",
+    "coin": "POL",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/polygon.svg"
+  },
+  {
+    "id": 534352,
+    "name": "Scroll",
+    "key": "scl",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/scroll.svg"
+  },
+  {
+    "id": 10,
+    "name": "Optimism",
+    "key": "opt",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/optimism.svg"
+  },
+  {
+    "id": 59144,
+    "name": "Linea",
+    "key": "lna",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/linea.svg"
+  },
+  {
+    "id": 324,
+    "name": "zkSync",
+    "key": "era",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/zksync.svg"
+  },
+  {
+    "id": 1101,
+    "name": "Polygon zkEVM",
+    "key": "pze",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/zkevm.svg"
+  },
+  {
+    "id": 100,
+    "name": "Gnosis",
+    "key": "dai",
+    "coin": "DAI",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/gnosis.svg"
+  },
+  {
+    "id": 250,
+    "name": "Fantom",
+    "key": "ftm",
+    "coin": "FTM",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/fantom.svg"
+  },
+  {
+    "id": 1285,
+    "name": "Moonriver",
+    "key": "mor",
+    "coin": "MOVR",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/moonriver.svg"
+  },
+  {
+    "id": 1284,
+    "name": "Moonbeam",
+    "key": "moo",
+    "coin": "GLMR",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/moonbeam.svg"
+  },
+  {
+    "id": 122,
+    "name": "FUSE",
+    "key": "fus",
+    "coin": "FUSE",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/fuse.svg"
+  },
+  {
+    "id": 288,
+    "name": "Boba",
+    "key": "bob",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/boba.svg"
+  },
+  {
+    "id": 34443,
+    "name": "Mode",
+    "key": "mod",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/mode.svg"
+  },
+  {
+    "id": 1088,
+    "name": "Metis",
+    "key": "mam",
+    "coin": "METIS",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/metis.svg"
+  },
+  {
+    "id": 1135,
+    "name": "Lisk",
+    "key": "lsk",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/lisk.svg"
+  },
+  {
+    "id": 130,
+    "name": "Unichain",
+    "key": "uni",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/unichain.svg"
+  },
+  {
+    "id": 1313161554,
+    "name": "Aurora",
+    "key": "aur",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/aurora.svg"
+  },
+  {
+    "id": 1329,
+    "name": "Sei",
+    "key": "sei",
+    "coin": "SEI",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/sei.svg"
+  },
+  {
+    "id": 13371,
+    "name": "Immutable zkEVM",
+    "key": "imx",
+    "coin": "IMX",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/imx.svg"
+  },
+  {
+    "id": 146,
+    "name": "Sonic",
+    "key": "son",
+    "coin": "S",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/sonic.svg"
+  },
+  {
+    "id": 1625,
+    "name": "Gravity",
+    "key": "gra",
+    "coin": "G",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/gravity.svg"
+  },
+  {
+    "id": 167000,
+    "name": "Taiko",
+    "key": "tai",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/taiko.svg"
+  },
+  {
+    "id": 1868,
+    "name": "Soneium",
+    "key": "soe",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/soneium.svg"
+  },
+  {
+    "id": 1923,
+    "name": "Swellchain",
+    "key": "swl",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/swell.svg"
+  },
+  {
+    "id": 204,
+    "name": "opBNB",
+    "key": "opb",
+    "coin": "BNB",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/opbnb.svg"
+  },
+  {
+    "id": 21000000,
+    "name": "Corn",
+    "key": "crn",
+    "coin": "BTCN",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/corn.svg"
+  },
+  {
+    "id": 232,
+    "name": "Lens",
+    "key": "lns",
+    "coin": "GHO",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/lens.svg"
+  },
+  {
+    "id": 25,
+    "name": "Cronos",
+    "key": "cro",
+    "coin": "CRO",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/cronos.svg"
+  },
+  {
+    "id": 2741,
+    "name": "Abstract",
+    "key": "abs",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/abstract.svg"
+  },
+  {
+    "id": 30,
+    "name": "Rootstock",
+    "key": "rsk",
+    "coin": "RBTC",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/rootstock.svg"
+  },
+  {
+    "id": 33139,
+    "name": "Apechain",
+    "key": "ape",
+    "coin": "APE",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/apechain.svg"
+  },
+  {
+    "id": 42220,
+    "name": "Celo",
+    "key": "cel",
+    "coin": "CELO",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/celo.svg"
+  },
+  {
+    "id": 480,
+    "name": "World Chain",
+    "key": "wcc",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/world.svg"
+  },
+  {
+    "id": 50,
+    "name": "XDC",
+    "key": "xdc",
+    "coin": "XDC",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/xdc.svg"
+  },
+  {
+    "id": 5000,
+    "name": "Mantle",
+    "key": "mnt",
+    "coin": "MNT",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/mantle.svg"
+  },
+  {
+    "id": 55244,
+    "name": "Superposition",
+    "key": "sup",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/superposition.svg"
+  },
+  {
+    "id": 57073,
+    "name": "Ink",
+    "key": "ink",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/ink.svg"
+  },
+  {
+    "id": 60808,
+    "name": "BOB",
+    "key": "boc",
+    "coin": "ETH",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/bob.svg"
+  },
+  {
+    "id": 80094,
+    "name": "Berachain",
+    "key": "ber",
+    "coin": "BERA",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/bera.svg"
+  },
+  {
+    "id": 8217,
+    "name": "Kaia",
+    "key": "kai",
+    "coin": "KLAY",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/kaia.svg"
+  },
+  {
+    "id": 999,
+    "name": "HyperEVM",
+    "key": "hyp",
+    "coin": "HYPE",
+    "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/hyperevm.svg"
+  }
+]

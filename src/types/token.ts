@@ -14,6 +14,32 @@ export interface Token {
     website?: string;
     description?: string;
     explorer?: string;
+    marketCapRank?: number;
+    currentPrice?: number;
+    verified?: boolean;
+    priceSource?: string;
+    lastPriceUpdate?: number;
+    metaplexUri?: string;
+    creators?: any[];
+    source?: string;
+    twitter?: string;
+    telegram?: string;
+    marketCap?: number;
+    rank?: number;
+    autoImported?: boolean;
+    importedAt?: string;
+    verificationSource?: string;
+    priority?: number;
+    tokenLevel?: string;
+    vip?: boolean;
+    issuerAddr?: string;
+    totalSupply?: string;
+    circulatingSupply?: string;
+    holdersCount?: number;
+    priceInTrx?: number;
+    priceInUsd?: number;
+    volume24h?: number;
+    isNative?: boolean;
   };
 }
 

@@ -1,0 +1,204 @@
+import axios from 'axios';
+import { getChains, getTokens, getQuote, getRoutes } from '@lifi/sdk';
+import { lifiLogger } from '../utils/devLogger';
+
+const LIFI_BASE_URL = 'https://li.quest/v1';
+
+export interface LifiChain {
+  id: number;
+  name: string;
+  logoURI?: string;
+  nativeToken: {
+    symbol: string;
+    name: string;
+    address: string;
+    decimals: number;
+    logoURI?: string;
+  };
+}
+
+export interface LifiToken {
+  symbol: string;
+  name: string;
+  address: string;
+  chainId: number;
+  decimals: number;
+  logoURI?: string;
+  priceUSD?: string;
+}
+
+export interface LifiQuoteRequest {
+  fromChain: number;
+  toChain: number;
+  fromToken: string;
+  toToken: string;
+  fromAmount: string;
+  fromAddress: string;
+  toAddress?: string;
+  slippage?: number;
+}
+
+export interface LifiRoute {
+  id: string;
+  fromChainId: number;
+  toChainId: number;
+  fromAmount: string;
+  toAmount: string;
+  toAmountMin: string;
+  gasCostUSD?: string;
+  containsSwitchChain: boolean;
+  steps: any[];
+  tags: string[];
+}
+
+class LifiService {
+  private chainsCache: Map<number, LifiChain> = new Map();
+  private tokensCache: Map<number, LifiToken[]> = new Map();
+  private cacheTimestamp: number = 0;
+  private readonly CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+  async getChains(): Promise<LifiChain[]> {
+    try {
+      // Use SDK method
+      const chains = await getChains();
+      
+      // Cache chains
+      chains.forEach((chain: any) => {
+        this.chainsCache.set(chain.id, chain);
+      });
+      
+      return chains;
+    } catch (error) {
+      lifiLogger.error('Error fetching LI.FI chains:', error);
+      throw error;
+    }
+  }
+
+  async getTokens(chainId?: number): Promise<LifiToken[]> {
+    // Check cache first
+    if (chainId && this.tokensCache.has(chainId) && Date.now() - this.cacheTimestamp < this.CACHE_DURATION) {
+      return this.tokensCache.get(chainId)!;
+    }
+
+    try {
+      // Use SDK method - if no chainId, get ALL tokens
+      const tokensResponse = await getTokens(chainId ? { chains: [chainId] } : {});
+      
+      if (chainId) {
+        const tokens = tokensResponse.tokens[chainId] || [];
+        // Cache tokens for specific chain
+        this.tokensCache.set(chainId, tokens);
+        this.cacheTimestamp = Date.now();
+        return tokens;
+      } else {
+        // Return all tokens from all chains
+        const allTokens: LifiToken[] = [];
+        Object.entries(tokensResponse.tokens).forEach(([chain, tokens]) => {
+          allTokens.push(...(tokens as LifiToken[]));
+        });
+        return allTokens;
+      }
+    } catch (error) {
+      lifiLogger.error(`Error fetching tokens:`, error);
+      throw error;
+    }
+  }
+
+  async getAllTokens(): Promise<Map<number, LifiToken[]>> {
+    const chains = await this.getChains();
+    const allTokens = new Map<number, LifiToken[]>();
+    
+    // Fetch tokens for all chains in parallel
+    const promises = chains.map(async (chain) => {
+      try {
+        const tokens = await this.getTokens(chain.id);
+        allTokens.set(chain.id, tokens);
+      } catch (error) {
+        lifiLogger.error(`Failed to fetch tokens for chain ${chain.id}:`, error);
+        allTokens.set(chain.id, []);
+      }
+    });
+    
+    await Promise.all(promises);
+    return allTokens;
+  }
+
+  async getQuote(request: LifiQuoteRequest): Promise<LifiRoute[]> {
+    try {
+      // Use SDK method with correct parameters
+      const quoteRequest = {
+        fromChain: request.fromChain.toString(),
+        toChain: request.toChain.toString(),
+        fromToken: request.fromToken,
+        toToken: request.toToken,
+        fromAmount: request.fromAmount,
+        fromAddress: request.fromAddress,
+        toAddress: request.toAddress || request.fromAddress,
+        slippage: (request.slippage || 0.5) / 100, // Convert percentage to decimal
+        integrator: 'multi-chain-swap',
+        allowBridges: ['hop', 'cbridge', 'stargate', 'across', 'optimism', 'arbitrum', 'polygon']
+      };
+      
+      const quote = await getQuote(quoteRequest);
+      
+      return quote.routes || [];
+    } catch (error: any) {
+      lifiLogger.error('Error fetching LI.FI quote:', error);
+      
+      // If it's a 400 error, it might be because the token pair is not supported
+      if (error.response?.status === 400) {
+        lifiLogger.error('LI.FI quote error details:', error.response?.data);
+        throw new Error('Quote not available for this token pair');
+      }
+      
+      throw error;
+    }
+  }
+
+  async executeSwap(route: LifiRoute, userAddress: string) {
+    try {
+      const response = await axios.post(`${LIFI_BASE_URL}/advanced/routes`, {
+        route,
+        fromAddress: userAddress,
+        toAddress: userAddress,
+        integrator: 'multi-chain-swap'
+      }, {
+        headers: {
+          'x-lifi-api-key': process.env.LIFI_API_KEY
+        }
+      });
+      
+      return response.data;
+    } catch (error) {
+      lifiLogger.error('Error executing LI.FI swap:', error);
+      throw error;
+    }
+  }
+
+  // Clear cache method for manual refresh
+  clearCache() {
+    this.chainsCache.clear();
+    this.tokensCache.clear();
+    this.cacheTimestamp = 0;
+  }
+
+  // Get cached data if available
+  getCachedChains(): LifiChain[] {
+    return Array.from(this.chainsCache.values());
+  }
+
+  getCachedTokens(chainId?: number): LifiToken[] {
+    if (chainId) {
+      return this.tokensCache.get(chainId) || [];
+    }
+    
+    // Return all cached tokens
+    const allTokens: LifiToken[] = [];
+    this.tokensCache.forEach(tokens => {
+      allTokens.push(...tokens);
+    });
+    return allTokens;
+  }
+}
+
+export const lifiService = new LifiService();

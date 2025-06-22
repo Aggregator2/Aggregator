@@ -1,0 +1,20 @@
+{
+  "name": "order-flow-test",
+  "version": "1.0.0",
+  "description": "Comprehensive order flow testing for MetaAggregator",
+  "scripts": {
+    "test": "node test-order-flow-complete.js",
+    "test:watch": "nodemon test-order-flow-complete.js",
+    "test:debug": "node --inspect test-order-flow-complete.js"
+  },
+  "dependencies": {
+    "ethers": "^6.9.0",
+    "axios": "^1.6.2",
+    "ws": "^8.14.2",
+    "chalk": "^4.1.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

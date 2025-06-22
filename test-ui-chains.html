@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Chain Display</title>
+    <style>
+        body {
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+        
+        .chain-container {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            background: #111;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 800px;
+        }
+        
+        .chain-container::-webkit-scrollbar {
+            height: 4px;
+        }
+        
+        .chain-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+        
+        .chain-pill {
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            color: #999;
+            font-size: 14px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        
+        .stats {
+            margin-top: 20px;
+            padding: 10px;
+            background: #111;
+            border-radius: 8px;
+        }
+        
+        pre {
+            background: #111;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chain Display Test</h1>
+    
+    <div class="test-section">
+        <h2>All 47+ Chains Scrollable Display</h2>
+        <p>This shows how chains appear in the TokenPicker with horizontal scrolling:</p>
+        <div class="chain-container" id="chains"></div>
+        <div class="stats" id="stats"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Chain List (for verification)</h2>
+        <pre id="chainList"></pre>
+    </div>
+
+    <script>
+        // All chains from CHAIN_INFO
+        const CHAIN_INFO = {
+            // Major EVM Chains
+            1: { name: 'Ethereum', logo: '⟠' },
+            56: { name: 'BSC', logo: '🔶' },
+            137: { name: 'Polygon', logo: '🟣' },
+            42161: { name: 'Arbitrum', logo: '🔷' },
+            10: { name: 'Optimism', logo: '🔴' },
+            43114: { name: 'Avalanche', logo: '🔺' },
+            250: { name: 'Fantom', logo: '👻' },
+            8453: { name: 'Base', logo: '🔵' },
+            
+            // Layer 2s and Sidechains
+            100: { name: 'Gnosis', logo: '🦉' },
+            1284: { name: 'Moonbeam', logo: '🌙' },
+            1285: { name: 'Moonriver', logo: '🌘' },
+            1313161554: { name: 'Aurora', logo: '🌅' },
+            42220: { name: 'Celo', logo: '🟨' },
+            
+            // zkEVM Chains
+            324: { name: 'zkSync', logo: '⚡' },
+            1101: { name: 'Polygon zkEVM', logo: '🟪' },
+            534352: { name: 'Scroll', logo: '📜' },
+            59144: { name: 'Linea', logo: '🔗' },
+            
+            // Newer Chains
+            81457: { name: 'Blast', logo: '💥' },
+            34443: { name: 'Mode', logo: '🟢' },
+            167000: { name: 'Taiko', logo: '⛩️' },
+            5000: { name: 'Mantle', logo: '🛡️' },
+            
+            // Alternative L1s
+            25: { name: 'Cronos', logo: '💎' },
+            122: { name: 'FUSE', logo: '🔥' },
+            288: { name: 'Boba', logo: '🫧' },
+            1088: { name: 'Metis', logo: '🏛️' },
+            8217: { name: 'Kaia', logo: '🎋' },
+            
+            // New/Emerging Chains
+            146: { name: 'Sonic', logo: '🎵' },
+            204: { name: 'opBNB', logo: '🟡' },
+            232: { name: 'Lens', logo: '🌿' },
+            480: { name: 'World Chain', logo: '🌍' },
+            999: { name: 'HyperEVM', logo: '🚀' },
+            1135: { name: 'Lisk', logo: '📐' },
+            1329: { name: 'Sei', logo: '🌊' },
+            1625: { name: 'Gravity', logo: '🪐' },
+            1868: { name: 'Soneium', logo: '🎮' },
+            1923: { name: 'Swellchain', logo: '🌊' },
+            2741: { name: 'Abstract', logo: '🎨' },
+            13371: { name: 'Immutable zkEVM', logo: '♾️' },
+            21000000: { name: 'Corn', logo: '🌽' },
+            30: { name: 'Rootstock', logo: '🌳' },
+            33139: { name: 'Apechain', logo: '🦍' },
+            50: { name: 'XDC', logo: '❌' },
+            55244: { name: 'Superposition', logo: '🔀' },
+            57073: { name: 'Ink', logo: '🖋️' },
+            60808: { name: 'BOB', logo: '🤖' },
+            80094: { name: 'Berachain', logo: '🐻' },
+            130: { name: 'Unichain', logo: '🦄' },
+            
+            // Non-EVM Chains
+            195: { name: 'Tron', logo: '🔷' },
+            101: { name: 'Solana', logo: '☀️' },
+        };
+        
+        // Get all chain IDs and sort them
+        const allChainIds = Object.keys(CHAIN_INFO).map(Number);
+        const sortedChains = allChainIds.sort((a, b) => {
+            const order = [1, 56, 137, 42161, 10, 8453, 43114, 250, 324, 534352, 59144, 100, 42220, 1284, 5000, 25, 999];
+            const aIndex = order.indexOf(a);
+            const bIndex = order.indexOf(b);
+            if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+            if (aIndex !== -1) return -1;
+            if (bIndex !== -1) return 1;
+            return a - b;
+        });
+        
+        // Create chain pills
+        const container = document.getElementById('chains');
+        
+        // Add "All Chains" pill
+        const allPill = document.createElement('div');
+        allPill.className = 'chain-pill';
+        allPill.textContent = 'All Chains';
+        container.appendChild(allPill);
+        
+        // Add all chain pills
+        sortedChains.forEach(chainId => {
+            const info = CHAIN_INFO[chainId];
+            const pill = document.createElement('div');
+            pill.className = 'chain-pill';
+            pill.innerHTML = `${info.logo} ${info.name}`;
+            container.appendChild(pill);
+        });
+        
+        // Display stats
+        document.getElementById('stats').innerHTML = `
+            <strong>Total chains displayed:</strong> ${sortedChains.length}<br>
+            <strong>Scrollable:</strong> Yes (try scrolling horizontally)<br>
+            <strong>Categories:</strong> Major EVM, Layer 2s, zkEVM, Alternative L1s, Emerging, Non-EVM
+        `;
+        
+        // Display chain list
+        const chainList = sortedChains.map(id => {
+            const info = CHAIN_INFO[id];
+            return `Chain ${id}: ${info.logo} ${info.name}`;
+        }).join('\n');
+        
+        document.getElementById('chainList').textContent = chainList;
+    </script>
+</body>
+</html>

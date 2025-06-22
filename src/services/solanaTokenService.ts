@@ -1,4 +1,4 @@
-import { Token } from '../../types/wallet';
+import { Token } from '../types/token';
 
 export interface SolanaTokenMetadata {
   mint: string;
@@ -185,7 +185,7 @@ class SolanaTokenService {
       chainId: 101, // Solana
       type: 'SPL',
       decimals: jupiterToken.decimals,
-      logoURI: jupiterToken.logoURI,
+      logoURI: jupiterToken.logoURI || '',
       tags: jupiterToken.tags || ['solana'],
       extensions: {
         source: 'jupiter',

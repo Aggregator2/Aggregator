@@ -1,0 +1,19 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="40" cy="40" r="38" fill="#1a1a1a" stroke="#667EEA" stroke-width="2"/>
+  
+  <!-- Coin -->
+  <circle cx="40" cy="40" r="22" fill="#F6D55C" stroke="#1A202C" stroke-width="3"/>
+  
+  <!-- Coin shine -->
+  <path d="M 28 32 Q 40 26, 52 32" fill="none" stroke="#FBBF24" stroke-width="2.5" opacity="0.7"/>
+  
+  <!-- Face -->
+  <circle cx="33" cy="38" r="2.5" fill="#1A202C"/>
+  <circle cx="47" cy="38" r="2.5" fill="#1A202C"/>
+  <path d="M 33 46 Q 40 49, 47 46" fill="none" stroke="#1A202C" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <!-- Trading arrows -->
+  <path d="M 12 40 L 20 40 M 16 36 L 20 40 L 16 44" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+  <path d="M 60 40 L 68 40 M 64 36 L 60 40 L 64 44" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+</svg>

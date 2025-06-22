@@ -109,7 +109,7 @@ export class TokenListManager {
   }
 
   async fetchTokensFromChainAPI(chainId: number): Promise<Token[]> {
-    const apiConfig = CHAIN_API_ENDPOINTS[chainId];
+    const apiConfig = CHAIN_API_ENDPOINTS[chainId as keyof typeof CHAIN_API_ENDPOINTS];
     if (!apiConfig) {
       return [];
     }
@@ -118,7 +118,7 @@ export class TokenListManager {
       await this.rateLimitCheck(`chain_api_${chainId}`);
       
       const response = await axios.get(apiConfig.url, {
-        params: apiConfig.params || {},
+        params: (apiConfig as any).params || {},
         timeout: 30000
       });
 
@@ -367,7 +367,7 @@ export class TokenListManager {
   }
 
   private async verifyTokenOnExplorer(address: string, chainId: number): Promise<{ verified: boolean; source?: string }> {
-    const explorerConfig = CONTRACT_VERIFICATION_APIS[chainId];
+    const explorerConfig = CONTRACT_VERIFICATION_APIS[chainId as keyof typeof CONTRACT_VERIFICATION_APIS];
     if (!explorerConfig || !explorerConfig.apiKey) {
       return { verified: false };
     }

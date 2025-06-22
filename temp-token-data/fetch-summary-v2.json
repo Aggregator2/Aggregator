@@ -1,0 +1,48 @@
+{
+  "fetchedAt": "2025-06-21T00:39:18.097Z",
+  "results": [
+    {
+      "api": "Jupiter",
+      "status": "success"
+    },
+    {
+      "api": "OpenOcean Ethereum",
+      "status": "success"
+    },
+    {
+      "api": "OpenOcean BSC",
+      "status": "success"
+    },
+    {
+      "api": "OpenOcean Polygon",
+      "status": "success"
+    },
+    {
+      "api": "OpenOcean Avalanche",
+      "status": "success"
+    },
+    {
+      "api": "OpenOcean Arbitrum",
+      "status": "success"
+    },
+    {
+      "api": "OpenOcean Optimism",
+      "status": "success"
+    },
+    {
+      "api": "0x Price Sample",
+      "status": "success"
+    },
+    {
+      "api": "Uniswap Token List",
+      "status": "failed",
+      "error": "Failed to parse JSON: Unexpected token '<', \"<html>\r\n<h\"... is not valid JSON"
+    },
+    {
+      "api": "CoinGecko Ethereum",
+      "status": "success"
+    }
+  ],
+  "successCount": 9,
+  "failedCount": 1
+}

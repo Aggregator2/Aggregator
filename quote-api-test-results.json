@@ -1,0 +1,232 @@
+{
+  "timestamp": "2025-06-21T15:49:42.914Z",
+  "summary": {
+    "totalTests": 32,
+    "passed": 0,
+    "failed": 32
+  },
+  "byType": {
+    "Token Pair": {
+      "passed": 0,
+      "failed": 10
+    },
+    "Amount Range": {
+      "passed": 0,
+      "failed": 6
+    },
+    "Slippage": {
+      "passed": 0,
+      "failed": 4
+    },
+    "Cross-Chain": {
+      "passed": 0,
+      "failed": 3
+    },
+    "Gas Estimate": {
+      "passed": 0,
+      "failed": 3
+    },
+    "Route Info": {
+      "passed": 0,
+      "failed": 3
+    },
+    "Price Comparison": {
+      "passed": 0,
+      "failed": 3
+    }
+  },
+  "results": [
+    {
+      "test": "Token Pair",
+      "pair": "ETH → USDC",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Token Pair",
+      "pair": "USDC → USDT (Stables)",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Token Pair",
+      "pair": "ETH → WBTC",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Token Pair",
+      "pair": "ROPE → ETH (Weird)",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Token Pair",
+      "pair": "SHIB → USDC (Meme)",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Token Pair",
+      "pair": "DAI → USDC",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Token Pair",
+      "pair": "UNI → LINK (DeFi)",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Token Pair",
+      "pair": "MATIC → USDC (Polygon)",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Token Pair",
+      "pair": "WBTC → ETH",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Token Pair",
+      "pair": "LINK → DAI",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Amount Range",
+      "amount": "$1",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Amount Range",
+      "amount": "$10",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Amount Range",
+      "amount": "$100",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Amount Range",
+      "amount": "$1000",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Amount Range",
+      "amount": "$10000",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Amount Range",
+      "amount": "$100000",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Slippage",
+      "slippage": "0.1%",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Slippage",
+      "slippage": "0.5%",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Slippage",
+      "slippage": "1%",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Slippage",
+      "slippage": "3%",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Cross-Chain",
+      "pair": "ETH (Ethereum) → MATIC (Polygon)",
+      "success": false,
+      "error": "Missing required fields"
+    },
+    {
+      "test": "Cross-Chain",
+      "pair": "USDC (Ethereum) → USDC (Polygon)",
+      "success": false,
+      "error": "Missing required fields"
+    },
+    {
+      "test": "Cross-Chain",
+      "pair": "MATIC (Polygon) → ETH (Ethereum)",
+      "success": false,
+      "error": "Missing required fields"
+    },
+    {
+      "test": "Gas Estimate",
+      "pair": "Simple swap",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Gas Estimate",
+      "pair": "Multi-hop",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Gas Estimate",
+      "pair": "Complex route",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Route Info",
+      "pair": "ROPE → WBTC",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Route Info",
+      "pair": "SHIB → DAI",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Route Info",
+      "pair": "UNI → LINK",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Price Comparison",
+      "pair": "WETH → USDC",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Price Comparison",
+      "pair": "USDC → DAI",
+      "success": false,
+      "error": "Method not allowed"
+    },
+    {
+      "test": "Price Comparison",
+      "pair": "WBTC → WETH",
+      "success": false,
+      "error": "Method not allowed"
+    }
+  ]
+}

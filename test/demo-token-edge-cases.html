@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Edge Cases Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #555;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .token-example {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        .token-name {
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 8px;
+        }
+        .token-detail {
+            margin: 4px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .warning {
+            background: rgba(251, 146, 60, 0.1);
+            border: 1px solid rgba(251, 146, 60, 0.3);
+            color: #ea580c;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #2563eb;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .critical {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .success {
+            color: #16a34a;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Token Edge Cases Implementation Demo</h1>
+    
+    <div class="demo-section">
+        <h2>1️⃣ Tokens with Different Decimals</h2>
+        
+        <div class="token-example">
+            <div class="token-name">USDC (6 decimals)</div>
+            <div class="token-detail">Address: <code>0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48</code></div>
+            <div class="token-detail">Amount Input: 100 USDC</div>
+            <div class="token-detail">Raw Value: <code>100000000</code> (100 * 10^6)</div>
+            <div class="token-detail success">✅ Automatically handled by SpecialTokenService</div>
+        </div>
+        
+        <div class="token-example">
+            <div class="token-name">WBTC (8 decimals)</div>
+            <div class="token-detail">Address: <code>0x2260fac5e5542a773aa44fbcfedf7c193bc2c599</code></div>
+            <div class="token-detail">Amount Input: 0.1 WBTC</div>
+            <div class="token-detail">Raw Value: <code>10000000</code> (0.1 * 10^8)</div>
+            <div class="token-detail success">✅ Automatically handled by SpecialTokenService</div>
+        </div>
+        
+        <div class="token-example">
+            <div class="token-name">DAI (18 decimals)</div>
+            <div class="token-detail">Address: <code>0x6b175474e89094c44da98b954eedeac495271d0f</code></div>
+            <div class="token-detail">Amount Input: 100 DAI</div>
+            <div class="token-detail">Raw Value: <code>100000000000000000000</code> (100 * 10^18)</div>
+            <div class="token-detail success">✅ Standard ERC-20 decimals</div>
+        </div>
+    </div>
+    
+    <div class="demo-section">
+        <h2>2️⃣ Rebasing Tokens with Warnings</h2>
+        
+        <div class="token-example">
+            <div class="token-name">stETH (Lido Staked ETH)</div>
+            <div class="token-detail">Address: <code>0xae7ab96520de3a18e5e111b5eaab095312d7fe84</code></div>
+            <div class="warning">
+                <strong>⚡ Warning:</strong> stETH is a rebasing token. Your balance may change over time.
+                <br><strong>💡 Tip:</strong> Consider wrapping to wstETH for consistent balance.
+            </div>
+        </div>
+        
+        <div class="token-example">
+            <div class="token-name">AMPL (Ampleforth)</div>
+            <div class="token-detail">Address: <code>0xd46ba6d942050d489dbd938a2c909a5d5039a161</code></div>
+            <div class="critical">
+                <strong>⚠️ Critical Warning:</strong> AMPL is a rebasing token with daily supply adjustments.
+                <br><strong>💡 Tip:</strong> Your token balance will change based on the daily rebase.
+            </div>
+        </div>
+    </div>
+    
+    <div class="demo-section">
+        <h2>3️⃣ Fee-on-Transfer Tokens</h2>
+        
+        <div class="token-example">
+            <div class="token-name">UNIDX (Example Fee Token)</div>
+            <div class="token-detail">Address: <code>0x7e396bfc8a2f84748701167c2d622f041a1d7a17</code></div>
+            <div class="token-detail">Transfer Fee: 2%</div>
+            <div class="warning">
+                <strong>⚡ Transfer Fee Token</strong><br>
+                UNIDX charges a 2% fee on transfers.<br>
+                You will receive approximately 98 UNIDX instead of 100 UNIDX.
+            </div>
+            <div class="token-detail">Example: Swapping for 100 UNIDX → Receive 98 UNIDX</div>
+        </div>
+    </div>
+    
+    <div class="demo-section">
+        <h2>4️⃣ Non-Standard Approval Tokens</h2>
+        
+        <div class="token-example">
+            <div class="token-name">USDT (Tether)</div>
+            <div class="token-detail">Address: <code>0xdac17f958d2ee523a2206206994597c13d831ec7</code></div>
+            <div class="info">
+                <strong>ℹ️ Notice:</strong> USDT requires approval to be set to 0 before changing.
+                <br><strong>💡</strong> We handle this automatically for you.
+            </div>
+            <div class="token-detail">Approval Process: Current allowance → 0 → New allowance</div>
+        </div>
+        
+        <div class="token-example">
+            <div class="token-name">USDP (Pax Dollar)</div>
+            <div class="token-detail">Address: <code>0x8e870d67f660d95d5be530380d0ec0bd388289e1</code></div>
+            <div class="info">
+                <strong>ℹ️ Notice:</strong> USDP requires special approval handling.
+                <br><strong>💡</strong> We handle this automatically for you.
+            </div>
+        </div>
+    </div>
+    
+    <div class="demo-section">
+        <h2>5️⃣ Wrapped Native Tokens</h2>
+        
+        <div class="token-example">
+            <div class="token-name">WETH (Wrapped Ether)</div>
+            <div class="token-detail">Address: <code>0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2</code></div>
+            <div class="info">
+                💡 You can unwrap WETH to native ETH
+                <button style="margin-left: 10px; padding: 4px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">Unwrap</button>
+            </div>
+        </div>
+        
+        <div class="token-example">
+            <div class="token-name">WBNB (Wrapped BNB)</div>
+            <div class="token-detail">Address: <code>0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c</code></div>
+            <div class="token-detail">Chain: BSC (56)</div>
+            <div class="info">
+                💡 You can unwrap WBNB to native BNB
+            </div>
+        </div>
+    </div>
+    
+    <div class="demo-section">
+        <h2>6️⃣ Token Monitoring & Updates</h2>
+        
+        <div class="token-example">
+            <div class="token-name">Token Monitoring Service</div>
+            <div class="token-detail">Update Frequency: Every 1 hour</div>
+            <div class="token-detail">Cache Status: <span class="success">Active</span></div>
+            <div class="token-detail">Last Update: <span id="lastUpdate">0 minutes ago</span></div>
+            <div class="info">
+                🔄 New tokens from LI.FI are automatically detected and added within 1 hour
+            </div>
+        </div>
+    </div>
+    
+    <div class="demo-section">
+        <h2>7️⃣ Token Blacklist</h2>
+        
+        <div class="token-example">
+            <div class="token-name">Scam Token Example</div>
+            <div class="token-detail">Address: <code>0x0000000000000000000000000000000000000001</code></div>
+            <div class="critical">
+                <strong>⚠️ Critical:</strong> This token has been flagged as potentially fraudulent.
+                <br><strong>Action:</strong> This token is blocked and won't appear in token selection.
+            </div>
+            <div class="token-detail error">❌ Blacklisted - Cannot be traded</div>
+        </div>
+    </div>
+    
+    <div class="demo-section">
+        <h2>✅ Summary</h2>
+        <p>All token edge cases are now properly handled:</p>
+        <ul>
+            <li>✅ <strong>Different decimals (6, 8, 18)</strong> - Automatic conversion using SpecialTokenService</li>
+            <li>✅ <strong>Rebasing tokens (stETH, AMPL)</strong> - Clear warnings displayed to users</li>
+            <li>✅ <strong>Fee-on-transfer tokens</strong> - Accurate net amount calculations shown</li>
+            <li>✅ <strong>Non-standard approvals (USDT)</strong> - Automatic handling of approval reset</li>
+            <li>✅ <strong>Wrapped tokens (WETH, WBTC)</strong> - Unwrap option displayed when applicable</li>
+            <li>✅ <strong>New token detection</strong> - Hourly updates from LI.FI with caching</li>
+            <li>✅ <strong>Token blacklisting</strong> - Scam tokens automatically filtered out</li>
+        </ul>
+    </div>
+    
+    <script>
+        // Simulate last update time
+        let minutesSinceUpdate = 0;
+        setInterval(() => {
+            minutesSinceUpdate++;
+            document.getElementById('lastUpdate').textContent = `${minutesSinceUpdate} minutes ago`;
+            
+            // Reset after 60 minutes to simulate update
+            if (minutesSinceUpdate >= 60) {
+                minutesSinceUpdate = 0;
+                console.log('Token cache updated!');
+            }
+        }, 60000); // Update every minute
+        
+        // Demo unwrap button
+        document.querySelectorAll('button').forEach(btn => {
+            if (btn.textContent === 'Unwrap') {
+                btn.addEventListener('click', () => {
+                    alert('Unwrap feature will be available in the swap interface!');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

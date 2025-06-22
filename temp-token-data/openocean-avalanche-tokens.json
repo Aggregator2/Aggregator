@@ -1,0 +1,4 @@
+{
+  "code": 400,
+  "error": "data/chain must be equal to one of the allowed values"
+}
