@@ -4,6 +4,7 @@ import { BigNumber } from "bignumber.js";
 import { signQuote } from "../../utils/signOrder";
 import { Quote } from "../../types/Quote";
 import { multiChainQuoteService, CHAIN_CONFIG } from "../../src/services/multiChainQuoteService";
+import { lifiRateLimitService } from "../../src/services/rateLimiter";
 
 // Multi-chain quote support for all blockchains
 const QUOTER_ADDRESSES: Record<number, string> = {
@@ -308,6 +309,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Check rate limit at API level
+    const rateLimitResult = lifiRateLimitService.canMakeRequest();
+    if (!rateLimitResult.allowed) {
+      const waitTime = Math.ceil((rateLimitResult.retryAfter || 0) / 1000);
+      return res.status(429).json({
+        error: `Rate limit exceeded. Please try again in ${waitTime} seconds.`,
+        retryAfter: waitTime,
+        code: 'RATE_LIMIT_EXCEEDED'
+      });
+    }
+
     // Detect chain from tokens
     const detectedChain = detectChainFromToken(sellToken);
     
@@ -325,6 +337,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('Multi-chain service returned:', quoteResult);
     } catch (multiChainError) {
       console.warn('Multi-chain service failed, trying legacy fallback:', multiChainError.message);
+      
+      // Check if it's a rate limit error and handle appropriately
+      if (multiChainError.message.includes('rate limit')) {
+        const retryMatch = multiChainError.message.match(/(\d+)\s+(second|minute)s?/);
+        let waitTime = 60; // Default 1 minute
+        
+        if (retryMatch) {
+          const time = parseInt(retryMatch[1]);
+          const unit = retryMatch[2];
+          waitTime = unit === 'minute' ? time * 60 : time;
+        }
+        
+        return res.status(429).json({
+          error: multiChainError.message,
+          retryAfter: waitTime,
+          code: 'LIFI_RATE_LIMIT_EXCEEDED'
+        });
+      }
+      
       // Fall back to legacy method
       quoteResult = await getQuoteWithFallback(sellToken, buyToken, sellAmount);
       console.log('Legacy fallback returned:', quoteResult);

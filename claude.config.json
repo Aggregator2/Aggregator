@@ -1,0 +1,30 @@
+{
+  "projectRoot": ".",
+  "entryPoints": [
+    "src/index.ts",
+    "src/contracts/FixedEscrow.sol",
+    "pages/api/quote.ts",
+    "pages/api/unified-quote.ts",
+    "test/escrow-system-e2e-test.js",
+    "src/services/crossChainRouter/CrossChainRouter.ts"
+  ],
+  "tools": ["tevm", "web-search", "file-system"],
+  "memoryFiles": [
+    "escrow-memory.json",
+    "aggregator-memory.json",
+    "test-results.json",
+    "performance-metrics.json"
+  ],
+  "testFrameworks": ["jest", "mocha"],
+  "chainConfigs": {
+    "ethereum": 1,
+    "polygon": 137,
+    "arbitrum": 42161,
+    "bsc": 56
+  },
+  "apis": {
+    "lifi": "https://li.quest/v1",
+    "0x": "https://api.0x.org",
+    "1inch": "https://api.1inch.io/v5.0"
+  }
+}

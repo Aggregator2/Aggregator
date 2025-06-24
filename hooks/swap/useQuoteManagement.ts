@@ -203,7 +203,7 @@ export function useQuoteManagement({
             if (isActiveRef.current && inputsChanged() && !quoteError) {
               fetchWithFailureTracking();
             }
-          }, 10000); // Poll every 10 seconds to reduce load
+          }, 30000); // Poll every 30 seconds to reduce API load and avoid rate limits
         }
       }, 400); // 400ms debounce for responsive feel
     }
@@ -229,8 +229,8 @@ export function useQuoteManagement({
       const now = new Date();
       const timeSinceUpdate = now.getTime() - quoteUpdatedAt.getTime();
 
-      // Mark as stale after 10 seconds
-      if (timeSinceUpdate > 10000) {
+      // Mark as stale after 45 seconds (increased to account for longer refresh intervals)
+      if (timeSinceUpdate > 45000) {
         setIsQuoteStale(true);
       }
     }, 1000);

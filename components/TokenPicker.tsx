@@ -15,8 +15,23 @@ interface TokenPickerProps {
   title?: string;
 }
 
-// Popular tokens to show first
-const POPULAR_TOKENS = ['ETH', 'WETH', 'USDC', 'USDT', 'DAI', 'WBTC', 'UNI', 'LINK', 'AAVE', 'MATIC'];
+// Popular tokens to show first with their preferred chains
+const POPULAR_TOKENS_CONFIG = [
+  { symbol: 'USDC', preferredChain: 1 },     // Ethereum USDC
+  { symbol: 'USDT', preferredChain: 1 },     // Ethereum USDT
+  { symbol: 'WETH', preferredChain: 42161 }, // Arbitrum WETH
+  { symbol: 'DAI', preferredChain: 137 },    // Polygon DAI
+  { symbol: 'WBTC', preferredChain: 1 },     // Ethereum WBTC
+  { symbol: 'MATIC', preferredChain: 137 },  // Polygon MATIC
+  { symbol: 'BNB', preferredChain: 56 },     // BSC BNB
+  { symbol: 'LINK', preferredChain: 1 },     // Ethereum LINK
+  { symbol: 'UNI', preferredChain: 1 },      // Ethereum UNI
+  { symbol: 'AAVE', preferredChain: 1 },     // Ethereum AAVE
+  { symbol: 'ARB', preferredChain: 42161 },  // Arbitrum ARB
+  { symbol: 'OP', preferredChain: 10 },      // Optimism OP
+];
+
+const POPULAR_TOKENS = POPULAR_TOKENS_CONFIG.map(t => t.symbol);
 
 // Chain info - All 47 chains supported by LiFi
 export const CHAIN_INFO: Record<number, { name: string; logo: string }> = {
@@ -155,10 +170,46 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
     return tokens;
   }, [allTokens, selectedChain, searchQuery]);
 
+  // Get diverse popular tokens - one of each type from preferred chains
+  const diversePopularTokens = useMemo(() => {
+    const popularTokensMap = new Map<string, Token>();
+    
+    // For each popular token config, find the best match
+    POPULAR_TOKENS_CONFIG.forEach(config => {
+      // Find tokens matching this symbol
+      const matchingTokens = allTokens.filter(
+        token => token.symbol.toUpperCase() === config.symbol.toUpperCase()
+      );
+      
+      if (matchingTokens.length > 0) {
+        // Prefer the token from the specified chain
+        const preferredToken = matchingTokens.find(t => t.chainId === config.preferredChain);
+        const tokenToUse = preferredToken || matchingTokens[0];
+        
+        // Only add if we haven't already added this token
+        const key = `${tokenToUse.symbol}-${tokenToUse.chainId}`;
+        if (!popularTokensMap.has(key)) {
+          popularTokensMap.set(config.symbol, tokenToUse);
+        }
+      }
+    });
+    
+    // Return array maintaining the order from config
+    return POPULAR_TOKENS_CONFIG
+      .map(config => popularTokensMap.get(config.symbol))
+      .filter(token => token !== undefined) as Token[];
+  }, [allTokens]);
+
   const loadLifiTokens = async () => {
     try {
       setIsLoading(true);
       setError(null);
+      
+      // Clear any existing tokens to ensure loading state is visible
+      setAllTokens([]);
+      
+      // Add minimum loading time to ensure spinner is visible
+      const minLoadingTime = new Promise(resolve => setTimeout(resolve, 800));
       
       // First try to use cached tokens from monitoring service
       const cachedTokens = TokenMonitoringService.getCachedTokens();
@@ -166,6 +217,7 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
       if (cachedTokens.size > 0) {
         // Use cached tokens for instant loading
         tokenLogger.info('Using cached tokens from monitoring service');
+        await minLoadingTime; // Ensure loading state is visible
         processCachedTokens(cachedTokens);
         
         // Check if cache needs update in background
@@ -185,6 +237,7 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
         
         // Get tokens from all chains
         const allTokensMap = await lifiService.getAllTokens();
+        await minLoadingTime; // Ensure loading state is visible
         processCachedTokens(allTokensMap);
       }
       
@@ -337,15 +390,16 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
         <div className={styles.divider} />
 
         {/* Popular tokens section */}
-        {!searchQuery && selectedChain === 'all' && (
+        {!searchQuery && selectedChain === 'all' && diversePopularTokens.length > 0 && (
           <div className={styles.popularSection}>
             <div className={styles.sectionTitle}>Popular tokens</div>
             <div className={styles.popularTokens}>
-              {displayTokens.slice(0, 6).map((token) => (
+              {diversePopularTokens.slice(0, 12).map((token) => (
                 <button
                   key={`popular-${token.chainId}-${token.address}`}
                   className={styles.popularToken}
                   onClick={() => handleTokenSelect(token)}
+                  title={`${token.name} on ${CHAIN_INFO[token.chainId]?.name || 'Chain ' + token.chainId}`}
                 >
                   <img 
                     src={token.logoURI} 
@@ -355,7 +409,12 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
                       (e.target as HTMLImageElement).src = '/fallback.svg';
                     }}
                   />
-                  <span>{token.symbol}</span>
+                  <div className={styles.popularTokenInfo}>
+                    <span className={styles.popularTokenSymbol}>{token.symbol}</span>
+                    <span className={styles.popularTokenChain}>
+                      {CHAIN_INFO[token.chainId]?.logo} {CHAIN_INFO[token.chainId]?.name || `Chain ${token.chainId}`}
+                    </span>
+                  </div>
                 </button>
               ))}
             </div>
@@ -379,10 +438,20 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
             ) : displayTokens.length === 0 ? (
               <div className={styles.noResults}>
                 {searchQuery 
-                  ? 'No tokens found' 
+                  ? 'No tokens found for your search' 
                   : selectedChain !== 'all' 
-                    ? `No tokens loaded for ${CHAIN_INFO[selectedChain]?.name || 'this chain'} yet`
-                    : 'No tokens available'}
+                    ? (
+                        <div>
+                          <div className={styles.spinner} style={{ margin: '0 auto 16px' }} />
+                          <p>Loading tokens for {CHAIN_INFO[selectedChain]?.name || 'this chain'}...</p>
+                        </div>
+                      )
+                    : (
+                        <div>
+                          <div className={styles.spinner} style={{ margin: '0 auto 16px' }} />
+                          <p>Loading tokens...</p>
+                        </div>
+                      )}
               </div>
             ) : (
               displayTokens.map((token) => {

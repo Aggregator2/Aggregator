@@ -3,8 +3,5 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/": "pages/index.js",
-  "/api/tokenPrice": "pages/api/tokenPrice.js",
-  "/api/quote-profitable": "pages/api/quote-profitable.js",
-  "/api/submitOrder": "pages/api/submitOrder.js",
-  "/api/orders": "pages/api/orders.js"
+  "/api/tokenPrice": "pages/api/tokenPrice.js"
 }

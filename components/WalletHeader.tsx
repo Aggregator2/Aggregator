@@ -9,18 +9,30 @@ interface OrderWithStatus extends Omit<Order, 'status'> {
   txHash?: string;
 }
 
+interface Notification {
+  id: string;
+  type: 'success' | 'error' | 'pending' | 'info';
+  message: string;
+  timestamp: Date;
+  details?: any;
+}
+
 interface WalletHeaderProps {
   walletAddress: string | null;
   onConnect: () => void;
   onDisconnect: () => void;
   orders?: OrderWithStatus[];
+  notifications?: Notification[];
+  onClearNotifications?: () => void;
 }
 
 const WalletHeader: React.FC<WalletHeaderProps> = ({
   walletAddress,
   onConnect,
   onDisconnect,
-  orders = []
+  orders = [],
+  notifications = [],
+  onClearNotifications
 }) => {
   const [showWalletDropdown, setShowWalletDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -79,41 +91,62 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Update unread count when new orders come in
+  // Update unread count when new notifications come in
   useEffect(() => {
     if (!showNotifications) {
-      const recentOrders = orders.filter(order => {
-        const orderTime = new Date(order.timestamp).getTime();
+      const recentNotifications = notifications.filter(notif => {
+        const notifTime = new Date(notif.timestamp).getTime();
         const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-        return orderTime > fiveMinutesAgo && order.status === 'pending';
+        return notifTime > fiveMinutesAgo;
       });
-      setUnreadCount(recentOrders.length);
+      setUnreadCount(recentNotifications.length);
     }
-  }, [orders, showNotifications]);
+  }, [notifications, showNotifications]);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
+  const getStatusIcon = (type: string) => {
+    switch (type) {
+      case 'success':
       case 'filled':
         return '✅';
+      case 'error':
       case 'failed':
         return '❌';
       case 'pending':
         return '⏳';
+      case 'info':
+        return 'ℹ️';
       default:
         return '📝';
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  const getStatusColor = (type: string) => {
+    switch (type) {
+      case 'success':
       case 'filled':
         return '#4caf50';
+      case 'error':
       case 'failed':
         return '#f44336';
       case 'pending':
         return '#ff9800';
-      default:
+      case 'info':
         return '#2196f3';
+      default:
+        return '#666666';
+    }
+  };
+  
+  const getNotificationClass = (type: string) => {
+    switch (type) {
+      case 'success':
+        return styles.notifSuccess;
+      case 'error':
+        return styles.notifError;
+      case 'pending':
+        return styles.notifPending;
+      default:
+        return '';
     }
   };
 
@@ -246,36 +279,52 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
           {showNotifications && (
             <div className={styles.notificationDropdown}>
               <div className={styles.notificationHeader}>
-                <h3>Order History</h3>
-                {orders.length > 0 && (
-                  <span className={styles.orderCount}>{orders.length} orders</span>
-                )}
+                <h3>Notifications</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {notifications.length > 0 && (
+                    <span className={styles.orderCount}>{notifications.length} items</span>
+                  )}
+                  {notifications.length > 0 && onClearNotifications && (
+                    <button 
+                      className={styles.clearAllButton}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClearNotifications();
+                      }}
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
               </div>
               <div className={styles.notificationList}>
-                {orders.length === 0 ? (
+                {notifications.length === 0 ? (
                   <div className={styles.emptyState}>
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" opacity="0.3">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
-                    <p>No orders yet</p>
+                    <p>No notifications yet</p>
                   </div>
                 ) : (
-                  orders.slice(0, 10).map(order => (
-                    <div key={order.id} className={styles.notificationItem}>
-                      <div className={styles.orderStatus} style={{ color: getStatusColor(order.status) }}>
-                        {getStatusIcon(order.status)}
+                  notifications.slice(0, 20).map(notif => (
+                    <div 
+                      key={notif.id} 
+                      className={`${styles.notificationItem} ${getNotificationClass(notif.type)}`}
+                    >
+                      <div className={styles.orderStatus} style={{ color: getStatusColor(notif.type) }}>
+                        {getStatusIcon(notif.type)}
                       </div>
                       <div className={styles.orderDetails}>
                         <div className={styles.orderTokens}>
-                          {order.sellAmount} {order.sellToken} → {order.buyAmount} {order.buyToken}
+                          {notif.message}
                         </div>
                         <div className={styles.orderMeta}>
                           <span className={styles.orderTime}>
-                            {new Date(order.timestamp).toLocaleTimeString()}
+                            {new Date(notif.timestamp).toLocaleTimeString()}
                           </span>
-                          {order.txHash && (
+                          {notif.details?.txHash && (
                             <a 
-                              href={`https://etherscan.io/tx/${order.txHash}`}
+                              href={`https://etherscan.io/tx/${notif.details.txHash}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className={styles.txLink}

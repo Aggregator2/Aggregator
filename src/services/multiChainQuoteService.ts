@@ -2,6 +2,7 @@ import { ethers } from "ethers";
 import { lifiService } from './lifiService';
 import { CrossChainTokenMapper } from './crossChainTokenMapper';
 import { CrossChainTokenResolver } from './crossChainTokenResolver';
+import { lifiRateLimitService } from './rateLimiter';
 
 export interface QuoteRequest {
   sellToken: string;
@@ -506,6 +507,13 @@ export class MultiChainQuoteService {
     try {
       console.log('Trying LiFi for quote...');
       console.log('LIFI_API_KEY available:', !!process.env.LIFI_API_KEY);
+
+      // Check rate limit before making request
+      const rateLimitResult = lifiRateLimitService.canMakeRequest(process.env.LIFI_API_KEY);
+      if (!rateLimitResult.allowed) {
+        const waitTime = Math.ceil((rateLimitResult.retryAfter || 0) / 1000);
+        throw new Error(`LiFi API rate limit exceeded. Try again in ${waitTime} seconds.`);
+      }
       
       // Import getRoutes from LiFi SDK
       const { getRoutes } = require('@lifi/sdk');
@@ -592,6 +600,21 @@ export class MultiChainQuoteService {
         }
       }
       
+      // Check cache first
+      const cacheParams = {
+        fromChainId: chainId,
+        toChainId: toChainId,
+        fromTokenAddress: mappedSellToken,
+        toTokenAddress: mappedBuyToken,
+        fromAmount: sellAmount
+      };
+      
+      const cachedQuote = lifiRateLimitService.getCachedQuote(cacheParams);
+      if (cachedQuote) {
+        console.log('Returning cached LiFi quote');
+        return cachedQuote;
+      }
+
       // Use getRoutes which is more flexible than getQuote
       const routeRequest = {
         fromChainId: chainId,
@@ -658,7 +681,7 @@ export class MultiChainQuoteService {
         });
       }
       
-      return {
+      const quoteResponse = {
         buyAmount: bestRoute.toAmount,
         source: 'LiFi',
         estimatedGas: totalGas || '200000',
@@ -673,8 +696,27 @@ export class MultiChainQuoteService {
         price: parseFloat(bestRoute.toAmount) / parseFloat(sellAmount),
         sources: [{name: 'LiFi', proportion: '1'}]
       };
+
+      // Cache the quote response
+      lifiRateLimitService.cacheQuote(cacheParams, quoteResponse);
+      
+      return quoteResponse;
     } catch (error: any) {
       console.log('LiFi error:', error.message);
+      
+      // Handle rate limit specifically
+      if (error.response?.status === 429 || error.message.includes('rate limit')) {
+        console.log('LiFi rate limit detected, updating rate limiter');
+        
+        // Extract retry-after from headers if available
+        const retryAfter = error.response?.headers?.['retry-after'];
+        const retryAfterSeconds = retryAfter ? parseInt(retryAfter) : 7100; // Default to 2 hours as mentioned in error
+        
+        lifiRateLimitService.handleRateLimit(retryAfterSeconds, process.env.LIFI_API_KEY);
+        
+        throw new Error(`LiFi API rate limit exceeded. Retry after ${Math.ceil(retryAfterSeconds / 60)} minutes.`);
+      }
+      
       if (error.response?.data) {
         console.log('LiFi error details:', JSON.stringify(error.response.data));
       }

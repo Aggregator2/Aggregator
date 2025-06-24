@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getChains, getTokens, getQuote, getRoutes } from '@lifi/sdk';
 import { lifiLogger } from '../utils/devLogger';
+import { lifiRateLimitService } from './rateLimiter';
 
 const LIFI_BASE_URL = 'https://li.quest/v1';
 
@@ -125,6 +126,13 @@ class LifiService {
 
   async getQuote(request: LifiQuoteRequest): Promise<LifiRoute[]> {
     try {
+      // Check rate limit before making request
+      const rateLimitResult = lifiRateLimitService.canMakeRequest(process.env.LIFI_API_KEY);
+      if (!rateLimitResult.allowed) {
+        const waitTime = Math.ceil((rateLimitResult.retryAfter || 0) / 1000);
+        throw new Error(`LiFi API rate limit exceeded. Try again in ${waitTime} seconds.`);
+      }
+
       // Use SDK method with correct parameters
       const quoteRequest = {
         fromChain: request.fromChain.toString(),
@@ -143,6 +151,16 @@ class LifiService {
       
       return quote.routes || [];
     } catch (error: any) {
+      // Handle rate limit specifically
+      if (error.response?.status === 429 || error.message.includes('rate limit')) {
+        lifiLogger.error('LiFi rate limit detected');
+        const retryAfter = error.response?.headers?.['retry-after'];
+        const retryAfterSeconds = retryAfter ? parseInt(retryAfter) : 7200; // Default to 2 hours
+        
+        lifiRateLimitService.handleRateLimit(retryAfterSeconds, process.env.LIFI_API_KEY);
+        throw new Error(`LiFi API rate limit exceeded. Retry after ${Math.ceil(retryAfterSeconds / 60)} minutes.`);
+      }
+
       lifiLogger.error('Error fetching LI.FI quote:', error);
       
       // If it's a 400 error, it might be because the token pair is not supported

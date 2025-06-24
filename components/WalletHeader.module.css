@@ -2,10 +2,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  z-index: 1000;
+  position: relative;
+  z-index: 10;
 }
 
 /* Wallet Section */
@@ -22,6 +20,9 @@
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   backdrop-filter: blur(12px);
   color: #ffffff;
+  position: relative;
+  z-index: 10;
+  user-select: none;
 }
 
 .walletButton:hover {
@@ -39,6 +40,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  pointer-events: none;
 }
 
 .walletIcon {
@@ -56,10 +58,15 @@
 .chevron {
   color: #cccccc;
   transition: transform 0.2s ease;
+  margin-left: 4px;
 }
 
 .walletButton:hover .chevron {
   transform: translateY(1px);
+}
+
+.walletButton.active .chevron {
+  transform: rotate(180deg);
 }
 
 .connectButton {
@@ -88,24 +95,25 @@
 
 /* Dropdown */
 .dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  background: rgba(0, 0, 0, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
+  position: fixed;
+  top: 80px;
+  left: 20px;
+  background: rgba(20, 20, 20, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
   padding: 8px;
   min-width: 280px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(24px);
-  animation: dropdownSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: calc(100vw - 40px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  animation: dropdownSlide 0.15s ease-in-out;
   z-index: 2000;
 }
 
 @keyframes dropdownSlide {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
@@ -123,7 +131,8 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #cccccc;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
 }
 
 .networkDot {
@@ -149,10 +158,13 @@
 }
 
 .fullAddress {
-  font-family: monospace;
+  font-family: 'SF Mono', Monaco, monospace;
   font-size: 12px;
-  color: #cccccc;
+  color: rgba(255, 255, 255, 0.7);
   word-break: break-all;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px 12px;
+  border-radius: 8px;
 }
 
 .dropdownButton {
@@ -165,14 +177,16 @@
   border: none;
   border-radius: 8px;
   font-size: 14px;
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.15s ease;
   text-align: left;
+  font-weight: 500;
 }
 
 .dropdownButton:hover {
-  background: rgba(153, 69, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(2px);
 }
 
 .dropdownDivider {
@@ -186,12 +200,16 @@
   border-radius: 8px;
   padding: 12px;
   margin: 8px 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .balanceLabel {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.6);
   margin-bottom: 4px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .balanceAmount {
@@ -215,6 +233,12 @@
   transition: all 0.2s ease;
   backdrop-filter: blur(10px);
   color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  z-index: 10;
 }
 
 .notificationButton:hover {
@@ -242,20 +266,22 @@
 }
 
 .notificationDropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: rgba(26, 26, 26, 0.98);
+  position: fixed;
+  top: 80px;
+  left: 320px;
+  background: rgba(20, 20, 20, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   width: 360px;
-  max-height: 480px;
+  max-width: calc(100vw - 340px);
+  max-height: calc(100vh - 100px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
-  animation: dropdownSlide 0.2s ease;
+  animation: dropdownSlide 0.15s ease-in-out;
   display: flex;
   flex-direction: column;
   z-index: 2000;
+  overflow: hidden;
 }
 
 .notificationHeader {
@@ -282,20 +308,40 @@
 .clearButton {
   background: none;
   border: none;
-  color: #666666;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 12px;
   cursor: pointer;
   transition: color 0.2s ease;
 }
 
 .clearButton:hover {
-  color: #999999;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .notificationList {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
+  max-height: 400px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.notificationList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notificationList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notificationList::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.notificationList::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .emptyState {
@@ -304,7 +350,7 @@
   align-items: center;
   justify-content: center;
   padding: 48px 24px;
-  color: #999999;
+  color: rgba(255, 255, 255, 0.4);
   text-align: center;
 }
 
@@ -320,6 +366,7 @@
   border-radius: 8px;
   transition: background 0.2s ease;
   border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .notificationItem:hover {
@@ -352,7 +399,7 @@
   align-items: center;
   gap: 12px;
   font-size: 12px;
-  color: #666666;
+  color: #888888;
 }
 
 .orderTime {
@@ -371,52 +418,59 @@
   text-decoration: underline;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .walletButton,
-  .notificationButton {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .walletButton:hover,
-  .notificationButton:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
-  }
-
-  .dropdown,
-  .notificationDropdown {
-    background: rgba(24, 24, 24, 0.95);
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .dropdownButton:hover {
-    background: rgba(255, 255, 255, 0.03);
-  }
-
-  .notificationItem:hover {
-    background: rgba(255, 255, 255, 0.03);
-  }
-}
 
 /* Mobile responsive */
 @media (max-width: 768px) {
-  .walletHeader {
-    top: 10px;
-    left: 10px;
-  }
-
   .walletAddress {
     font-size: 13px;
   }
 
   .dropdown {
+    top: 70px;
+    left: 15px;
     min-width: 240px;
+    max-width: calc(100vw - 30px);
   }
 
   .notificationDropdown {
-    width: 320px;
-    max-height: 400px;
+    top: 70px;
+    left: 15px;
+    width: calc(100vw - 30px);
+    max-width: 320px;
+    max-height: calc(100vh - 90px);
   }
+}
+
+/* Notification Types */
+.notifSuccess {
+  background: rgba(76, 175, 80, 0.1);
+  border-color: rgba(76, 175, 80, 0.2);
+}
+
+.notifError {
+  background: rgba(244, 67, 54, 0.1);
+  border-color: rgba(244, 67, 54, 0.2);
+}
+
+.notifPending {
+  background: rgba(255, 152, 0, 0.1);
+  border-color: rgba(255, 152, 0, 0.2);
+}
+
+/* Clear All Button */
+.clearAllButton {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.clearAllButton:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
 }
