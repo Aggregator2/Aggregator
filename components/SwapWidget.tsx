@@ -20,6 +20,7 @@ import TokenSelector from "./TokenSelector";
 import WalletHeader from "./WalletHeader";
 import TokenWarning from "./TokenWarning";
 import DisputeModal from "./DisputeModal";
+import AnimatedBackground from "../src/components/AnimatedBackground";
 import { hashOrder } from "../utils/hashOrder";
 import { getSigner } from "../utils/getSigner";
 import FixedEscrowABI from "../artifacts/contracts/FixedEscrow.sol/FixedEscrow.json";
@@ -27,7 +28,8 @@ import { ESCROW_CONTRACT_ADDRESS } from "../frontend/src/config/escrowAddress";
 import { 
   connectWallet as connectWalletUtil,
   attemptReconnection,
-  clearWalletConnection 
+  clearWalletConnection,
+  disconnectWallet as disconnectWalletUtil
 } from "../utils/walletConnection";
 import {
   getTokenWarnings,
@@ -263,8 +265,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   ]);
 
   // Hooks
-  const { showError, showSuccess, showWarning, showInfo, ToastContainer } =
-    useToast();
+  const { showError, ToastContainer } = useToast();
   const {
     showOrderSubmitted,
     showOrderFilled,
@@ -283,7 +284,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       attemptReconnection().then((result) => {
         if (result.success && result.address) {
           setWalletAddress(result.address);
-          showInfo("Wallet reconnected successfully");
+          console.log("Wallet reconnected successfully");
           onConnect?.();
         }
       }).catch((error) => {
@@ -327,7 +328,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
    */
   const connectWallet = useCallback(async () => {
     if (connectingWallet) {
-      showWarning("Connection already in progress...");
+      console.log("Connection already in progress...");
       return;
     }
 
@@ -338,7 +339,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         timeout: 30000,
         requiredChainId: 31337, // Local development network
         onPendingRequest: () => {
-          showWarning(
+          console.log(
             "Connection request already pending. Please check MetaMask."
           );
         },
@@ -361,16 +362,24 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     } finally {
       setConnectingWallet(false);
     }
-  }, [connectingWallet, showWarning, showError, onConnect]);
+  }, [connectingWallet, showError, onConnect]);
 
   /**
    * Disconnect wallet and clear localStorage
    */
-  const disconnectWallet = useCallback(() => {
-    setWalletAddress(null);
-    clearWalletConnection();
-    showInfo("Wallet disconnected");
-  }, [showInfo]);
+  const disconnectWallet = useCallback(async () => {
+    try {
+      await disconnectWalletUtil();
+      setWalletAddress(null);
+      console.log("Wallet disconnected");
+    } catch (error) {
+      console.error('Error disconnecting wallet:', error);
+      // Fallback: clear local state anyway
+      setWalletAddress(null);
+      clearWalletConnection();
+      console.log("Wallet disconnected");
+    }
+  }, []);
 
   /**
    * Enhanced quote fetching with retry and fallback
@@ -421,7 +430,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       const data = await response.json();
 
       if (data.warning) {
-        showWarning(data.warning);
+        console.warn(data.warning);
       } // Add developer logs for quote source and fallbacks
       if (data.source) {
         console.log(`💰 Quote source: ${data.source}`);
@@ -449,12 +458,12 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       setCurrentQuote(null);
 
       if (!networkStatus.isOnline) {
-        showWarning("You appear to be offline. Please check your connection.");
+        console.warn("You appear to be offline. Please check your connection.");
       }
     } finally {
       setQuoteLoading(false);
     }
-  }, [quoteRequestParams, networkStatus.isOnline, showWarning, lastQuoteUpdate, isUserInteracting, currentQuote]);
+  }, [quoteRequestParams, networkStatus.isOnline, lastQuoteUpdate, isUserInteracting, currentQuote]);
 
   // Memoized quote fetch wrapper for stable reference
   const stableFetchQuoteData = useMemo(() => {
@@ -647,7 +656,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         throw new Error(`Missing order fields: ${missingFields.join(", ")}`);
       }
 
-      showInfo("Please sign the limit order in your wallet...");
+      console.log("Please sign the limit order in your wallet...");
 
       // Sign the order
       const signature = await signer.signTypedData(
@@ -763,39 +772,10 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       console.log("Order to sign:", order);
       console.log("Order field types:", Object.entries(order).map(([k, v]) => `${k}: ${typeof v} = ${v}`))
 
-      // Pre-validate order with TEVM before signing
-      showInfo("Validating order...");
-      
-      try {
-        const validationResponse = await fetch("/api/validate-order", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ order }),
-        });
+      // Skip pre-validation to speed up MetaMask prompt
+      // Validation will happen server-side after signing
 
-        const validationResult = await validationResponse.json();
-
-        if (!validationResult.isValid) {
-          showError(`Validation failed: ${validationResult.reason}`);
-          addNotification(
-            'error',
-            `Order validation failed: ${validationResult.reason}`,
-            { validationResult }
-          );
-          return;
-        }
-
-        // Add gas estimate to the order if available
-        if (validationResult.gasEstimate) {
-          console.log(`Estimated gas: ${validationResult.gasEstimate}`);
-        }
-      } catch (validationError) {
-        console.error("Pre-validation error:", validationError);
-        // Continue anyway - validation is optional
-        showWarning("Could not validate order, proceeding anyway...");
-      }
-
-      showInfo("Please sign the transaction in your wallet...");
+      console.log("Please sign the transaction in your wallet...");
 
       // Sign the order
       const signature = await signer.signTypedData(
@@ -970,11 +950,11 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         currentQuote.sellAmount
       );
 
-      showInfo("Transaction submitted. Waiting for confirmation...");
+      console.log("Transaction submitted. Waiting for confirmation...");
       await tx.wait();
 
       await submitEscrowTx(orderId, tx.hash);
-      showSuccess("Deposited to Escrow successfully!");
+      console.log("Deposited to Escrow successfully!");
     } catch (error: any) {
       const errorMessage = error.message || "Escrow deposit failed";
       setEscrowError(errorMessage);
@@ -1159,7 +1139,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     if (!disputeOrder) return;
 
     try {
-      showInfo("Initiating on-chain settlement...");
+      console.log("Initiating on-chain settlement...");
 
       // Call settlement API
       const response = await fetch("/api/disputes/settle", {
@@ -1173,7 +1153,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       });
 
       if (response.ok) {
-        showSuccess(
+        console.log(
           "Settlement initiated. Transaction will be processed on-chain."
         );
       } else {
@@ -1192,7 +1172,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     if (!disputeOrder) return;
 
     try {
-      showInfo("Processing fund return...");
+      console.log("Processing fund return...");
 
       // Call return API
       const response = await fetch("/api/disputes/return", {
@@ -1205,7 +1185,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       });
 
       if (response.ok) {
-        showSuccess("Funds will be returned to your wallet shortly.");
+        console.log("Funds will be returned to your wallet shortly.");
       } else {
         throw new Error("Return failed");
       }
@@ -1291,41 +1271,38 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
 
   return (
     <ErrorBoundary>
-      <div className={styles.appContainer}>
+      <>
+        {/* Global animated background */}
+        <AnimatedBackground theme="dark" />
+        
         <ToastContainer />
         <OrderToastContainer />
         
-        {/* Top Logo Header */}
-        <div className={styles.topBrandingHeader}>
+        {/* Floating Logo */}
+        <div className={styles.floatingLogo}>
           <div className={styles.logoContainer}>
-            <div className={styles.customLogo}>
-              <img 
-                src="/images/swappiq-logo.png" 
-                alt="SwappiQ Logo"
-                className={styles.logoImage}
-              />
-              <div className={styles.logoText}>SWAPPIQ</div>
-            </div>
-            <div className={styles.brandTagline}>
-              Decentralized Exchange
-            </div>
-          </div>
-          
-          {/* Move WalletHeader to top left */}
-          <div className={styles.topLeftControls}>
-            <WalletHeader
-              walletAddress={walletAddress}
-              onConnect={connectWallet}
-              onDisconnect={disconnectWallet}
-              orders={safeOrders}
-              notifications={combinedNotifications}
-              onClearNotifications={() => setNotifications([])}
+            <img 
+              src="/images/swappiq-logo.png" 
+              alt="SwappiQ Logo"
+              className={styles.logoImage}
             />
+            <div className={styles.logoText}>SWAPPIQ</div>
           </div>
         </div>
+        
+        {/* Floating Controls */}
+        <div className={styles.floatingControls}>
+          <WalletHeader
+            walletAddress={walletAddress}
+            onConnect={connectWallet}
+            onDisconnect={disconnectWallet}
+            orders={safeOrders}
+            notifications={combinedNotifications}
+            onClearNotifications={() => setNotifications([])}
+          />
+        </div>
 
-        <div className={styles.tradeWrapper}>
-          <div className={styles.tradeCard}>
+        <div className={styles.tradeCard}>
           <div className={styles.tradeHeader}>
             <div className={styles.tradeTitle}>
               Swap
@@ -1624,7 +1601,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
                       fontSize: "12px",
                       cursor: "pointer",
                     }}
-                    onClick={() => showInfo("Unwrap feature coming soon!")}
+                    onClick={() => console.log("Unwrap feature coming soon!")}
                   >
                     Unwrap
                   </button>
@@ -1840,8 +1817,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
             />
           )}
         </div>
-        </div> {/* Close tradeWrapper */}
-      </div> {/* Close appContainer */}
+      </>
     </ErrorBoundary>
   );
 };

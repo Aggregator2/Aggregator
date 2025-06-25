@@ -162,7 +162,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch (error) {
         console.error('Order execution error:', error);
       }
-    }, 5000 + Math.random() * 10000); // 5-15 seconds delay
+    }, 1000); // 1 second delay for immediate processing
 
     // Return success response
     res.status(200).json({

@@ -9,6 +9,7 @@ interface ToastProps {
   isVisible: boolean;
   onClose: () => void;
   duration?: number;
+  stackIndex?: number;
 }
 
 const Toast: React.FC<ToastProps> = ({
@@ -17,6 +18,7 @@ const Toast: React.FC<ToastProps> = ({
   isVisible,
   onClose,
   duration = 5000,
+  stackIndex = 0,
 }) => {
   React.useEffect(() => {
     if (isVisible && duration > 0) {
@@ -46,7 +48,15 @@ const Toast: React.FC<ToastProps> = ({
   if (!isVisible) return null;
 
   return (
-    <div className={`${styles.toast} ${styles[type]} ${isVisible ? styles.visible : ''}`}>
+    <div 
+      className={`${styles.toast} ${styles[type]} ${isVisible ? styles.visible : ''}`}
+      style={{ 
+        transform: isVisible 
+          ? `translate(-50%, calc(-50% + ${stackIndex * 80}px)) scale(1)` 
+          : 'translate(-50%, -50%) scale(0.9)',
+        zIndex: 10000 + stackIndex
+      }}
+    >
       <div className={styles.toastContent}>
         <span className={styles.toastIcon}>{getIcon()}</span>
         <span className={styles.toastMessage}>{message}</span>

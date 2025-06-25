@@ -40,6 +40,8 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [balance, setBalance] = useState<string>('');
   const [showBalance, setShowBalance] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
   const walletRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -223,26 +225,61 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
                   </div>
                 )}
                 <div className={styles.dropdownDivider} />
-                <button className={styles.dropdownButton} onClick={(e) => {
-                  e.stopPropagation();
-                  onDisconnect();
-                  setShowWalletDropdown(false);
-                }}>
+                <button 
+                  className={styles.dropdownButton} 
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setShowWalletDropdown(false);
+                    setIsDisconnecting(true);
+                    try {
+                      await onDisconnect();
+                    } catch (error) {
+                      console.error('Error disconnecting wallet:', error);
+                    } finally {
+                      setIsDisconnecting(false);
+                    }
+                  }}
+                  disabled={isDisconnecting || isSwitching}
+                >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
-                  Disconnect
+                  {isDisconnecting ? 'Disconnecting...' : 'Disconnect'}
                 </button>
-                <button className={styles.dropdownButton} onClick={(e) => {
-                  e.stopPropagation();
-                  onDisconnect();
-                  setTimeout(() => onConnect(), 100);
-                  setShowWalletDropdown(false);
-                }}>
+                <button 
+                  className={styles.dropdownButton} 
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setShowWalletDropdown(false);
+                    setIsSwitching(true);
+                    try {
+                      // First disconnect the current wallet
+                      await onDisconnect();
+                      
+                      // Wait for disconnect to complete and UI to update
+                      await new Promise(resolve => setTimeout(resolve, 600));
+                      
+                      // Then prompt for new wallet connection
+                      await onConnect();
+                    } catch (error) {
+                      console.error('Error switching wallet:', error);
+                      // Fallback: still try to connect
+                      try {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                        await onConnect();
+                      } catch (fallbackError) {
+                        console.error('Fallback connect also failed:', fallbackError);
+                      }
+                    } finally {
+                      setIsSwitching(false);
+                    }
+                  }}
+                  disabled={isDisconnecting || isSwitching}
+                >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
-                  Switch Wallet
+                  {isSwitching ? 'Switching...' : 'Switch Wallet'}
                 </button>
               </div>
             )}

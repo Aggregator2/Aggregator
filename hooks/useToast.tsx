@@ -38,7 +38,7 @@ export function useToast() {
 
   const ToastContainer = useCallback((): ReactNode => (
     <>
-      {toasts.map(toast => (
+      {toasts.map((toast, index) => (
         <Toast
           key={toast.id}
           message={toast.message}
@@ -46,6 +46,7 @@ export function useToast() {
           isVisible={true}
           onClose={() => hideToast(toast.id)}
           duration={toast.duration}
+          stackIndex={index}
         />
       ))}
     </>

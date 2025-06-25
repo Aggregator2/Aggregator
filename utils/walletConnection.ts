@@ -316,16 +316,27 @@ export async function connectWallet(options: WalletConnectionOptions = {}): Prom
 export async function disconnectWallet(): Promise<void> {
   if (window.ethereum?.request) {
     try {
+      // Try the new EIP-2255 method first
       await window.ethereum.request({
         method: 'wallet_revokePermissions',
         params: [{ eth_accounts: {} }],
       });
     } catch (error) {
-      console.error('Error disconnecting wallet:', error);
+      console.warn('wallet_revokePermissions not supported, using fallback disconnect:', error);
+      
+      // Fallback: Try to request accounts with empty array to "disconnect"
+      try {
+        await window.ethereum.request({
+          method: 'wallet_requestPermissions',
+          params: [{ eth_accounts: {} }],
+        });
+      } catch (fallbackError) {
+        console.warn('Fallback disconnect method also failed:', fallbackError);
+      }
     }
   }
   
-  // Clear saved connection
+  // Always clear saved connection regardless of wallet response
   clearWalletConnection();
 }
 
