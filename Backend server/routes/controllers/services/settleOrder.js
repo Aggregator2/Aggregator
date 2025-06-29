@@ -1,6 +1,9 @@
-require("dotenv").config();
-const { ethers } = require("ethers");
-const FixedEscrowABI = require("../../artifacts/contracts/FixedEscrow.sol/FixedEscrow.json").abi; // Updated to use FixedEscrow
+import dotenv from "dotenv";
+import { ethers } from "ethers";
+import FixedEscrowJSON from "../../artifacts/contracts/FixedEscrow.sol/FixedEscrow.json" assert { type: "json" };
+
+dotenv.config();
+const FixedEscrowABI = FixedEscrowJSON.abi; // Updated to use FixedEscrow
 
 // --- Contract address and API key usage ---
 // Use environment variables for sensitive data
@@ -14,7 +17,7 @@ const PROVIDER_URL = process.env.REACT_APP_NETWORK_URL_5 || "https://eth-goerli.
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e";
 
 // Example: Use 0x API key from .env if needed elsewhere
-const ZEROX_API_KEY = process.env.ZEROX_API_KEY || "cdc3902a-daef-4d26-bca5-23df95595774";
+// const ZEROX_API_KEY = process.env.ZEROX_API_KEY || "cdc3902a-daef-4d26-bca5-23df95595774";
 
 /**
  * Calls settleOrder on the Escrow contract.

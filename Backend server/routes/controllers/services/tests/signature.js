@@ -1,6 +1,5 @@
-import { Wallet } from "ethers";
-import { domain, types } from "./signature.js";
-import { utils } from "ethers";
+import { Wallet, utils } from "ethers";
+
 
 export function generateOrderHash(order) {
     return utils._TypedDataEncoder.hash(domain, types, order);
@@ -17,6 +16,7 @@ const order = {
 };
 
 // Simulate signing the order using EIP-712
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function simulateSigning() {
     const privateKey = "0xYourPrivateKeyHere"; // Hardcoded private key (example only, do not use in production)
     const wallet = new Wallet(privateKey);
@@ -31,21 +31,4 @@ export function verifySignature(order, signature, signer) {
     return recoveredAddress.toLowerCase() === signer.toLowerCase();
 }
 
-export const domain = {
-    name: 'TradeProtocol',
-    version: '1',
-    chainId: 1,
-    verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
-};
-
-export const types = {
-    Order: [
-        { name: 'maker', type: 'address' },
-        { name: 'taker', type: 'address' },
-        { name: 'amount', type: 'uint256' },
-        { name: 'price', type: 'uint256' },
-        { name: 'nonce', type: 'uint256' },
-        { name: 'expiry', type: 'uint256' }
-    ]
-};
 

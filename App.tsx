@@ -20,8 +20,9 @@ const App = () => {
           console.log("Already connected:", existingAccounts[0]);
           return;
         }
-      } catch (checkError: any) {
-        if (checkError.code === -32002) {
+      } catch (checkError) {
+        const checkErr = checkError as any;
+        if (checkErr.code === -32002) {
           alert("Connection request already pending. Please check MetaMask.");
           return;
         }
@@ -36,10 +37,11 @@ const App = () => {
           setWalletAddress(accounts[0]);
           console.log("Wallet connected:", accounts[0]);
         }
-      } catch (error: any) {
-        if (error.code === -32002) {
+      } catch (error) {
+        const err = error as any;
+        if (err.code === -32002) {
           alert("Connection request already pending. Please check MetaMask.");
-        } else if (error.code === 4001) {
+        } else if (err.code === 4001) {
           console.log("User rejected connection");
         } else {
           throw error;
