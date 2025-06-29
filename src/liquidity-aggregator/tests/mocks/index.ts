@@ -1,5 +1,7 @@
-export { MockProvider, MockContract } from './MockProvider';
-export { MockWebSocket } from './MockWebSocket';
+import { MockProvider, MockContract } from './MockProvider';
+import { MockWebSocket } from './MockWebSocket';
+
+export { MockProvider, MockContract, MockWebSocket };
 
 // Mock ethers module
 export const ethers = {

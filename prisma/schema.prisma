@@ -17,6 +17,8 @@ model User {
   isActive      Boolean   @default(true)
   role          UserRole  @default(USER)
   orders        Order[]
+  rfqs          RFQ[]
+  trades        MarketMakerTrade[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -111,4 +113,282 @@ enum OrderStatus {
   COMPLETED
   CANCELLED
   REFUNDED
+}
+
+enum MarketMakerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum RFQStatus {
+  PENDING
+  QUOTED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  EXECUTED
+  CANCELLED
+}
+
+enum QuoteStatus {
+  ACTIVE
+  FILLED
+  PARTIALLY_FILLED
+  CANCELLED
+  EXPIRED
+}
+
+enum OrderFlowType {
+  PUBLIC
+  PRIVATE
+  AUCTION
+}
+
+enum FeeType {
+  MAKER_REBATE
+  TAKER_FEE
+  PLATFORM_FEE
+}
+
+enum InventoryEventType {
+  DEPOSIT
+  WITHDRAWAL
+  TRADE_BUY
+  TRADE_SELL
+  FEE
+  REBATE
+  ADJUSTMENT
+}
+
+model MarketMaker {
+  id                String              @id @default(uuid())
+  name              String
+  code              String              @unique
+  status            MarketMakerStatus   @default(PENDING)
+  apiKey            String              @unique
+  apiSecret         String
+  webhookUrl        String?
+  websocketUrl      String?
+  supportedPairs    String[]
+  minQuoteSize      Decimal             @default(0) @db.Decimal(20, 8)
+  maxQuoteSize      Decimal             @default(1000000) @db.Decimal(20, 8)
+  quoteExpiry       Int                 @default(30000) // milliseconds
+  settlementAddress String?
+  metadata          Json?
+  isActive          Boolean             @default(true)
+  
+  pairs             MarketMakerPair[]
+  quotes            Quote[]
+  inventory         MarketMakerInventory[]
+  inventoryEvents   InventoryEvent[]
+  trades            MarketMakerTrade[]
+  feeStructures     FeeStructure[]
+  performance       MarketMakerPerformance[]
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([status])
+}
+
+model MarketMakerPair {
+  id            String      @id @default(uuid())
+  marketMakerId String
+  marketMaker   MarketMaker @relation(fields: [marketMakerId], references: [id], onDelete: Cascade)
+  baseCurrency  String
+  quoteCurrency String
+  minSize       Decimal     @default(0.001) @db.Decimal(20, 8)
+  maxSize       Decimal     @default(10000) @db.Decimal(20, 8)
+  tickSize      Decimal     @default(0.00001) @db.Decimal(20, 8)
+  isActive      Boolean     @default(true)
+  spreadBps     Int         @default(10) // basis points
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([marketMakerId, baseCurrency, quoteCurrency])
+}
+
+model RFQ {
+  id            String        @id @default(uuid())
+  requestId     String        @unique
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  side          String        // BUY or SELL
+  baseCurrency  String
+  quoteCurrency String
+  baseAmount    Decimal?      @db.Decimal(20, 8)
+  quoteAmount   Decimal?      @db.Decimal(20, 8)
+  orderFlowType OrderFlowType @default(PUBLIC)
+  status        RFQStatus     @default(PENDING)
+  expiresAt     DateTime
+  metadata      Json?
+  
+  quotes        Quote[]
+  auction       Auction?
+  trades        MarketMakerTrade[]
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model Quote {
+  id            String       @id @default(uuid())
+  rfqId         String
+  rfq           RFQ          @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  marketMakerId String
+  marketMaker   MarketMaker  @relation(fields: [marketMakerId], references: [id])
+  bidPrice      Decimal?     @db.Decimal(20, 8)
+  askPrice      Decimal?     @db.Decimal(20, 8)
+  bidSize       Decimal?     @db.Decimal(20, 8)
+  askSize       Decimal?     @db.Decimal(20, 8)
+  price         Decimal      @db.Decimal(20, 8)
+  size          Decimal      @db.Decimal(20, 8)
+  side          String       // BID or ASK
+  status        QuoteStatus  @default(ACTIVE)
+  expiresAt     DateTime
+  filledSize    Decimal      @default(0) @db.Decimal(20, 8)
+  signature     String?
+  metadata      Json?
+  
+  trades        MarketMakerTrade[]
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([rfqId])
+  @@index([marketMakerId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model Auction {
+  id              String    @id @default(uuid())
+  rfqId           String    @unique
+  rfq             RFQ       @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  startTime       DateTime
+  endTime         DateTime
+  minParticipants Int       @default(2)
+  winningQuoteId  String?
+  executedPrice   Decimal?  @db.Decimal(20, 8)
+  executedSize    Decimal?  @db.Decimal(20, 8)
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model MarketMakerInventory {
+  id            String           @id @default(uuid())
+  marketMakerId String
+  marketMaker   MarketMaker      @relation(fields: [marketMakerId], references: [id], onDelete: Cascade)
+  currency      String
+  balance       Decimal          @default(0) @db.Decimal(20, 8)
+  available     Decimal          @default(0) @db.Decimal(20, 8)
+  locked        Decimal          @default(0) @db.Decimal(20, 8)
+  lastUpdated   DateTime         @default(now())
+  
+  events        InventoryEvent[]
+  
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([marketMakerId, currency])
+}
+
+model InventoryEvent {
+  id            String             @id @default(uuid())
+  inventoryId   String
+  inventory     MarketMakerInventory @relation(fields: [inventoryId], references: [id])
+  marketMakerId String
+  marketMaker   MarketMaker        @relation(fields: [marketMakerId], references: [id])
+  eventType     InventoryEventType
+  currency      String
+  amount        Decimal            @db.Decimal(20, 8)
+  balanceBefore Decimal            @db.Decimal(20, 8)
+  balanceAfter  Decimal            @db.Decimal(20, 8)
+  referenceId   String?
+  referenceType String?
+  description   String?
+  metadata      Json?
+  createdAt     DateTime           @default(now())
+
+  @@index([inventoryId])
+  @@index([marketMakerId])
+  @@index([createdAt])
+}
+
+model MarketMakerTrade {
+  id            String      @id @default(uuid())
+  marketMakerId String
+  marketMaker   MarketMaker @relation(fields: [marketMakerId], references: [id])
+  quoteId       String
+  quote         Quote       @relation(fields: [quoteId], references: [id])
+  rfqId         String
+  rfq           RFQ         @relation(fields: [rfqId], references: [id])
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  side          String      // BUY or SELL
+  baseCurrency  String
+  quoteCurrency String
+  baseAmount    Decimal     @db.Decimal(20, 8)
+  quoteAmount   Decimal     @db.Decimal(20, 8)
+  price         Decimal     @db.Decimal(20, 8)
+  fee           Decimal     @default(0) @db.Decimal(20, 8)
+  rebate        Decimal     @default(0) @db.Decimal(20, 8)
+  pnl           Decimal?    @db.Decimal(20, 8)
+  txHash        String?
+  status        String      @default("PENDING")
+  executedAt    DateTime?
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([marketMakerId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model FeeStructure {
+  id            String      @id @default(uuid())
+  marketMakerId String?
+  marketMaker   MarketMaker? @relation(fields: [marketMakerId], references: [id], onDelete: Cascade)
+  tierName      String
+  feeType       FeeType
+  baseCurrency  String?
+  quoteCurrency String?
+  minVolume     Decimal     @default(0) @db.Decimal(20, 8)
+  maxVolume     Decimal?    @db.Decimal(20, 8)
+  feeBps        Int         // basis points
+  flatFee       Decimal?    @db.Decimal(20, 8)
+  isActive      Boolean     @default(true)
+  priority      Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([marketMakerId])
+}
+
+model MarketMakerPerformance {
+  id            String      @id @default(uuid())
+  marketMakerId String
+  marketMaker   MarketMaker @relation(fields: [marketMakerId], references: [id], onDelete: Cascade)
+  date          DateTime    @db.Date
+  totalVolume   Decimal     @default(0) @db.Decimal(20, 8)
+  totalTrades   Int         @default(0)
+  totalPnL      Decimal     @default(0) @db.Decimal(20, 8)
+  totalFees     Decimal     @default(0) @db.Decimal(20, 8)
+  totalRebates  Decimal     @default(0) @db.Decimal(20, 8)
+  fillRate      Decimal     @default(0) @db.Decimal(5, 2)
+  avgSpread     Decimal     @default(0) @db.Decimal(10, 4)
+  uptime        Decimal     @default(100) @db.Decimal(5, 2)
+  metrics       Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([marketMakerId, date])
 }

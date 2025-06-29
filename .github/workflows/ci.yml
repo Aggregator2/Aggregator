@@ -76,6 +76,8 @@ jobs:
     strategy:
       matrix:
         node-version: [18.x, 20.x]
+    env:
+      DISABLE_ESLINT_PLUGIN: true
     steps:
     - uses: actions/checkout@v4
     - name: Use Node.js ${{ matrix.node-version }}
@@ -83,6 +85,8 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+    - name: Remove problem matchers
+      run: echo "::remove-matcher owner=eslint-stylish::"
     - run: npm ci
     - run: npm run compile || echo "Compile failed"
     - run: npm test || echo "Tests failed"
