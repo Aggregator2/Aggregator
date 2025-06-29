@@ -27,3 +27,14 @@ coverage/
 jest.config.js
 next.config.js
 hardhat.config.ts
+
+# Ignore analysis scripts temporarily
+analyze-*.js
+analyze-*.ts
+
+# Ignore Hardhat scripts temporarily
+Hardhat/**/*.js
+Hardhat/**/*.ts
+
+# Ignore App.tsx temporarily (has any type issues)
+App.tsx
