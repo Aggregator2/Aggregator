@@ -136,6 +136,13 @@ export class MatchingEngine extends EventEmitter {
 
   // Process market order
   private async processMarketOrder(order: Order, orderBook: OrderBook): Promise<ExecutionReport> {
+    // Set market order price to ensure matching
+    if (order.side === OrderSide.BUY) {
+      order.price = Number.MAX_SAFE_INTEGER; // Buy at any price
+    } else {
+      order.price = 0.000001; // Sell at any price (but not 0)
+    }
+    
     // Market orders match immediately against available liquidity
     const trades = orderBook.matchOrders(order);
 
