@@ -5,3 +5,4 @@ export { NettingEngine } from './NettingEngine';
 export { ClearingHouse } from './ClearingHouse';
 export { BalanceTracker } from './BalanceTracker';
 export { ReconciliationEngine, MockOnChainProvider } from './ReconciliationEngine';
+export { FinalSettlementEngine } from './FinalSettlementEngine';
