@@ -671,14 +671,14 @@ export default function AnimatedBackground({
         isLoaded ? 'animated-background--loaded' : 'animated-background--loading'
       }`}
       style={{
-        position: 'absolute',
+        position: 'fixed',
         top: 0,
         left: 0,
-        width: '100%',
-        height: '100%',
+        width: '100vw',
+        height: '100vh',
         background: currentTheme.background,
         pointerEvents: 'none',
-        zIndex: 0,
+        zIndex: -1,
         overflow: 'hidden',
         contain: 'layout style paint'
       }}
@@ -697,7 +697,7 @@ export default function AnimatedBackground({
           failIfMajorPerformanceCaveat: false,
           precision: 'mediump'
         }}
-        dpr={Math.min(window.devicePixelRatio, 1.5)}
+        dpr={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 1.5) : 1}
         performance={{
           min: 0.95, // Target 95% of ideal framerate
           max: 1,

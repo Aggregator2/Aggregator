@@ -80,17 +80,32 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (walletRef.current && !walletRef.current.contains(event.target as Node)) {
+      // Check if the click is outside both wallet and notification sections
+      const target = event.target as Node;
+      
+      // Don't close if clicking on the buttons themselves
+      const isWalletButton = walletRef.current?.querySelector(`.${styles.walletButton}`)?.contains(target);
+      const isNotifButton = notifRef.current?.querySelector(`.${styles.notificationButton}`)?.contains(target);
+      
+      if (!isWalletButton && walletRef.current && !walletRef.current.contains(target)) {
         setShowWalletDropdown(false);
         setShowBalance(false);
       }
-      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+      
+      if (!isNotifButton && notifRef.current && !notifRef.current.contains(target)) {
         setShowNotifications(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    // Add a small delay to ensure React has finished updating
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside);
+    };
   }, []);
 
   // Update unread count when new notifications come in
@@ -299,7 +314,8 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setShowNotifications(!showNotifications);
+              e.nativeEvent.stopImmediatePropagation();
+              setShowNotifications(prev => !prev);
               if (!showNotifications) {
                 setUnreadCount(0);
               }
@@ -314,7 +330,12 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
           </button>
 
           {showNotifications && (
-            <div className={styles.notificationDropdown}>
+            <div 
+              className={styles.notificationDropdown}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
               <div className={styles.notificationHeader}>
                 <h3>Notifications</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

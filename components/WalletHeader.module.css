@@ -304,15 +304,6 @@
   pointer-events: auto !important;
 }
 
-/* Debug: Temporary visual borders to see clickable areas */
-.walletButton {
-  border: 2px solid rgba(0, 255, 0, 0.3) !important;
-}
-
-.notificationButton {
-  border: 2px solid rgba(255, 0, 0, 0.3) !important;
-}
-
 .notificationDropdown {
   position: absolute;
   top: calc(100% + 8px);

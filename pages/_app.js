@@ -7,13 +7,16 @@ import { TokenMonitoringService } from '../src/services/tokenMonitoringService';
 
 export default function App({ Component, pageProps }) {
   useEffect(() => {
-    // Initialize token monitoring service when app starts
-    TokenMonitoringService.initialize().catch(console.error);
-    
-    // Cleanup on unmount
-    return () => {
-      TokenMonitoringService.stopPeriodicUpdates();
-    };
+    // Only initialize on client side
+    if (typeof window !== 'undefined') {
+      // Initialize token monitoring service when app starts
+      TokenMonitoringService.initialize().catch(console.error);
+      
+      // Cleanup on unmount
+      return () => {
+        TokenMonitoringService.stopPeriodicUpdates();
+      };
+    }
   }, []);
   
   return <Component {...pageProps} />;

@@ -15,7 +15,7 @@ import MarketOrderWidget from "./MarketOrderWidget";
 import QuoteSummary from "./QuoteSummary";
 import SkeletonLoader from "./SkeletonLoader";
 import ErrorBoundary from "./ErrorBoundary";
-import TokenPicker, { CHAIN_INFO } from "./TokenPicker";
+import TokenPicker from "./TokenPicker";
 import TokenSelector from "./TokenSelector";
 import WalletHeader from "./WalletHeader";
 import TokenWarning from "./TokenWarning";
@@ -29,7 +29,8 @@ import {
   connectWallet as connectWalletUtil,
   attemptReconnection,
   clearWalletConnection,
-  disconnectWallet as disconnectWalletUtil
+  disconnectWallet as disconnectWalletUtil,
+  getSavedWalletConnection
 } from "../utils/walletConnection";
 import {
   getTokenWarnings,
@@ -190,6 +191,12 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [disputeOrder, setDisputeOrder] = useState<any>(null);
 
+  // Balance state
+  const [userBalance, setUserBalance] = useState<string | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceError, setBalanceError] = useState<string | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [insufficientBalance, setInsufficientBalance] = useState(false);
+
   // ==================== PERFORMANCE OPTIMIZATIONS ====================
 
   // Memoize token addresses to prevent unnecessary re-renders
@@ -225,6 +232,19 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     const parsed = parseFloat(sellAmount);
     return !isNaN(parsed) && parsed > 0;
   }, [sellAmount]);
+
+  // Check if user has sufficient balance
+  const hasSufficientBalance = useMemo(() => {
+    if (!userBalance || !sellAmount || balanceLoading) return true; // Assume true while loading
+    try {
+      const sellAmountWei = ethers.parseUnits(sellAmount, sellToken.decimals || 18);
+      const balanceWei = BigInt(userBalance);
+      return balanceWei >= sellAmountWei;
+    } catch (error) {
+      console.error('Error comparing balance:', error);
+      return true; // Assume true on error to avoid blocking
+    }
+  }, [userBalance, sellAmount, sellToken.decimals, balanceLoading]);
 
   // Cross-chain is now supported
   const isValidChainPair = useMemo(
@@ -277,22 +297,95 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   const buyTokenPriceData = useTokenPrice(buyToken.address);
   const escrowContractFactory = useEscrowContract(walletAddress);
 
-  // Auto-reconnect wallet on component mount
+  // Auto-reconnect wallet on component mount - only if user previously connected
   useEffect(() => {
-    // Only attempt reconnection if no address is already set
-    if (!walletAddress && !userAddress) {
-      attemptReconnection().then((result) => {
-        if (result.success && result.address) {
-          setWalletAddress(result.address);
-          console.log("Wallet reconnected successfully");
-          onConnect?.();
-        }
-      }).catch((error) => {
-        console.log("Auto-reconnect failed:", error);
-        // Silent fail - user can manually connect if needed
-      });
+    // Only attempt reconnection if no address is already set and user had a saved connection
+    if (!walletAddress && !userAddress && isInitialRender.current) {
+      const savedConnection = getSavedWalletConnection();
+      if (savedConnection.connected) {
+        attemptReconnection().then((result) => {
+          if (result.success && result.address) {
+            setWalletAddress(result.address);
+            console.log("Wallet reconnected successfully");
+            onConnect?.();
+          }
+        }).catch((error) => {
+          console.log("Auto-reconnect failed:", error);
+          // Silent fail - user can manually connect if needed
+        });
+      }
     }
   }, []); // Run only on mount
+
+  /**
+   * Fetch user balance for selected token
+   */
+  const fetchUserBalance = useCallback(async () => {
+    if (!walletAddress || !window.ethereum) {
+      setUserBalance(null);
+      setBalanceError(null);
+      return;
+    }
+
+    setBalanceLoading(true);
+    setBalanceError(null);
+
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      
+      // Check if it's ETH (native token)
+      const isNativeToken = sellToken.address.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ||
+                           sellToken.symbol.toUpperCase() === 'ETH';
+      
+      if (isNativeToken) {
+        // Fetch ETH balance
+        const balance = await provider.getBalance(walletAddress);
+        setUserBalance(balance.toString());
+      } else {
+        // Fetch ERC20 token balance
+        // Minimal ERC20 ABI for balanceOf
+        const minimalERC20ABI = [
+          "function balanceOf(address account) view returns (uint256)"
+        ];
+        const tokenContract = new ethers.Contract(
+          sellToken.address,
+          minimalERC20ABI,
+          provider
+        );
+        const balance = await tokenContract.balanceOf(walletAddress);
+        setUserBalance(balance.toString());
+      }
+    } catch (error: any) {
+      console.error('Error fetching balance:', error);
+      setBalanceError('Failed to fetch balance');
+      setUserBalance(null);
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, [walletAddress, sellToken.address, sellToken.symbol]);
+
+  // Debounced balance fetch
+  const debouncedFetchBalance = useMemo(() => {
+    let timeoutId: NodeJS.Timeout;
+    return () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        fetchUserBalance();
+      }, 300); // 300ms debounce
+    };
+  }, [fetchUserBalance]);
+
+  // Fetch balance when wallet connects or token changes
+  useEffect(() => {
+    if (walletAddress && sellToken) {
+      debouncedFetchBalance();
+    }
+  }, [walletAddress, sellToken, debouncedFetchBalance]);
+
+  // Update insufficient balance state
+  useEffect(() => {
+    setInsufficientBalance(!hasSufficientBalance && hasValidAmount);
+  }, [hasSufficientBalance, hasValidAmount]);
 
   // Helper function to add notifications
   const addNotification = useCallback((
@@ -327,16 +420,11 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
    * Connect wallet with robust error handling
    */
   const connectWallet = useCallback(async () => {
-    if (connectingWallet) {
-      console.log("Connection already in progress...");
-      return;
-    }
-
     setConnectingWallet(true);
 
     try {
       const result = await connectWalletUtil({
-        timeout: 30000,
+        timeout: 15000, // Reduced from 30s to 15s
         requiredChainId: 31337, // Local development network
         onPendingRequest: () => {
           console.log(
@@ -362,7 +450,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     } finally {
       setConnectingWallet(false);
     }
-  }, [connectingWallet, showError, onConnect]);
+  }, [showError, onConnect]);
 
   /**
    * Disconnect wallet and clear localStorage
@@ -1290,6 +1378,18 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
           </div>
         </div>
         
+        {/* About/Docs Link */}
+        <div className={styles.floatingAbout}>
+          <a
+            href="/docs.html"
+            className={styles.aboutLink}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            About
+          </a>
+        </div>
+        
         {/* Floating Controls */}
         <div className={styles.floatingControls}>
           <WalletHeader
@@ -1424,6 +1524,45 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
                     disabled={connectingWallet || quoteLoading}
                   />
                 </div>
+                {/* Balance Display */}
+                {walletAddress && (
+                  <div style={{
+                    marginTop: '8px',
+                    fontSize: '13px',
+                    color: insufficientBalance ? '#dc2626' : '#6b7280',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span>Balance: {balanceLoading ? (
+                      <SkeletonLoader variant="text" width="80px" height="14px" />
+                    ) : userBalance ? (
+                      parseFloat(ethers.formatUnits(userBalance, sellToken.decimals || 18)).toFixed(6)
+                    ) : (
+                      '0.0'
+                    )} {sellToken.symbol}</span>
+                    {userBalance && !balanceLoading && sellAmount && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const formatted = ethers.formatUnits(userBalance, sellToken.decimals || 18);
+                          setSellAmount(formatted);
+                        }}
+                        style={{
+                          fontSize: '12px',
+                          padding: '2px 8px',
+                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
+                          borderRadius: '4px',
+                          color: '#2563eb',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        MAX
+                      </button>
+                    )}
+                  </div>
+                )}
                 {sellTokenPriceData.error && (
                   <div className={styles.priceError}>
                     Price unavailable: {sellTokenPriceData.error}
@@ -1634,6 +1773,20 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
                 </div>
               )}
 
+              {/* Insufficient Balance Warning */}
+              {insufficientBalance && !balanceLoading && (
+                <div className={styles.error} style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#dc2626'
+                }}>
+                  <span style={{ fontWeight: 600 }}>⚠️ Insufficient balance</span>
+                  <span style={{ fontSize: '13px', opacity: 0.9, display: 'block', marginTop: '4px' }}>
+                    You need at least {sellAmount} {sellToken.symbol} to complete this swap
+                  </span>
+                </div>
+              )}
+
 
               {!walletAddress ? (
                 <button
@@ -1669,7 +1822,9 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
                     !currentQuote?.buyAmount ||
                     quoteLoading ||
                     !!quoteError ||
-                    !isValidChainPair
+                    !isValidChainPair ||
+                    insufficientBalance ||
+                    balanceLoading
                   }
                 >
                   {quoteLoading && !currentQuote ? (

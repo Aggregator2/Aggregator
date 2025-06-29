@@ -23,8 +23,14 @@ export class TokenMonitoringService {
   static async initialize(): Promise<void> {
     console.log('🔄 Initializing token monitoring service...');
     
-    // Load initial tokens
-    await this.updateTokenCache();
+    try {
+      // Load initial tokens
+      await this.updateTokenCache();
+      console.log(`✅ Token monitoring service initialized with ${this.getTotalTokenCount()} tokens from ${this.cache.tokens.size} chains`);
+    } catch (error) {
+      console.error('❌ Failed to initialize token monitoring service:', error);
+      // Don't throw - service can still work without initial cache
+    }
     
     // Set up periodic updates every hour
     this.startPeriodicUpdates();
@@ -150,7 +156,8 @@ export class TokenMonitoringService {
    * Get all cached tokens
    */
   static getCachedTokens(): Map<number, Token[]> {
-    return this.cache.tokens;
+    // Return a copy to prevent external modifications
+    return new Map(this.cache.tokens);
   }
   
   /**

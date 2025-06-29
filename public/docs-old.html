@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swappiq Protocol - Aggregation Reinvented</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --border-color: rgba(255, 255, 255, 0.05);
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b2;
+            --accent-cyan: #00d4ff;
+            --accent-purple: #a855f7;
+            --gradient-primary: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Background animation */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 50%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 50%);
+            z-index: -1;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-20px, -20px); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Glassmorphism card */
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(10, 10, 15, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 100;
+            padding: 20px 0;
+            height: 90px;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-laptop {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 140px 0 100px;
+            text-align: center;
+            opacity: 0;
+            animation: fadeInUp 1s ease forwards;
+        }
+
+        .hero h1 {
+            font-size: clamp(48px, 8vw, 72px);
+            font-weight: 700;
+            margin-bottom: 24px;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero h2 {
+            font-size: clamp(24px, 4vw, 32px);
+            font-weight: 500;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Section styles */
+        section {
+            padding: 80px 0;
+            opacity: 0;
+            animation: fadeInUp 1s ease forwards;
+            animation-delay: 0.2s;
+        }
+
+        h3 {
+            font-size: clamp(32px, 5vw, 48px);
+            font-weight: 700;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        h4 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            font-size: 18px;
+            line-height: 1.8;
+        }
+
+        /* Benefits Grid */
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-top: 48px;
+        }
+
+        .benefit-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .benefit-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 212, 255, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.1);
+        }
+
+        .benefit-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        /* How it works */
+        .steps {
+            counter-reset: step;
+            margin-top: 48px;
+        }
+
+        .step {
+            position: relative;
+            padding-left: 60px;
+            margin-bottom: 32px;
+            opacity: 0;
+            animation: fadeInLeft 0.8s ease forwards;
+            animation-delay: calc(var(--step) * 0.1s);
+        }
+
+        .step::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        /* FAQ */
+        .faq-item {
+            margin-bottom: 24px;
+        }
+
+        .faq-question {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 16px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .faq-question:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .faq-answer {
+            padding: 0 16px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .faq-answer.active {
+            max-height: 200px;
+            padding: 16px;
+        }
+
+        /* CTA */
+        .cta-button {
+            display: inline-block;
+            padding: 16px 48px;
+            background: var(--gradient-primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 40px rgba(0, 212, 255, 0.5);
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 30px rgba(0, 212, 255, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.5); }
+            100% { box-shadow: 0 0 30px rgba(0, 212, 255, 0.3); }
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 60px 0;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            margin-top: 32px;
+        }
+
+        .social-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            padding: 12px 24px;
+            border-radius: 50px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+        }
+
+        .social-link:hover {
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.2);
+        }
+
+        .social-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .glass-card {
+                padding: 24px;
+            }
+
+            section {
+                padding: 60px 0;
+            }
+
+            .hero {
+                padding: 140px 0 80px;
+            }
+
+            .benefits-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .step {
+                padding-left: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="images/swappiq-logo.png" alt="Swappiq Logo" class="logo-laptop">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>Swappiq Protocol</h1>
+            <h1>Aggregation Reinvented.</h1>
+            <h2>Off-chain-first RFQ engine.<br>No gas. No frontrun. No noise.</h2>
+        </div>
+    </section>
+
+    <!-- Vision Overview -->
+    <section>
+        <div class="container">
+            <h3>Vision Overview</h3>
+            <div class="glass-card">
+                <p>Swappiq routes trades off-chain by default.</p>
+                <p>Eliminates slippage, MEV, and gas costs before execution.</p>
+                <p>Inspired by CoW Swap and 0x RFQ — with a more flexible fallback model.</p>
+                <p>MVP is live, APIs coming later. This page is to educate early users.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Off-Chain Routing Wins -->
+    <section>
+        <div class="container">
+            <h3>Why Off-Chain Routing Wins</h3>
+            <div class="glass-card">
+                <p>Most on-chain aggregators route 60–80% of traffic through the same DEXs.</p>
+                <p>That creates bottlenecks, public intent, slippage, MEV risk, and 12s+ confirmation delays.</p>
+                <h4>Swappiq avoids all that:</h4>
+                <ul style="list-style: none; padding-left: 0;">
+                    <li style="color: var(--text-secondary); margin-bottom: 12px;">✓ Execution in 500ms–3s</li>
+                    <li style="color: var(--text-secondary); margin-bottom: 12px;">✓ 70–90% lower slippage</li>
+                    <li style="color: var(--text-secondary); margin-bottom: 12px;">✓ No gas fees until confirmed</li>
+                    <li style="color: var(--text-secondary); margin-bottom: 12px;">✓ Optional fallback to on-chain Uniswap-style path</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section>
+        <div class="container">
+            <h3>How It Works</h3>
+            <div class="glass-card">
+                <div class="steps">
+                    <div class="step" style="--step: 1">
+                        <p>Users sign an off-chain trade intent (EIP-712)</p>
+                    </div>
+                    <div class="step" style="--step: 2">
+                        <p>Solvers privately return quotes</p>
+                    </div>
+                    <div class="step" style="--step: 3">
+                        <p>Dual-signature confirms final execution</p>
+                    </div>
+                    <div class="step" style="--step: 4">
+                        <p>Relayer or solver submits the transaction on-chain</p>
+                    </div>
+                    <div class="step" style="--step: 5">
+                        <p>If no quote, fallback to on-chain or cancel safely</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits Summary -->
+    <section>
+        <div class="container">
+            <h3>Benefits Summary</h3>
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <div class="benefit-icon">⚡</div>
+                    <h4>Fast Execution</h4>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🔐</div>
+                    <h4>MEV Protection</h4>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🧠</div>
+                    <h4>Private RFQ Matching</h4>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">💸</div>
+                    <h4>Gasless Until Filled</h4>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🔄</div>
+                    <h4>Optional Fallback Safety</h4>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🧱</div>
+                    <h4>Cross-Chain/L2 Ready</h4>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section>
+        <div class="container">
+            <h3>FAQ</h3>
+            <div class="glass-card">
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">What is Swappiq?</div>
+                    <div class="faq-answer">
+                        <p>Swappiq is an off-chain-first DEX aggregator protocol that routes trades through private RFQ (Request for Quote) systems, eliminating gas costs and MEV risks before execution.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">How is it different from other aggregators?</div>
+                    <div class="faq-answer">
+                        <p>Unlike traditional aggregators that route on-chain first, Swappiq defaults to off-chain routing, only falling back to on-chain when necessary. This results in faster execution and better prices.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">Is it secure?</div>
+                    <div class="faq-answer">
+                        <p>Yes. Swappiq uses EIP-712 signatures and dual-signature confirmation. Users maintain full custody and can cancel trades before execution.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">Why use off-chain routing?</div>
+                    <div class="faq-answer">
+                        <p>Off-chain routing provides 500ms-3s execution times, 70-90% lower slippage, zero gas until confirmed, and complete MEV protection.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">What happens if off-chain fails?</div>
+                    <div class="faq-answer">
+                        <p>Swappiq automatically falls back to traditional on-chain routing through Uniswap-style paths, or users can safely cancel their trade intent.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">What chains does it support?</div>
+                    <div class="faq-answer">
+                        <p>Currently supporting Ethereum mainnet with L2 and cross-chain support coming soon.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">Is Swappiq live?</div>
+                    <div class="faq-answer">
+                        <p>The MVP is live on testnet. Mainnet launch and full documentation coming soon.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">Will there be an SDK or API?</div>
+                    <div class="faq-answer">
+                        <p>Yes, comprehensive SDKs and APIs are in development and will be released with full documentation.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">Can I test it now?</div>
+                    <div class="faq-answer">
+                        <p>Testnet access is currently limited. Join our Discord for early access opportunities.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section style="text-align: center; padding: 100px 0;">
+        <div class="container">
+            <div class="glass-card" style="max-width: 800px; margin: 0 auto;">
+                <h3 style="font-size: 36px; margin-bottom: 24px;">This is just the testnet.</h3>
+                <p style="font-size: 24px; margin-bottom: 16px;">Docs are coming.</p>
+                <p style="font-size: 24px; margin-bottom: 16px;">SDKs are in stealth.</p>
+                <p style="font-size: 24px; margin-bottom: 48px;">Real trades. Real routing. No noise.</p>
+                <p style="font-size: 28px; font-weight: 600; margin-bottom: 48px;">Join us early.</p>
+                <a href="#" class="cta-button">📄 Vision Docs — Coming Soon</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="social-links">
+                <a href="https://x.com/Swappiq" target="_blank" class="social-link">
+                    <div class="social-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                    </div>
+                    <span>Twitter</span>
+                </a>
+                <a href="https://github.com/Aggregator2/Aggregator" target="_blank" class="social-link">
+                    <div class="social-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                        </svg>
+                    </div>
+                    <span>GitHub</span>
+                </a>
+                <a href="https://discord.gg/V6j3GyKv" target="_blank" class="social-link">
+                    <div class="social-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20.317 4.369a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                        </svg>
+                    </div>
+                    <span>Discord</span>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleFaq(element) {
+            const answer = element.nextElementSibling;
+            answer.classList.toggle('active');
+        }
+
+        // Intersection Observer for scroll animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe all sections
+        document.querySelectorAll('section').forEach(section => {
+            if (!section.classList.contains('hero')) {
+                section.style.opacity = '0';
+                section.style.transform = 'translateY(30px)';
+                section.style.transition = 'all 0.8s ease';
+                observer.observe(section);
+            }
+        });
+    </script>
+</body>
+</html>

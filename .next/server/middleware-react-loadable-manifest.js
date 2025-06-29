@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"pages/index.js -> ../utils/walletConnection\":{\"id\":\"pages/index.js -> ../utils/walletConnection\",\"files\":[]}}"

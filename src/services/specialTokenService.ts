@@ -35,10 +35,10 @@ export class SpecialTokenService {
     }
 
     try {
-      const grossBigNumber = ethers.BigNumber.from(grossAmount);
-      const feeMultiplier = feePercentage * 100; // Convert percentage to basis points
-      const feeBigNumber = grossBigNumber.mul(feeMultiplier).div(10000);
-      const netBigNumber = grossBigNumber.sub(feeBigNumber);
+      const grossBigNumber = BigInt(grossAmount);
+      const feeMultiplier = BigInt(Math.floor(feePercentage * 100)); // Convert percentage to basis points
+      const feeBigNumber = (grossBigNumber * feeMultiplier) / BigInt(10000);
+      const netBigNumber = grossBigNumber - feeBigNumber;
 
       return {
         grossAmount,

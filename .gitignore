@@ -35,3 +35,45 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Security files
+security/keys/
+*.key
+*.pem
+*.cert
+
+# Zip archives
+*.zip
+
+# SQLite binaries
+*.exe
+*.dll
+*.def
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+temp-*
+tmp/
+
+# Database files
+*.db
+*.db-journal
+
+# Test artifacts
+test-*.json
+*-test-results.json
+*-report.json
+
+# Build directories
+dist/
+generated/
+
+# PNG files (screenshots/images that may contain sensitive info)
+*.png
+
+# Environment specific
+.env.*
+!.env.example

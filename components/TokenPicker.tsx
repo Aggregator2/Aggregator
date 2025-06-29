@@ -33,7 +33,7 @@ const POPULAR_TOKENS_CONFIG = [
 
 const POPULAR_TOKENS = POPULAR_TOKENS_CONFIG.map(t => t.symbol);
 
-// Chain info - All 47 chains supported by LiFi
+// Chain info - Only chains actually supported by LiFi (48 chains)
 export const CHAIN_INFO: Record<number, { name: string; logo: string }> = {
   // Major EVM Chains
   1: { name: 'Ethereum', logo: '⟠' },
@@ -93,10 +93,7 @@ export const CHAIN_INFO: Record<number, { name: string; logo: string }> = {
   60808: { name: 'BOB', logo: '🤖' },
   80094: { name: 'Berachain', logo: '🐻' },
   130: { name: 'Unichain', logo: '🦄' },
-  
-  // Non-EVM Chains
-  195: { name: 'Tron', logo: '🔷' },
-  101: { name: 'Solana', logo: '☀️' },
+  42793: { name: 'Etherlink', logo: '🔗' }
 };
 
 export const TokenPicker: React.FC<TokenPickerProps> = ({
@@ -213,6 +210,7 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
       
       // First try to use cached tokens from monitoring service
       const cachedTokens = TokenMonitoringService.getCachedTokens();
+      tokenLogger.info(`Cache check: ${cachedTokens.size} chains in cache`);
       
       if (cachedTokens.size > 0) {
         // Use cached tokens for instant loading
@@ -227,18 +225,27 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
             // Reload with fresh data
             const freshTokens = TokenMonitoringService.getCachedTokens();
             processCachedTokens(freshTokens);
+          }).catch(error => {
+            tokenLogger.error('Background update failed:', error);
           });
         }
       } else {
         // No cache, load directly from LI.FI
         tokenLogger.info('No cached tokens, loading from LI.FI...');
-        const chains = await lifiService.getChains();
-        tokenLogger.info(`Loading tokens from ${chains.length} chains...`);
         
-        // Get tokens from all chains
-        const allTokensMap = await lifiService.getAllTokens();
-        await minLoadingTime; // Ensure loading state is visible
-        processCachedTokens(allTokensMap);
+        try {
+          const chains = await lifiService.getChains();
+          tokenLogger.info(`Loading tokens from ${chains.length} chains...`);
+          
+          // Get tokens from all chains
+          const allTokensMap = await lifiService.getAllTokens();
+          tokenLogger.info(`Loaded tokens from ${allTokensMap.size} chains`);
+          await minLoadingTime; // Ensure loading state is visible
+          processCachedTokens(allTokensMap);
+        } catch (innerError) {
+          tokenLogger.error('Failed to load tokens from LI.FI:', innerError);
+          throw innerError;
+        }
       }
       
     } catch (error) {
@@ -309,13 +316,18 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
     onClose();
   };
   
-  // Get ALL chains from CHAIN_INFO, not just ones with tokens
+  // Only show chains that have tokens
   const availableChains = useMemo(() => {
-    // Get all chain IDs from CHAIN_INFO
-    const allChainIds = Object.keys(CHAIN_INFO).map(Number);
+    // Get chain IDs that have tokens
+    const chainsWithTokens = Array.from(tokensByChain.keys());
+    
+    // Filter CHAIN_INFO to only include chains that have tokens
+    const validChainIds = Object.keys(CHAIN_INFO)
+      .map(Number)
+      .filter(chainId => chainsWithTokens.includes(chainId));
     
     // Sort by popularity - major chains first
-    return allChainIds.sort((a, b) => {
+    return validChainIds.sort((a, b) => {
       const order = [
         1, // Ethereum
         56, // BSC
@@ -333,7 +345,6 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
         1284, // Moonbeam
         5000, // Mantle
         25, // Cronos
-        999, // HyperEVM
         // Add more chains in priority order as needed
       ];
       const aIndex = order.indexOf(a);
@@ -343,7 +354,7 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
       if (bIndex !== -1) return 1;
       return a - b;
     });
-  }, []); // No dependency on tokensByChain - show all chains always
+  }, [tokensByChain]); // Update when tokens are loaded
 
   if (!isOpen) return null;
 
@@ -440,18 +451,8 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
                 {searchQuery 
                   ? 'No tokens found for your search' 
                   : selectedChain !== 'all' 
-                    ? (
-                        <div>
-                          <div className={styles.spinner} style={{ margin: '0 auto 16px' }} />
-                          <p>Loading tokens for {CHAIN_INFO[selectedChain]?.name || 'this chain'}...</p>
-                        </div>
-                      )
-                    : (
-                        <div>
-                          <div className={styles.spinner} style={{ margin: '0 auto 16px' }} />
-                          <p>Loading tokens...</p>
-                        </div>
-                      )}
+                    ? `No tokens available on ${CHAIN_INFO[selectedChain]?.name || 'this chain'}`
+                    : 'No tokens available'}
               </div>
             ) : (
               displayTokens.map((token) => {

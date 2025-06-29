@@ -52,12 +52,12 @@ const App = () => {
   };
 
   return (
-    <div>
+    <>
       <button onClick={connectWallet}>
         {walletAddress ? "Wallet Connected" : "Connect Wallet"}
       </button>
       <SwapWidget userWalletAddress={walletAddress || ""} />
-    </div>
+    </>
   );
 };
 

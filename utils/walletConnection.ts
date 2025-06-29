@@ -24,6 +24,9 @@ const STORAGE_KEYS = {
 // Connection expiry time (7 days)
 const CONNECTION_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Connection mutex to prevent concurrent connection attempts
+let connectionInProgress = false;
+
 // Error codes and their user-friendly messages
 const ERROR_MESSAGES: Record<string | number, string> = {
   4001: 'Connection rejected by user',
@@ -63,7 +66,13 @@ export async function hasPendingRequest(): Promise<boolean> {
     await window.ethereum.request({ method: 'eth_accounts' });
     return false;
   } catch (error: any) {
-    return error.code === -32002;
+    // Check specifically for pending request error code
+    if (error.code === -32002) {
+      return true;
+    }
+    // For any other error, assume no pending request
+    console.warn('Error checking pending request:', error);
+    return false;
   }
 }
 
@@ -201,10 +210,21 @@ export async function attemptReconnection(): Promise<WalletConnectionResult> {
 // Main wallet connection function with comprehensive error handling
 export async function connectWallet(options: WalletConnectionOptions = {}): Promise<WalletConnectionResult> {
   const { 
-    timeout = 30000, 
+    timeout = 15000, // Reduced from 30s to 15s for better UX
     requiredChainId, 
     onPendingRequest 
   } = options;
+  
+  // Check if connection is already in progress
+  if (connectionInProgress) {
+    return {
+      success: false,
+      error: 'Connection already in progress',
+      errorCode: 'CONNECTION_IN_PROGRESS',
+    };
+  }
+  
+  connectionInProgress = true;
   
   try {
     // Check if MetaMask is installed
@@ -309,34 +329,16 @@ export async function connectWallet(options: WalletConnectionOptions = {}): Prom
       error: errorMessage,
       errorCode,
     };
+  } finally {
+    // Always reset the mutex
+    connectionInProgress = false;
   }
 }
 
 // Disconnect wallet (clear permissions)
 export async function disconnectWallet(): Promise<void> {
-  if (window.ethereum?.request) {
-    try {
-      // Try the new EIP-2255 method first
-      await window.ethereum.request({
-        method: 'wallet_revokePermissions',
-        params: [{ eth_accounts: {} }],
-      });
-    } catch (error) {
-      console.warn('wallet_revokePermissions not supported, using fallback disconnect:', error);
-      
-      // Fallback: Try to request accounts with empty array to "disconnect"
-      try {
-        await window.ethereum.request({
-          method: 'wallet_requestPermissions',
-          params: [{ eth_accounts: {} }],
-        });
-      } catch (fallbackError) {
-        console.warn('Fallback disconnect method also failed:', fallbackError);
-      }
-    }
-  }
-  
-  // Always clear saved connection regardless of wallet response
+  // Simply clear the saved connection
+  // Most wallets handle disconnection on their end
   clearWalletConnection();
 }
 

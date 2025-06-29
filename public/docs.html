@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      Swappiq - Advanced Cross-Chain DEX Aggregator | 48 EVM Chains | 100K+ Tokens
+    </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg-primary: #0a0a0f;
+        --bg-secondary: #12121a;
+        --bg-card: rgba(255, 255, 255, 0.03);
+        --border-color: rgba(255, 255, 255, 0.05);
+        --text-primary: #ffffff;
+        --text-secondary: #a0a0b2;
+        --accent-cyan: #00d4ff;
+        --accent-purple: #a855f7;
+        --gradient-primary: linear-gradient(
+          135deg,
+          var(--accent-cyan),
+          var(--accent-purple)
+        );
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        line-height: 1.6;
+        overflow-x: hidden;
+      }
+
+      /* Background animation */
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+            circle at 20% 50%,
+            rgba(0, 212, 255, 0.1) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 80% 80%,
+            rgba(168, 85, 247, 0.1) 0%,
+            transparent 50%
+          );
+        z-index: -1;
+        animation: float 20s ease-in-out infinite;
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translate(0, 0);
+        }
+        50% {
+          transform: translate(-20px, -20px);
+        }
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      /* Glassmorphism card */
+      .glass-card {
+        background: var(--bg-card);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 32px;
+        margin-bottom: 24px;
+      }
+
+      /* Header */
+      header {
+        position: fixed;
+        top: 0;
+        width: 100%;
+        background: rgba(10, 10, 15, 0.8);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border-color);
+        z-index: 100;
+        padding: 20px 0;
+        height: 90px;
+      }
+
+      .header-content {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .logo-laptop {
+        width: 60px;
+        height: 60px;
+        object-fit: contain;
+      }
+
+      /* Hero Section */
+      .hero {
+        padding: 140px 0 80px;
+        text-align: center;
+        opacity: 0;
+        animation: fadeInUp 1s ease forwards;
+      }
+
+      .hero h1 {
+        font-size: clamp(48px, 8vw, 72px);
+        font-weight: 700;
+        margin-bottom: 24px;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .hero h2 {
+        font-size: clamp(20px, 3vw, 24px);
+        font-weight: 500;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      /* Section styles */
+      section {
+        padding: 60px 0;
+        opacity: 0;
+        animation: fadeInUp 1s ease forwards;
+        animation-delay: 0.2s;
+      }
+
+      h3 {
+        font-size: clamp(32px, 5vw, 48px);
+        font-weight: 700;
+        margin-bottom: 32px;
+        text-align: center;
+      }
+
+      h4 {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        margin-top: 24px;
+      }
+
+      p {
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+        font-size: 18px;
+        line-height: 1.8;
+      }
+
+      ul {
+        list-style: none;
+        padding-left: 0;
+      }
+
+      li {
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+        padding-left: 24px;
+        position: relative;
+      }
+
+      li::before {
+        content: "•";
+        color: var(--accent-cyan);
+        position: absolute;
+        left: 0;
+        font-size: 20px;
+      }
+
+      /* Code blocks */
+      code {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: "Consolas", "Monaco", monospace;
+        font-size: 16px;
+      }
+
+      /* FAQ */
+      .faq-item {
+        margin-bottom: 24px;
+      }
+
+      .faq-question {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: var(--text-primary);
+        cursor: pointer;
+        padding: 16px;
+        background: var(--bg-card);
+        border-radius: 8px;
+        transition: all 0.3s ease;
+      }
+
+      .faq-question:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .faq-answer {
+        padding: 0 16px;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+
+      .faq-answer.active {
+        max-height: 300px;
+        padding: 16px;
+      }
+
+      /* Grid sections */
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        margin-top: 32px;
+      }
+
+      .feature-card {
+        background: var(--bg-card);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 24px;
+      }
+
+      /* CTA */
+      .cta-section {
+        text-align: center;
+        padding: 80px 0;
+      }
+
+      .cta-button {
+        display: inline-block;
+        padding: 16px 48px;
+        background: var(--gradient-primary);
+        color: white;
+        text-decoration: none;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 18px;
+        transition: all 0.3s ease;
+        box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+        animation: pulse 2s infinite;
+      }
+
+      .cta-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0 40px rgba(0, 212, 255, 0.5);
+      }
+
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+        }
+        50% {
+          box-shadow: 0 0 40px rgba(0, 212, 255, 0.5);
+        }
+        100% {
+          box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+        }
+      }
+
+      /* Footer */
+      footer {
+        text-align: center;
+        padding: 60px 0;
+        border-top: 1px solid var(--border-color);
+      }
+
+      .social-links {
+        display: flex;
+        justify-content: center;
+        gap: 48px;
+        margin-top: 32px;
+      }
+
+      .social-link {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        padding: 12px 24px;
+        border-radius: 50px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+      }
+
+      .social-link:hover {
+        color: var(--accent-cyan);
+        border-color: var(--accent-cyan);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(0, 212, 255, 0.2);
+      }
+
+      .social-icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Animations */
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .glass-card {
+          padding: 24px;
+        }
+
+        section {
+          padding: 40px 0;
+        }
+
+        .hero {
+          padding: 120px 0 60px;
+        }
+
+        .feature-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .social-links {
+          flex-direction: column;
+          gap: 16px;
+        }
+      }
+
+      /* Icon styles */
+      .section-icon {
+        font-size: 48px;
+        margin-bottom: 24px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <header>
+      <div class="container">
+        <div class="header-content">
+          <div class="logo">
+            <img
+              src="images/swappiq-logo.png"
+              alt="Swappiq Logo"
+              class="logo-laptop"
+            />
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <h1>Swappiq Protocol</h1>
+        <h2>
+          The most comprehensive cross-chain DEX aggregator with 48 supported EVM
+          chains and 100,000+ tokens.
+        </h2>
+        <p
+          style="
+            font-size: 18px;
+            margin-top: 16px;
+            color: var(--text-secondary);
+          "
+        >
+          Off-chain-first execution • MEV resistance • Enterprise-grade security
+          • Revenue generating
+        </p>
+      </div>
+    </section>
+
+    <!-- What is Swappiq -->
+    <section>
+      <div class="container">
+        <div class="section-icon">🌐</div>
+        <h3>What is Swappiq?</h3>
+        <div class="glass-card">
+          <p>
+            Swappiq is a decentralized aggregation protocol that routes trades
+            off-chain by default. It is designed to eliminate mempool exposure,
+            reduce gas fees, and ensure price certainty. Instead of broadcasting
+            trade data publicly, Swappiq operates on signed intent messages,
+            which are privately quoted by solvers and only settled on-chain once
+            confirmed.
+          </p>
+
+          <h4>Swappiq combines:</h4>
+          <ul>
+            <li>MEV protection through private RFQs</li>
+            <li>Multi-chain liquidity sourcing</li>
+            <li>Fallback logic for fail-safe trades</li>
+            <li>User-first economics and open infrastructure</li>
+          </ul>
+
+          <p style="margin-top: 24px">
+            Swappiq currently supports 48 EVM-compatible blockchain networks including
+            major Layer 1s, Layer 2s, and emerging chains, making it the most comprehensive DEX
+            aggregator available.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works -->
+    <section>
+      <div class="container">
+        <div class="section-icon">⚙️</div>
+        <h3>How It Works</h3>
+        <div class="glass-card">
+          <ol style="list-style: decimal; padding-left: 24px">
+            <li style="margin-bottom: 16px">
+              User signs a trade intent off-chain (EIP-712 standard)
+            </li>
+            <li style="margin-bottom: 16px">
+              Solvers return signed quotes with price, expiry, and path
+            </li>
+            <li style="margin-bottom: 16px">
+              User selects and signs the preferred quote
+            </li>
+            <li style="margin-bottom: 16px">
+              Both signatures are submitted via a relayer to the Swappiq smart
+              contract
+            </li>
+            <li style="margin-bottom: 16px">
+              The trade is executed atomically
+            </li>
+            <li style="margin-bottom: 16px">
+              If execution fails, the fallback route is attempted or trade is
+              cancelled
+            </li>
+          </ol>
+
+          <h4>Key elements:</h4>
+          <ul>
+            <li>
+              Solvers can include bots, market makers, or Swappiq-integrated
+              wallets
+            </li>
+            <li>
+              Trade is valid only if both signatures match and expiration has
+              not passed
+            </li>
+            <li>Trades execute in 1–2 blocks</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- How We Make Money -->
+    <section>
+      <div class="container">
+        <div class="section-icon">💸</div>
+        <h3>How We Make Money</h3>
+        <div class="glass-card">
+          <p>
+            Swappiq does not charge users directly or require tokens. Revenue is
+            earned via:
+          </p>
+
+          <ul>
+            <li>
+              <strong>Spread optimization:</strong> Smart spread markup of 0.3%
+              (default, invisible to users)
+            </li>
+            <li>
+              <strong>DEX rebates:</strong> We collect 0.5-3% rebate from
+              integrated DEX partners
+            </li>
+            <li>
+              <strong>Cross-chain arbitrage:</strong> Automated capture of
+              cross-market opportunities
+            </li>
+            <li>
+              <strong>Premium features (planned):</strong> Advanced order types,
+              analytics dashboards, SDK licenses
+            </li>
+          </ul>
+
+          <h4>Distribution mechanics:</h4>
+          <ul>
+            <li>L1: $50 payout threshold before transfer to treasury wallet</li>
+            <li>L2: $10 threshold</li>
+            <li>
+              Revenue address: <code>SwappiqTreasury.eth</code> (public key
+              on-chain)
+            </li>
+          </ul>
+
+          <h4>User Protection:</h4>
+          <ul>
+            <li>No direct user fees</li>
+            <li>No surprise deductions post-execution</li>
+            <li>Revenue only earned when trade succeeds</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Security Architecture -->
+    <section>
+      <div class="container">
+        <div class="section-icon">🔐</div>
+        <h3>Security Architecture</h3>
+        <div class="glass-card">
+          <div class="feature-grid">
+            <div class="feature-card">
+              <h4>Smart Contracts</h4>
+              <ul>
+                <li>Modular escrow architecture (SecureEscrowV2)</li>
+                <li>EIP-712 order validation + replay protection</li>
+                <li>Role-based access control (RBAC)</li>
+                <li>Slippage reversion system</li>
+                <li>Reentrancy protection (OpenZeppelin)</li>
+                <li>Circuit breaker with time-locked emergency pause</li>
+              </ul>
+            </div>
+
+            <div class="feature-card">
+              <h4>Application Security</h4>
+              <ul>
+                <li>JWT auth for internal UIs (optional)</li>
+                <li>Rate-limiting + input validation</li>
+                <li>XSS/CSRF protection on frontend</li>
+                <li>Community blacklist + token warning overlays</li>
+                <li>Gas griefing protection via auto-rejection thresholds</li>
+              </ul>
+            </div>
+
+            <div class="feature-card">
+              <h4>Bug Bounty & Audits</h4>
+              <ul>
+                <li>
+                  Critical disclosures rewarded at
+                  <code> joseph@swappiq.xyz</code>
+                </li>
+                <li>Comprehensive unit test coverage</li>
+                <li>Manual security review completed</li>
+                <li>Slither static analysis completed</li>
+                <li>External audit report coming Q3</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why Off-Chain RFQ -->
+    <section>
+      <div class="container">
+        <div class="section-icon">🧠</div>
+        <h3>Why Off-Chain RFQ?</h3>
+        <div class="glass-card">
+          <p>
+            Public on-chain DEX trades expose user intent to bots. This leads
+            to:
+          </p>
+          <ul>
+            <li>MEV extraction (sandwich attacks)</li>
+            <li>Slippage on final price</li>
+            <li>Gas waste on failed trades</li>
+          </ul>
+
+          <h4>Swappiq avoids this by:</h4>
+          <ul>
+            <li>Keeping orders private until fully signed</li>
+            <li>Enforcing quote commitment with EIP-712</li>
+            <li>Only submitting confirmed trades to the blockchain</li>
+          </ul>
+
+          <h4>Result:</h4>
+          <ul>
+            <li>500ms–3s response time</li>
+            <li>No slippage after quote acceptance</li>
+            <li>Guaranteed price finality</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Unique Features -->
+    <section>
+      <div class="container">
+        <div class="section-icon">💡</div>
+        <h3>Unique Features & Differentiators</h3>
+        <div class="glass-card">
+          <div class="feature-grid">
+            <div class="feature-card">
+              <h4>🚀 Unmatched Coverage</h4>
+              <ul>
+                <li>48 supported EVM chains</li>
+                <li>100,000+ tokens</li>
+                <li>True cross-chain native</li>
+                <li>Bridge aggregation</li>
+              </ul>
+            </div>
+
+            <div class="feature-card">
+              <h4>⚡ Real-Time Features</h4>
+              <ul>
+                <li>WebSocket price feeds</li>
+                <li>Live quote streaming</li>
+                <li>Synthetic quote generation</li>
+                <li>Auto-reconnection logic</li>
+              </ul>
+            </div>
+
+            <div class="feature-card">
+              <h4>💰 Revenue Generation</h4>
+              <ul>
+                <li>Smart spread optimization</li>
+                <li>DEX rebate collection</li>
+                <li>Arbitrage capture</li>
+                <li>Profitable by design</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Fallback Safety System -->
+    <section>
+      <div class="container">
+        <div class="section-icon">🔄</div>
+        <h3>Fallback Safety System</h3>
+        <div class="glass-card">
+          <p>
+            If no solver quote is available, or a solver becomes unresponsive:
+          </p>
+          <ul>
+            <li>Trade auto-cancels before execution (no gas cost)</li>
+            <li>User can retry or use fallback mode</li>
+            <li>
+              Fallback triggers auto-routing to Uniswap or other verified
+              on-chain paths
+            </li>
+            <li>All fallback paths run slippage check + expiry</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chain & Token Support -->
+    <section>
+      <div class="container">
+        <div class="section-icon">📡</div>
+        <h3>Chain & Token Support</h3>
+        <div class="glass-card">
+          <h4>48 EVM-Compatible Blockchain Networks Supported</h4>
+          <p style="margin-bottom: 24px">
+            The most extensive chain support in the DEX aggregator space
+          </p>
+
+          <div class="feature-grid">
+            <div class="feature-card">
+              <h4>Layer 1 EVM</h4>
+              <ul>
+                <li>Ethereum</li>
+                <li>BSC</li>
+                <li>Avalanche</li>
+                <li>Fantom</li>
+                <li>Cronos</li>
+              </ul>
+              <p style="margin-top: 16px"><strong>~15,000+ tokens</strong></p>
+            </div>
+
+            <div class="feature-card">
+              <h4>Layer 2</h4>
+              <ul>
+                <li>Arbitrum</li>
+                <li>Optimism</li>
+                <li>Base</li>
+                <li>zkSync</li>
+                <li>Polygon zkEVM</li>
+              </ul>
+              <p style="margin-top: 16px"><strong>~10,000+ tokens</strong></p>
+            </div>
+
+            <div class="feature-card">
+              <h4>Alt L1s & Others</h4>
+              <ul>
+                <li>Polygon, Gnosis, Celo</li>
+                <li>Aurora, Moonbeam</li>
+                <li>Sonic, World Chain</li>
+                <li>HyperEVM, Lens, Taiko</li>
+                <li>And 30+ more EVM chains</li>
+              </ul>
+              <p style="margin-top: 16px"><strong>~50,000+ tokens</strong></p>
+            </div>
+          </div>
+
+
+          <h4 style="margin-top: 32px">Token coverage:</h4>
+          <ul>
+            <li><strong>100,000+ unique tokens</strong> across all chains</li>
+            <li>Dynamic token discovery and registry</li>
+            <li>Real-time token addition (24h updates)</li>
+            <li>Automated blacklist for malicious tokens</li>
+            <li>Community-driven token safety reports</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture Overview -->
+    <section>
+      <div class="container">
+        <div class="section-icon">🧩</div>
+        <h3>Architecture Overview</h3>
+        <div class="glass-card">
+          <ul>
+            <li>
+              <strong>Frontend:</strong> Next.js 15.3 + React 18.3 + TypeScript
+              5.0 + Tailwind
+            </li>
+            <li>
+              <strong>Backend:</strong> Supabase + Redis cache + WebSocket
+              service
+            </li>
+            <li>
+              <strong>Blockchain:</strong> Ethers.js 6.14 + Hardhat +
+              OpenZeppelin
+            </li>
+            <li>
+              <strong>Smart Contracts:</strong> SecureEscrowV2 + EIP-712
+              signatures + MEV protection
+            </li>
+            <li>
+              <strong>DEX Integrations:</strong> LiFi Protocol, Uniswap, 0x
+              Protocol
+            </li>
+            <li>
+              <strong>Bridge Integrations:</strong> Hop, Stargate, Across
+              (cross-chain routing)
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mobile Optimization -->
+    <section>
+      <div class="container">
+        <div class="section-icon">📱</div>
+        <h3>Mobile-First Optimization</h3>
+        <div class="glass-card">
+          <p>
+            Dedicated mobile performance service with intelligent network-aware
+            optimization:
+          </p>
+
+          <ul>
+            <li>
+              <strong>Network Detection:</strong> Automatic adaptation for
+              4G/3G/2G connections
+            </li>
+            <li>
+              <strong>Device Capabilities:</strong> Smart detection and
+              performance tuning
+            </li>
+            <li>
+              <strong>Progressive Loading:</strong> Optimized image and data
+              loading
+            </li>
+            <li>
+              <strong>Request Batching:</strong> Reduced API calls for slow
+              connections
+            </li>
+            <li>
+              <strong>Offline Support:</strong> Service Worker implementation
+              for resilience
+            </li>
+            <li>
+              <strong>Responsive Design:</strong> Fully optimized for all screen
+              sizes
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Developer & Integration Notes -->
+    <section>
+      <div class="container">
+        <div class="section-icon">🛠️</div>
+        <h3>Developer & Integration Notes</h3>
+        <div class="glass-card">
+          <h4>SDK:</h4>
+          <p><code>@swappiq/sdk-core</code> (coming soon)</p>
+
+          <h4>REST Endpoints:</h4>
+          <ul>
+            <li><code>/quote</code> — returns solver quotes</li>
+            <li><code>/swap</code> — submits signed order</li>
+            <li><code>/tokens</code> — returns supported token list</li>
+            <li><code>/tx/:hash</code> — monitors trade status</li>
+          </ul>
+
+          <h4>WebSocket:</h4>
+          <ul>
+            <li>Live price feeds</li>
+            <li>Real-time quote pings</li>
+          </ul>
+
+          <h4>Developer Features:</h4>
+          <ul>
+            <li>Public testnet version</li>
+            <li>Early SDK testers invited via Discord</li>
+            <li>Public solver onboarding module in Q3</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Token Risk Handling -->
+    <section>
+      <div class="container">
+        <div class="section-icon">📊</div>
+        <h3>Token Risk Handling</h3>
+        <div class="glass-card">
+          <ul>
+            <li>Contract scanner for honeypots + sell locks</li>
+            <li>Critical token flags (malicious, high risk)</li>
+            <li>Community-driven reports visible on token page</li>
+            <li>Disable-swap mechanism for verified threats</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gas & Execution Design -->
+    <section>
+      <div class="container">
+        <div class="section-icon">🔧</div>
+        <h3>Gas & Execution Design</h3>
+        <div class="glass-card">
+          <ul>
+            <li>Gas is quoted in advance by solvers</li>
+            <li>User signs off on full quote (including gas)</li>
+            <li>Relayers handle submission + fallback</li>
+            <li>Gas deducted in input or output token</li>
+            <li>No gas charged on unfilled or expired orders</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section>
+      <div class="container">
+        <div class="section-icon">🙋</div>
+        <h3>Full FAQ</h3>
+        <div class="glass-card">
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              How do you make money?
+            </div>
+            <div class="faq-answer">
+              <p>Via solver-side spreads, DEX rebates, and arbitrage.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              Can Swappiq see or hold my funds?
+            </div>
+            <div class="faq-answer">
+              <p>
+                No. Funds are only transferred when a trade is signed and
+                submitted. We don't touch custody.
+              </p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              What if a solver lies or disappears?
+            </div>
+            <div class="faq-answer">
+              <p>
+                Quote validity is enforced by signature. If solver fails to
+                execute, trade is voided or finalized on chain based on user
+                preference.
+              </p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              Why off-chain quotes?
+            </div>
+            <div class="faq-answer">
+              <p>
+                To get better faster prices that avoids slippage, MEV, and
+                mempool exposure.
+              </p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              Is Swappiq trustless?
+            </div>
+            <div class="faq-answer">
+              <p>
+                Yes. Every trade requires dual-signature validation and executes
+                via verified contracts.
+              </p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              What chains do you support?
+            </div>
+            <div class="faq-answer">
+              <p>
+                48 EVM-compatible blockchain networks including Ethereum, BSC, Arbitrum,
+                Optimism, Base, zkSync, Polygon, and many more. The most
+                extensive chain coverage in the DEX aggregator space.
+              </p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              Is this open source?
+            </div>
+            <div class="faq-answer">
+              <p>
+                Yes. All smart contracts and frontend code are open on GitHub.
+              </p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              How do you protect users from malicious tokens?
+            </div>
+            <div class="faq-answer">
+              <p>
+                Token blacklist, risk levels, automated scanning, and community
+                flags.
+              </p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              Can I run a solver?
+            </div>
+            <div class="faq-answer">
+              <p>
+                Solver onboarding is private during MVP. Public registration
+                will launch post-audit.
+              </p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              Is there a token?
+            </div>
+            <div class="faq-answer">
+              <p>No token now. Revenue is protocol-first.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              Is there a bug bounty?
+            </div>
+            <div class="faq-answer">
+              <p>Yes — see joseph@swappiq.xyz</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              Will there be APIs?
+            </div>
+            <div class="faq-answer">
+              <p>Yes — REST + WebSocket APIs are actively being tested.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              Do I need ETH to use Swappiq?
+            </div>
+            <div class="faq-answer">
+              <p>
+                Not always. Relayers can submit trades and deduct fees in token
+                output.
+              </p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question" onclick="toggleFaq(this)">
+              Do you track wallets?
+            </div>
+            <div class="faq-answer">
+              <p>
+                Only for performance analytics. No PII, email, or wallet-linking
+                is stored.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="cta-section">
+      <div class="container">
+        <div class="glass-card" style="max-width: 800px; margin: 0 auto">
+          <h3 style="font-size: 36px; margin-bottom: 24px">
+            Ready to access 48 EVM chains and 100,000+ tokens?
+          </h3>
+          <p style="font-size: 20px; margin-bottom: 16px">
+            Experience the most comprehensive DEX aggregator in DeFi.
+          </p>
+          <p
+            style="
+              font-size: 18px;
+              margin-bottom: 32px;
+              color: var(--text-secondary);
+            "
+          >
+            Off-chain execution • MEV protection • Best rates • All chains
+          </p>
+          <a href="/" class="cta-button">Start Trading</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <div class="social-links">
+          <a href="https://x.com/Swappiq" target="_blank" class="social-link">
+            <div class="social-icon">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
+                />
+              </svg>
+            </div>
+            <span>Twitter</span>
+          </a>
+          <a
+            href="https://github.com/Aggregator2/Aggregator"
+            target="_blank"
+            class="social-link"
+          >
+            <div class="social-icon">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"
+                />
+              </svg>
+            </div>
+            <span>GitHub</span>
+          </a>
+          <a
+            href="https://discord.gg/V6j3GyKv"
+            target="_blank"
+            class="social-link"
+          >
+            <div class="social-icon">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M20.317 4.369a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"
+                />
+              </svg>
+            </div>
+            <span>Discord</span>
+          </a>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      function toggleFaq(element) {
+        const answer = element.nextElementSibling;
+        answer.classList.toggle("active");
+      }
+
+      // Intersection Observer for scroll animations
+      const observerOptions = {
+        threshold: 0.1,
+        rootMargin: "0px 0px -100px 0px",
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.style.opacity = "1";
+            entry.target.style.transform = "translateY(0)";
+          }
+        });
+      }, observerOptions);
+
+      // Observe all sections
+      document.querySelectorAll("section").forEach((section) => {
+        if (!section.classList.contains("hero")) {
+          section.style.opacity = "0";
+          section.style.transform = "translateY(30px)";
+          section.style.transition = "all 0.8s ease";
+          observer.observe(section);
+        }
+      });
+    </script>
+  </body>
+</html>

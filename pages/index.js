@@ -8,8 +8,11 @@ import styles from '../components/homepage.module.css';
 import { isOrderArray } from '../types/wallet';
 import Link from 'next/link';
 
-// Use Trust Wallet background with theme switching
-import TrustWalletBackground from '../src/components/TrustWalletBackground';
+// Use AnimatedBackground - client side only
+const AnimatedBackground = dynamic(() => import('../src/components/AnimatedBackground'), {
+  ssr: false,
+  loading: () => <div style={{ position: 'fixed', inset: 0, background: '#0a0a0b' }} />
+});
 
 export default function Home() {
   const [userAddress, setUserAddress] = useState('');
@@ -199,11 +202,8 @@ export default function Home() {
       overflow: 'hidden',
       position: 'relative'
     }}>
-      {/* Trust Wallet Animated Background with Theme Toggle */}
-      <TrustWalletBackground 
-        theme="dark" 
-        showThemeToggle={true}
-      />
+      {/* Animated Background */}
+      <AnimatedBackground theme="dark" />
       
       <Nav account={userAddress} connectWallet={connectWallet} />
       <div style={{ 

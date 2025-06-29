@@ -106,22 +106,44 @@ class LifiService {
   }
 
   async getAllTokens(): Promise<Map<number, LifiToken[]>> {
-    const chains = await this.getChains();
-    const allTokens = new Map<number, LifiToken[]>();
-    
-    // Fetch tokens for all chains in parallel
-    const promises = chains.map(async (chain) => {
-      try {
-        const tokens = await this.getTokens(chain.id);
-        allTokens.set(chain.id, tokens);
-      } catch (error) {
-        lifiLogger.error(`Failed to fetch tokens for chain ${chain.id}:`, error);
-        allTokens.set(chain.id, []);
+    try {
+      // Use SDK method to get all tokens at once (more efficient)
+      const tokensResponse = await getTokens({});
+      const allTokens = new Map<number, LifiToken[]>();
+      
+      // Process the response
+      Object.entries(tokensResponse.tokens).forEach(([chainId, tokens]) => {
+        allTokens.set(Number(chainId), tokens as LifiToken[]);
+      });
+      
+      lifiLogger.info(`Loaded tokens for ${allTokens.size} chains`);
+      return allTokens;
+    } catch (error) {
+      lifiLogger.error('Failed to fetch all tokens:', error);
+      
+      // Fallback: fetch chains and tokens individually
+      const chains = await this.getChains();
+      const allTokens = new Map<number, LifiToken[]>();
+      
+      // Fetch tokens for all chains in parallel (batch by 5 to avoid rate limits)
+      const batchSize = 5;
+      for (let i = 0; i < chains.length; i += batchSize) {
+        const batch = chains.slice(i, i + batchSize);
+        const promises = batch.map(async (chain) => {
+          try {
+            const tokens = await this.getTokens(chain.id);
+            allTokens.set(chain.id, tokens);
+          } catch (error) {
+            lifiLogger.error(`Failed to fetch tokens for chain ${chain.id}:`, error);
+            allTokens.set(chain.id, []);
+          }
+        });
+        
+        await Promise.all(promises);
       }
-    });
-    
-    await Promise.all(promises);
-    return allTokens;
+      
+      return allTokens;
+    }
   }
 
   async getQuote(request: LifiQuoteRequest): Promise<LifiRoute[]> {
