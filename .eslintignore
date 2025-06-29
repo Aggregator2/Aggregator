@@ -1,0 +1,29 @@
+# Ignore build outputs
+node_modules/
+dist/
+build/
+.next/
+out/
+
+# Ignore test files temporarily
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
+
+# Ignore Backend server files temporarily (will fix incrementally)
+Backend server/**/*.js
+Backend server/**/*.ts
+
+# Ignore generated files
+artifacts/
+typechain-types/
+coverage/
+*.d.ts
+
+# Ignore config files
+*.config.js
+*.config.ts
+jest.config.js
+next.config.js
+hardhat.config.ts

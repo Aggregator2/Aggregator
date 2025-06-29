@@ -1,9 +1,5 @@
 // Handles the `/verify-order` route for validating signed orders and ensuring their integrity.
 
-async function sendTestOrders() {
-    // Sends test orders (valid and tampered) to the `/verify-order` endpoint for validation.
-    
-}
 import axios from "axios";
 import { Wallet } from "ethers";
 import { domain, types } from "../signAndSend/lib/signature.js";

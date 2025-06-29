@@ -55,9 +55,9 @@ async function main() {
 
   try {
     const tx = await settleOrderOnChain(order, signature);
-    console.log("Transaction sent:", tx.hash);
+    console.log("Transaction sent:", tx.hash); // eslint-disable-line no-console
   } catch (err) {
-    console.error("Error settling order:", err);
+    console.error("Error settling order:", err); // eslint-disable-line no-console
   }
 }
 

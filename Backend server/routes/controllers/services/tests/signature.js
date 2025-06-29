@@ -1,5 +1,22 @@
 import { Wallet, utils } from "ethers";
 
+export const domain = {
+    name: 'TradeProtocol',
+    version: '1',
+    chainId: 1,
+    verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
+};
+
+export const types = {
+    Order: [
+        { name: 'maker', type: 'address' },
+        { name: 'taker', type: 'address' },
+        { name: 'amount', type: 'uint256' },
+        { name: 'price', type: 'uint256' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'expiry', type: 'uint256' }
+    ]
+};
 
 export function generateOrderHash(order) {
     return utils._TypedDataEncoder.hash(domain, types, order);
