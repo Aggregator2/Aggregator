@@ -218,9 +218,11 @@ export class FinalSettlementEngine extends EventEmitter {
     
     this.settlementContract = new ethers.Contract(address, abi, this.wallet);
     
-    // Listen to contract events
-    this.settlementContract.on('SettlementExecuted', this.handleSettlementEvent.bind(this));
-    this.settlementContract.on('BatchSettlementExecuted', this.handleBatchSettlementEvent.bind(this));
+    // Listen to contract events (only if contract has event listener support)
+    if (this.settlementContract.on) {
+      this.settlementContract.on('SettlementExecuted', this.handleSettlementEvent.bind(this));
+      this.settlementContract.on('BatchSettlementExecuted', this.handleBatchSettlementEvent.bind(this));
+    }
   }
   
   private startEpochTimer(): void {
