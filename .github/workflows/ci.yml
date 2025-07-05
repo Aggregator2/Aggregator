@@ -141,8 +141,10 @@ jobs:
     needs: [build, lint, test, e2e]
     runs-on: ubuntu-latest
     if: failure()
+    continue-on-error: true
     steps:
     - name: Slack Notification
+      continue-on-error: true
       uses: 8398a7/action-slack@v3
       with:
         status: ${{ job.status }}
