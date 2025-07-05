@@ -16,7 +16,6 @@ scripts
 .vscode
 coverage
 .nyc_output
-hardhat.config.js
 contracts
 migrations
 deployment
@@ -48,3 +47,7 @@ babel*
 tsconfig.tsbuildinfo
 prisma/migrations
 prisma/*.db-journal
+
+# Explicitly DO NOT ignore artifacts
+!artifacts/
+!artifacts/**/*
