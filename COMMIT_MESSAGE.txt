@@ -1,0 +1,10 @@
+Fix Vercel deployment build errors
+
+- Add bcryptjs to package.json dependencies
+- Create serverless-compatible rateLimiterSimple.ts for Vercel environment
+- Update imports in API routes to use rateLimiterSimple instead of rateLimiter
+- Fix bcrypt import in MarketMakerOnboardingService (use bcrypt instead of bcryptjs)
+- Create missing MarketMakerConnector module
+- Ensure all required files are present for build
+
+This commit fixes all build errors preventing Vercel deployment while maintaining full functionality.

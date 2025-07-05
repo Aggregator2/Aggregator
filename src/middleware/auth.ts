@@ -82,3 +82,6 @@ export function requireAuth(handler: NextApiHandler) {
     }
   };
 }
+
+// Export authMiddleware as an alias for requireAuth for backward compatibility
+export const authMiddleware = requireAuth;
