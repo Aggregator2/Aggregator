@@ -1,5 +1,5 @@
 import { PrismaClient, MarketMaker } from '@prisma/client';
-import { MarketMakerConnector } from '../../liquidity-aggregator/MarketMakerConnector';
+import { MarketMakerConnector } from '../../../liquidity-aggregator/MarketMakerConnector';
 import { logger } from '../../../utils/logger';
 
 export class MarketMakerConnectorManager {
