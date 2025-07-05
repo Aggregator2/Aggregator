@@ -1,7 +1,14 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { ethers } from "ethers";
-import fixedEscrowArtifact from "../../artifacts/contracts/FixedEscrow.sol/FixedEscrow.json";
-const escrowAbi = fixedEscrowArtifact.abi;
+
+// Minimal ABI for FixedEscrow contract
+const escrowAbi = [
+  "function releaseWithSignature(address to, address token, uint256 amount, bytes signature) external",
+  "function release(address to, address token, uint256 amount) external",
+  "function deposit(address token, uint256 amount) external payable",
+  "function arbiter() external view returns (address)",
+  "function balances(address token, address user) external view returns (uint256)"
+];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
