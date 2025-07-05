@@ -1,6 +1,6 @@
 import { PrismaClient, MarketMaker, MarketMakerStatus } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { logger } from '../../../utils/logger';
 import { generateApiKey } from '../../../utils/crypto';
 
@@ -51,7 +51,7 @@ export class MarketMakerOnboardingService {
       const apiSecret = await bcrypt.hash(uuidv4(), 10);
 
       // Create market maker with pending status
-      const marketMaker = await this.prisma.marketMaker.create({
+      const marketMaker = await this.prisma.MarketMaker.create({
         data: {
           name: application.name,
           code,
@@ -121,7 +121,7 @@ export class MarketMakerOnboardingService {
     step: keyof OnboardingSteps,
     completed: boolean
   ): Promise<MarketMaker> {
-    const marketMaker = await this.prisma.marketMaker.findUnique({
+    const marketMaker = await this.prisma.MarketMaker.findUnique({
       where: { id: marketMakerId },
     });
 
@@ -136,7 +136,7 @@ export class MarketMakerOnboardingService {
     // Check if all steps are completed
     const allStepsCompleted = Object.values(onboardingSteps).every(v => v === true);
 
-    const updatedMarketMaker = await this.prisma.marketMaker.update({
+    const updatedMarketMaker = await this.prisma.MarketMaker.update({
       where: { id: marketMakerId },
       data: {
         metadata: {
@@ -161,7 +161,7 @@ export class MarketMakerOnboardingService {
     quoteTest: boolean;
     errors: string[];
   }> {
-    const marketMaker = await this.prisma.marketMaker.findUnique({
+    const marketMaker = await this.prisma.MarketMaker.findUnique({
       where: { id: marketMakerId },
     });
 
@@ -230,7 +230,7 @@ export class MarketMakerOnboardingService {
     const newApiSecret = uuidv4();
     const hashedApiSecret = await bcrypt.hash(newApiSecret, 10);
 
-    await this.prisma.marketMaker.update({
+    await this.prisma.MarketMaker.update({
       where: { id: marketMakerId },
       data: {
         apiKey: newApiKey,
@@ -255,7 +255,7 @@ export class MarketMakerOnboardingService {
     }>
   ): Promise<void> {
     // Remove existing pairs
-    await this.prisma.marketMakerPair.deleteMany({
+    await this.prisma.MarketMakerPair.deleteMany({
       where: { marketMakerId },
     });
 
@@ -270,13 +270,13 @@ export class MarketMakerOnboardingService {
       isActive: true,
     }));
 
-    await this.prisma.marketMakerPair.createMany({
+    await this.prisma.MarketMakerPair.createMany({
       data: pairData,
     });
 
     // Update supported pairs list
     const supportedPairs = pairs.map(p => `${p.baseCurrency}/${p.quoteCurrency}`);
-    await this.prisma.marketMaker.update({
+    await this.prisma.MarketMaker.update({
       where: { id: marketMakerId },
       data: { supportedPairs },
     });
@@ -308,7 +308,7 @@ export class MarketMakerOnboardingService {
   }
 
   private async onboardingComplete(marketMakerId: string): Promise<void> {
-    const marketMaker = await this.prisma.marketMaker.findUnique({
+    const marketMaker = await this.prisma.MarketMaker.findUnique({
       where: { id: marketMakerId },
     });
 
@@ -332,7 +332,7 @@ export class MarketMakerOnboardingService {
       locked: 0,
     }));
 
-    await this.prisma.marketMakerInventory.createMany({
+    await this.prisma.MarketMakerInventory.createMany({
       data: inventoryData,
       skipDuplicates: true,
     });
@@ -361,7 +361,7 @@ export class MarketMakerOnboardingService {
     onboardingSteps: OnboardingSteps;
     progress: number;
   }> {
-    const marketMaker = await this.prisma.marketMaker.findUnique({
+    const marketMaker = await this.prisma.MarketMaker.findUnique({
       where: { id: marketMakerId },
     });
 

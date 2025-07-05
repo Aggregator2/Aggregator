@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { MarketMakerOnboardingService } from '../../../src/services/marketMaker/onboarding/MarketMakerOnboardingService';
-import { rateLimiter } from '../../../src/middleware/rateLimiter';
+import { rateLimiter } from '../../../src/middleware/rateLimiterSimple';
 import { logger } from '../../../src/utils/logger';
 
 const onboardingService = new MarketMakerOnboardingService();

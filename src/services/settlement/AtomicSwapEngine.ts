@@ -72,21 +72,42 @@ export class AtomicSwapEngine extends EventEmitter {
   
   // Execute multiple swaps atomically
   public async executeSwaps(swapIds: string[]): Promise<void> {
-    const swaps = swapIds.map(id => this.swaps.get(id)).filter(Boolean) as AtomicSwap[];
+    // Validate all swap IDs exist
+    const invalidSwapIds: string[] = [];
+    const validSwaps: AtomicSwap[] = [];
+    
+    for (const swapId of swapIds) {
+      const swap = this.swaps.get(swapId);
+      if (!swap) {
+        invalidSwapIds.push(swapId);
+      } else {
+        validSwaps.push(swap);
+      }
+    }
+    
+    // Throw error if any swap IDs are invalid
+    if (invalidSwapIds.length > 0) {
+      throw new Error(`Invalid swap IDs: ${invalidSwapIds.join(', ')}`);
+    }
+    
+    // Throw error if no valid swaps to execute
+    if (validSwaps.length === 0) {
+      throw new Error('No valid swaps to execute');
+    }
     
     try {
       // Phase 1: Lock all swaps
-      await this.lockSwaps(swaps);
+      await this.lockSwaps(validSwaps);
       
       // Phase 2: Execute all swaps
-      await this.executeLockedSwaps(swaps);
+      await this.executeLockedSwaps(validSwaps);
       
       // Phase 3: Complete all swaps
-      await this.completeSwaps(swaps);
+      await this.completeSwaps(validSwaps);
       
     } catch (error) {
       // If any step fails, revert all swaps
-      await this.revertSwaps(swaps);
+      await this.revertSwaps(validSwaps);
       throw error;
     }
   }

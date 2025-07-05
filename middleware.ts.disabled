@@ -1,0 +1,34 @@
+import { NextRequest } from 'next/server';
+import { createSettlementService, defaultSettlementConfig } from './src/services/settlement/SettlementService';
+
+// Initialize settlement service on server startup
+let settlementService: any = null;
+
+export async function middleware(request: NextRequest) {
+  // Initialize settlement service once
+  if (!settlementService) {
+    try {
+      console.log('🚀 Initializing settlement service...');
+      
+      // Create custom configuration
+      const config = {
+        ...defaultSettlementConfig,
+        epochDuration: 300000, // 5 minutes for testing
+        enableAutoSettlement: true,
+        enableWebhooks: true
+      };
+      
+      settlementService = createSettlementService(config);
+      await settlementService.initialize();
+      
+      // Make it globally available
+      (global as any).settlementService = settlementService;
+      
+      console.log('✅ Settlement service initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize settlement service:', error);
+    }
+  }
+  
+  return;
+}

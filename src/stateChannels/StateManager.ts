@@ -4,7 +4,7 @@ import { EventEmitter } from 'events';
 export interface ChannelState {
   channelId: string;
   nonce: number;
-  balances: Map<string, ethers.BigNumber>;
+  balances: Map<string, bigint>;
   stateRoot: string;
   timestamp: number;
   signatures: Map<string, string>;
@@ -14,7 +14,7 @@ export interface Trade {
   id: string;
   from: string;
   to: string;
-  amount: ethers.BigNumber;
+  amount: bigint;
   timestamp: number;
   metadata?: any;
 }
@@ -22,7 +22,7 @@ export interface Trade {
 export interface StateUpdate {
   nonce: number;
   stateRoot: string;
-  balances: ethers.BigNumber[];
+  balances: bigint[];
   participants: string[];
 }
 
@@ -43,7 +43,7 @@ export class StateManager extends EventEmitter {
   async initializeChannel(
     channelId: string,
     participants: string[],
-    initialBalances: Map<string, ethers.BigNumber>
+    initialBalances: Map<string, bigint>
   ): Promise<ChannelState> {
     const state: ChannelState = {
       channelId,
@@ -95,7 +95,7 @@ export class StateManager extends EventEmitter {
 
     for (const trade of trades) {
       const fromBalance = newBalances.get(trade.from);
-      const toBalance = newBalances.get(trade.to) || ethers.BigNumber.from(0);
+      const toBalance = newBalances.get(trade.to) || BigInt(0);
 
       if (!fromBalance || fromBalance.lt(trade.amount)) {
         throw new Error(`Insufficient balance for trade ${trade.id}`);
@@ -185,8 +185,8 @@ export class StateManager extends EventEmitter {
       throw new Error('State not found');
     }
 
-    const balances: ethers.BigNumber[] = participants.map(
-      p => state.balances.get(p) || ethers.BigNumber.from(0)
+    const balances: bigint[] = participants.map(
+      p => state.balances.get(p) || BigInt(0)
     );
 
     return {
@@ -197,7 +197,7 @@ export class StateManager extends EventEmitter {
     };
   }
 
-  private calculateStateRoot(balances: Map<string, ethers.BigNumber>): string {
+  private calculateStateRoot(balances: Map<string, bigint>): string {
     const sortedEntries = Array.from(balances.entries()).sort((a, b) => 
       a[0].toLowerCase().localeCompare(b[0].toLowerCase())
     );
@@ -257,7 +257,7 @@ export class StateManager extends EventEmitter {
       channelId: data.channelId,
       nonce: data.nonce,
       balances: new Map(
-        data.balances.map((b: any) => [b.address, ethers.BigNumber.from(b.balance)])
+        data.balances.map((b: any) => [b.address, BigInt(b.balance)])
       ),
       stateRoot: data.stateRoot,
       timestamp: data.timestamp,

@@ -1,0 +1,54 @@
+{
+  "name": "swappiq-websocket-redis-tests",
+  "version": "1.0.0",
+  "description": "Comprehensive tests for WebSocket and Redis integration in SwappiQ",
+  "scripts": {
+    "test": "npm run test:all",
+    "test:all": "npm run test:websocket && npm run test:redis && npm run test:integration",
+    "test:websocket": "jest websocket/websocket.test.ts --forceExit",
+    "test:redis": "jest redis/redis.test.ts --forceExit",
+    "test:integration": "jest integration/websocket-redis.test.ts --forceExit",
+    "test:report": "ts-node run-websocket-tests.ts",
+    "health": "ts-node websocket-redis-health.ts",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage --coverageDirectory=./coverage",
+    "test:performance": "npm run test:all -- --runInBand --detectOpenHandles",
+    "test:memory": "node --expose-gc --max-old-space-size=4096 node_modules/.bin/jest --logHeapUsage",
+    "test:stress": "npm run test:integration -- --runInBand --bail=false"
+  },
+  "oldJest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testTimeout": 60000,
+    "setupFilesAfterEnv": ["./jest.setup.ts"],
+    "collectCoverageFrom": [
+      "../src/**/*.{js,ts}",
+      "!../src/**/*.d.ts",
+      "!../src/**/node_modules/**"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 70,
+        "functions": 70,
+        "lines": 70,
+        "statements": 70
+      }
+    },
+    "testMatch": [
+      "**/*.test.ts"
+    ],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/../src/$1"
+    }
+  },
+  "dependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "ioredis": "^5.3.2",
+    "jest": "^29.5.0",
+    "socket.io-client": "^4.6.1",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.0"
+  }
+}

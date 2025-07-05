@@ -1,0 +1,440 @@
+.proof-viewer {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.proof-viewer.loading,
+.proof-viewer.error,
+.proof-viewer.empty {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.spinner {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+.spinner.small {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+  margin: 0;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  color: #e74c3c;
+}
+
+.retry-button {
+  margin-top: 16px;
+  padding: 8px 24px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.retry-button:hover {
+  background: #2980b9;
+}
+
+/* Header */
+.proof-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.proof-header h3 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.proof-status {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.proof-status .verified {
+  color: #27ae60;
+}
+
+.proof-status .unverified {
+  color: #e74c3c;
+}
+
+.proof-status .pending {
+  color: #95a5a6;
+}
+
+/* Sections */
+.proof-section {
+  margin-bottom: 32px;
+}
+
+.proof-section:last-child {
+  margin-bottom: 0;
+}
+
+.proof-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.proof-section h5 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #34495e;
+}
+
+/* Trade Summary */
+.trade-summary,
+.settlement-info,
+.merkle-info {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.trade-row,
+.info-row,
+.merkle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.trade-row:last-child,
+.info-row:last-child,
+.merkle-row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.value {
+  font-size: 14px;
+  color: #212529;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.value.monospace {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.value.small {
+  font-size: 12px;
+}
+
+.value.address {
+  color: #0066cc;
+}
+
+.value.link {
+  color: #0066cc;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.value.link:hover {
+  color: #0052a3;
+  text-decoration: underline;
+}
+
+.external-link {
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+/* Copy Button */
+.copy-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.copy-btn:hover {
+  opacity: 1;
+}
+
+/* Details Toggle */
+.toggle-details {
+  margin-top: 12px;
+  background: none;
+  border: 1px solid #dee2e6;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #495057;
+  transition: all 0.2s;
+}
+
+.toggle-details:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+/* Proof Details */
+.proof-details {
+  margin-top: 16px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.proof-path {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.proof-hash {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 12px;
+}
+
+.proof-hash:last-child {
+  border-bottom: none;
+}
+
+.hash-index {
+  width: 40px;
+  color: #6c757d;
+  flex-shrink: 0;
+}
+
+.hash-value {
+  flex: 1;
+  word-break: break-all;
+  color: #495057;
+}
+
+/* Verification */
+.verification-result {
+  padding: 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.verification-result.valid {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+}
+
+.verification-result.invalid {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+}
+
+.result-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.verification-result.valid .result-icon {
+  color: #155724;
+}
+
+.verification-result.invalid .result-icon {
+  color: #721c24;
+}
+
+.result-message strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.result-message p {
+  margin: 0;
+  font-size: 14px;
+  color: #495057;
+}
+
+.verification-details {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.detail-row span:first-child {
+  color: #6c757d;
+}
+
+.detail-row .yes {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.detail-row .no {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+/* Verification Pending */
+.verification-pending {
+  text-align: center;
+  padding: 24px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.verification-pending p {
+  margin: 0 0 16px 0;
+  color: #495057;
+  font-size: 14px;
+}
+
+.verify-button {
+  padding: 12px 32px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.verify-button:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.verify-button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.warning {
+  margin-top: 12px !important;
+  font-size: 13px !important;
+  color: #856404 !important;
+  background: #fff3cd;
+  padding: 8px 12px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+/* Etherscan Link */
+.etherscan-link {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.button.secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: #f8f9fa;
+  color: #495057;
+  text-decoration: none;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.button.secondary:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  color: #212529;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .proof-viewer {
+    padding: 16px;
+  }
+
+  .proof-header h3 {
+    font-size: 20px;
+  }
+
+  .trade-row,
+  .info-row,
+  .merkle-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .value {
+    margin-left: 0;
+  }
+
+  .verification-result {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+}

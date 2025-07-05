@@ -17,7 +17,7 @@ export class MarketMakerConnectorManager {
     }
 
     // Get market maker details
-    const marketMaker = await this.prisma.marketMaker.findUnique({
+    const marketMaker = await this.prisma.MarketMaker.findUnique({
       where: { id: marketMakerId },
     });
 

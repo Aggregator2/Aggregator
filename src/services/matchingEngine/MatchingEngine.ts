@@ -20,6 +20,7 @@ export class MatchingEngine extends EventEmitter {
   private config: MatchingEngineConfig;
   private marketData: Map<string, MarketData>;
   private orderSequence: number;
+  private decimalPlaces: Map<string, { base: number; quote: number }>;
 
   constructor(config: MatchingEngineConfig) {
     super();
@@ -29,6 +30,13 @@ export class MatchingEngine extends EventEmitter {
     this.config = config;
     this.marketData = new Map();
     this.orderSequence = 0;
+    this.decimalPlaces = new Map();
+    
+    // Initialize decimal places for common pairs
+    this.decimalPlaces.set('ETH/USDC', { base: 18, quote: 6 });
+    this.decimalPlaces.set('BTC/USDC', { base: 8, quote: 6 });
+    this.decimalPlaces.set('ETH/USDT', { base: 18, quote: 6 });
+    this.decimalPlaces.set('BTC/USDT', { base: 8, quote: 6 });
   }
 
   // Initialize order book for a trading pair
@@ -71,13 +79,49 @@ export class MatchingEngine extends EventEmitter {
       price: orderRequest.price || 0,
       quantity: orderRequest.quantity!,
       filledQuantity: 0,
-      status: OrderStatus.PENDING,
+      status: orderRequest.type === OrderType.STOP_LIMIT ? OrderStatus.PENDING : OrderStatus.PENDING,
       timeInForce: orderRequest.timeInForce || TimeInForce.GTC,
       timestamp: Date.now(),
       lastUpdateTime: Date.now(),
       clientOrderId: orderRequest.clientOrderId,
       metadata: orderRequest.metadata,
+      displayQuantity: orderRequest.displayQuantity,
+      postOnly: orderRequest.postOnly,
+      selfTradePrevention: orderRequest.selfTradePrevention,
+      maxPriceImpact: orderRequest.maxPriceImpact,
+      stopPrice: orderRequest.stopPrice,
     };
+
+    // Check for post-only orders
+    if (orderRequest.postOnly || orderRequest.metadata?.postOnly) {
+      const orderBook = this.orderBooks.get(order.pair);
+      if (orderBook && this.wouldTakeLiquidity(order, orderBook)) {
+        throw new Error('Post-only order would take liquidity');
+      }
+    }
+
+    // Handle self-trading prevention
+    if (order.selfTradePrevention) {
+      const orderBook = this.orderBooks.get(order.pair);
+      if (orderBook) {
+        const userOrders = this.getUserOrders(order.userId, order.pair, OrderStatus.OPEN);
+        if (userOrders.length > 0) {
+          // Cancel existing orders based on prevention strategy
+          if (order.selfTradePrevention === 'CANCEL_OLDEST') {
+            for (const existingOrder of userOrders) {
+              await this.cancelOrder(existingOrder.id, order.userId);
+            }
+          }
+        }
+      }
+    }
+
+    // Handle stop orders - they remain pending until triggered
+    if (order.type === OrderType.STOP_LIMIT) {
+      // Store the stop order without adding to order book yet
+      this.orders.set(order.id, order);
+      return this.generateExecutionReport(order, []);
+    }
 
     // Store order
     this.orders.set(order.id, order);
@@ -104,6 +148,11 @@ export class MatchingEngine extends EventEmitter {
 
       // Update market data
       this.updateMarketData(order.pair, executionReport.trades);
+      
+      // Check for stop order triggers
+      if (executionReport.trades.length > 0) {
+        await this.checkStopOrderTriggers(order.pair, executionReport.trades);
+      }
 
       return executionReport;
     } catch (error) {
@@ -136,11 +185,29 @@ export class MatchingEngine extends EventEmitter {
 
   // Process market order
   private async processMarketOrder(order: Order, orderBook: OrderBook): Promise<ExecutionReport> {
-    // Set market order price to ensure matching
-    if (order.side === OrderSide.BUY) {
-      order.price = Number.MAX_SAFE_INTEGER; // Buy at any price
+    // For market orders with price protection, calculate limit price
+    if (order.maxPriceImpact) {
+      // Use the best available price as reference instead of last price
+      const bestPrice = order.side === OrderSide.BUY 
+        ? orderBook.getBestAsk()?.price
+        : orderBook.getBestBid()?.price;
+      
+      if (bestPrice) {
+        // Set limit price based on price impact from best available price
+        order.price = order.side === OrderSide.BUY 
+          ? bestPrice * (1 + order.maxPriceImpact)
+          : bestPrice * (1 - order.maxPriceImpact);
+      } else {
+        // No liquidity available
+        order.price = order.side === OrderSide.BUY ? 0 : Number.MAX_SAFE_INTEGER;
+      }
     } else {
-      order.price = 0.000001; // Sell at any price (but not 0)
+      // Set market order price to ensure matching
+      if (order.side === OrderSide.BUY) {
+        order.price = Number.MAX_SAFE_INTEGER; // Buy at any price
+      } else {
+        order.price = 0.000001; // Sell at any price (but not 0)
+      }
     }
     
     // Market orders match immediately against available liquidity
@@ -179,20 +246,56 @@ export class MatchingEngine extends EventEmitter {
     } else {
       order.status = OrderStatus.FILLED;
     }
+    
+    // Add message for insufficient liquidity
+    if (order.filledQuantity < order.quantity && order.filledQuantity > 0) {
+      order.metadata = order.metadata || {};
+      order.metadata.message = 'Insufficient liquidity';
+    }
 
     order.lastUpdateTime = Date.now();
 
-    // Calculate fees
+    // Calculate fees with proper decimal precision
+    const decimals = this.getDecimalPlaces(order.pair);
     for (const trade of trades) {
-      trade.takerFee = trade.quantity * trade.price * this.config.takerFeeRate;
-      trade.makerFee = trade.quantity * trade.price * this.config.makerFeeRate;
+      // Round the trade values to appropriate decimals
+      trade.quantity = this.roundToDecimals(trade.quantity, decimals.base);
+      trade.price = this.roundToDecimals(trade.price, decimals.quote);
+      
+      // Ensure user IDs are populated
+      if (!trade.takerUserId) trade.takerUserId = order.userId;
+      
+      // Calculate fees
+      const tradeValue = trade.quantity * trade.price;
+      trade.takerFee = this.roundToDecimals(tradeValue * this.config.takerFeeRate, decimals.quote);
+      trade.makerFee = this.roundToDecimals(tradeValue * this.config.makerFeeRate, decimals.quote);
     }
 
     // Update maker orders
     for (const trade of trades) {
       const makerOrder = this.orders.get(trade.makerOrderId);
       if (makerOrder) {
-        orderBook.updateOrderFill(trade.makerOrderId, makerOrder.filledQuantity);
+        // Calculate new filled quantity with proper rounding
+        const decimals = this.getDecimalPlaces(order.pair);
+        const newFilledQuantity = this.roundToDecimals(
+          makerOrder.filledQuantity + trade.quantity, 
+          10  // Use high precision for internal calculations
+        );
+        
+        // Update the order book first (before updating the order)
+        orderBook.updateOrderFill(trade.makerOrderId, newFilledQuantity);
+        
+        // Now update the order in the matching engine
+        makerOrder.filledQuantity = newFilledQuantity;
+        
+        // Update the maker order status
+        if (makerOrder.filledQuantity >= makerOrder.quantity) {
+          makerOrder.status = OrderStatus.FILLED;
+        } else {
+          makerOrder.status = OrderStatus.PARTIALLY_FILLED;
+        }
+        makerOrder.lastUpdateTime = Date.now();
+        
         if (makerOrder.status === OrderStatus.FILLED) {
           this.emit('orderFilled', makerOrder);
         }
@@ -210,17 +313,47 @@ export class MatchingEngine extends EventEmitter {
     // Store trades
     this.trades.push(...trades);
 
-    // Calculate fees
+    // Calculate fees with proper decimal precision
+    const decimals = this.getDecimalPlaces(order.pair);
     for (const trade of trades) {
-      trade.takerFee = trade.quantity * trade.price * this.config.takerFeeRate;
-      trade.makerFee = trade.quantity * trade.price * this.config.makerFeeRate;
+      // Round the trade values to appropriate decimals
+      trade.quantity = this.roundToDecimals(trade.quantity, decimals.base);
+      trade.price = this.roundToDecimals(trade.price, decimals.quote);
+      
+      // Ensure user IDs are populated
+      if (!trade.takerUserId) trade.takerUserId = order.userId;
+      
+      // Calculate fees
+      const tradeValue = trade.quantity * trade.price;
+      trade.takerFee = this.roundToDecimals(tradeValue * this.config.takerFeeRate, decimals.quote);
+      trade.makerFee = this.roundToDecimals(tradeValue * this.config.makerFeeRate, decimals.quote);
     }
 
     // Update maker orders
     for (const trade of trades) {
       const makerOrder = this.orders.get(trade.makerOrderId);
       if (makerOrder) {
-        orderBook.updateOrderFill(trade.makerOrderId, makerOrder.filledQuantity);
+        // Calculate new filled quantity with proper rounding
+        const decimals = this.getDecimalPlaces(order.pair);
+        const newFilledQuantity = this.roundToDecimals(
+          makerOrder.filledQuantity + trade.quantity, 
+          10  // Use high precision for internal calculations
+        );
+        
+        // Update the order book first (before updating the order)
+        orderBook.updateOrderFill(trade.makerOrderId, newFilledQuantity);
+        
+        // Now update the order in the matching engine
+        makerOrder.filledQuantity = newFilledQuantity;
+        
+        // Update the maker order status
+        if (makerOrder.filledQuantity >= makerOrder.quantity) {
+          makerOrder.status = OrderStatus.FILLED;
+        } else {
+          makerOrder.status = OrderStatus.PARTIALLY_FILLED;
+        }
+        makerOrder.lastUpdateTime = Date.now();
+        
         if (makerOrder.status === OrderStatus.FILLED) {
           this.emit('orderFilled', makerOrder);
         }
@@ -297,6 +430,12 @@ export class MatchingEngine extends EventEmitter {
   private generateExecutionReport(order: Order, trades: Trade[]): ExecutionReport {
     const totalValue = trades.reduce((sum, trade) => sum + trade.price * trade.quantity, 0);
     const averagePrice = trades.length > 0 ? totalValue / order.filledQuantity : 0;
+    
+    // Round filled quantities to avoid floating point precision issues
+    const decimals = this.getDecimalPlaces(order.pair);
+    // Use higher precision rounding for better accuracy
+    const roundedFilledQuantity = this.roundToDecimals(order.filledQuantity, 10);
+    const roundedRemainingQuantity = this.roundToDecimals(order.quantity - order.filledQuantity, 10);
 
     return {
       orderId: order.id,
@@ -307,11 +446,12 @@ export class MatchingEngine extends EventEmitter {
       pair: order.pair,
       price: order.price,
       quantity: order.quantity,
-      filledQuantity: order.filledQuantity,
-      remainingQuantity: order.quantity - order.filledQuantity,
+      filledQuantity: roundedFilledQuantity,
+      remainingQuantity: roundedRemainingQuantity,
       averagePrice,
       trades,
       timestamp: Date.now(),
+      message: order.metadata?.message,
     };
   }
 
@@ -327,9 +467,15 @@ export class MatchingEngine extends EventEmitter {
     const minSize = this.config.minOrderSize[order.pair] || 0;
     const maxSize = this.config.maxOrderSize[order.pair] || Infinity;
     
+    if (order.quantity <= 0) {
+      throw new Error('Invalid quantity');
+    }
+    
+    // Reject orders below minimum size
     if (order.quantity < minSize) {
       throw new Error(`Order size below minimum ${minSize}`);
     }
+    
     if (order.quantity > maxSize) {
       throw new Error(`Order size above maximum ${maxSize}`);
     }
@@ -339,6 +485,16 @@ export class MatchingEngine extends EventEmitter {
       if (!order.price || order.price <= 0) {
         throw new Error('Price is required for limit orders');
       }
+    }
+    
+    // Validate decimal precision (round instead of rejecting)
+    const decimals = this.getDecimalPlaces(order.pair);
+    order.quantity = this.roundToDecimals(order.quantity, decimals.base);
+    
+    if (order.type === OrderType.LIMIT && order.price) {
+      // Round to tick size, not just decimal places
+      const tickSize = this.config.tickSize[order.pair] || 0.01;
+      order.price = parseFloat((Math.round(order.price / tickSize) * tickSize).toFixed(2));
     }
   }
 
@@ -414,6 +570,7 @@ export class MatchingEngine extends EventEmitter {
       .reverse();
   }
 
+
   // Generate unique order ID
   private generateOrderId(): string {
     return `ORD-${Date.now()}-${(++this.orderSequence).toString().padStart(6, '0')}`;
@@ -424,9 +581,106 @@ export class MatchingEngine extends EventEmitter {
     return `EXEC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
+  // Round to appropriate decimal places
+  private roundToDecimals(value: number, decimals: number): number {
+    const factor = Math.pow(10, decimals);
+    return Math.round(value * factor) / factor;
+  }
+
+  // Get decimal places for a token
+  private getDecimalPlaces(pair: string): { base: number; quote: number } {
+    return this.decimalPlaces.get(pair) || { base: 18, quote: 6 };
+  }
+
+  // Check if order would take liquidity (for post-only orders)
+  private wouldTakeLiquidity(order: Order, orderBook: OrderBook): boolean {
+    if (order.side === OrderSide.BUY) {
+      const bestAsk = orderBook.getBestAsk();
+      return bestAsk ? order.price >= bestAsk.price : false;
+    } else {
+      const bestBid = orderBook.getBestBid();
+      return bestBid ? order.price <= bestBid.price : false;
+    }
+  }
+
+  // Check for stop order triggers
+  private async checkStopOrderTriggers(pair: string, trades: Trade[]): Promise<void> {
+    if (trades.length === 0) return;
+    
+    const lastPrice = trades[trades.length - 1].price;
+    const pendingStopOrders = Array.from(this.orders.values()).filter(
+      order => order.pair === pair && 
+               order.type === OrderType.STOP_LIMIT && 
+               order.status === OrderStatus.PENDING
+    );
+    
+    for (const stopOrder of pendingStopOrders) {
+      let shouldTrigger = false;
+      
+      if (stopOrder.stopPrice) {
+        if (stopOrder.side === OrderSide.SELL) {
+          // Stop-loss sell: trigger when price falls to or below stop price
+          shouldTrigger = lastPrice <= stopOrder.stopPrice;
+        } else {
+          // Stop-loss buy: trigger when price rises to or above stop price
+          shouldTrigger = lastPrice >= stopOrder.stopPrice;
+        }
+      }
+      
+      if (shouldTrigger) {
+        // Convert stop order to regular limit order
+        stopOrder.status = OrderStatus.OPEN;
+        stopOrder.type = OrderType.LIMIT;
+        
+        // Add to order book
+        const orderBook = this.orderBooks.get(pair);
+        if (orderBook) {
+          orderBook.addOrder(stopOrder);
+        }
+        
+        this.emit('stopOrderTriggered', stopOrder);
+      }
+    }
+  }
+
   // Get all trading pairs
   getTradingPairs(): string[] {
     return Array.from(this.orderBooks.keys());
+  }
+
+  // Get active trading pairs (alias for tests)
+  getActivePairs(): string[] {
+    return this.getTradingPairs();
+  }
+
+  // Get order book snapshot (simplified for tests)
+  getOrderBookSnapshot(pair: string): {
+    bids: Array<[number, number]>;
+    asks: Array<[number, number]>;
+  } {
+    const orderBook = this.getOrderBook(pair);
+    if (!orderBook) {
+      return { bids: [], asks: [] };
+    }
+
+    const bids = orderBook.bids.map(level => [level.price, level.quantity] as [number, number]);
+    const asks = orderBook.asks.map(level => [level.price, level.quantity] as [number, number]);
+
+    return { bids, asks };
+  }
+
+  // Helper method to calculate total filled quantity with proper rounding
+  calculateTotalFilled(executionReports: ExecutionReport[], pair: string): number {
+    const decimals = this.getDecimalPlaces(pair);
+    const total = executionReports.reduce((sum, report) => sum + report.filledQuantity, 0);
+    return this.roundToDecimals(total, 10);  // Use high precision rounding
+  }
+
+  // Safe addition with rounding to prevent floating point errors
+  static safeSum(values: number[], precision: number = 10): number {
+    const sum = values.reduce((acc, val) => acc + val, 0);
+    const factor = Math.pow(10, precision);
+    return Math.round(sum * factor) / factor;
   }
 
   // Clear all data (for testing)

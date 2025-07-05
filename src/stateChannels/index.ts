@@ -103,15 +103,15 @@ export class StateChannelSDK {
     }
 
     // Initialize channel state
-    const initialBalances = new Map<string, ethers.BigNumber>();
+    const initialBalances = new Map<string, bigint>();
     for (const participant of participants) {
-      initialBalances.set(participant, ethers.BigNumber.from(0));
+      initialBalances.set(participant, BigInt(0));
     }
 
     await this.stateManager.initializeChannel(channelId, participants, initialBalances);
   }
 
-  async deposit(channelAddress: string, amount: ethers.BigNumber): Promise<void> {
+  async deposit(channelAddress: string, amount: bigint): Promise<void> {
     const channel = new ethers.Contract(
       channelAddress,
       ['function deposit(uint256 amount)'],

@@ -228,7 +228,7 @@ function FloatingTokens({
   return (
     <>
       {/* Soft glow spheres */}
-      <Instances ref={meshRef} limit={config.tokenCount}>
+      <Instances ref={meshRef as any} limit={config.tokenCount}>
         <sphereGeometry args={[0.8, 12, 12]} />
         <meshBasicMaterial 
           color={theme.glowColor}

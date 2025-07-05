@@ -1,0 +1,93 @@
+// Trading-related models for order history
+
+model TradingOrder {
+  id                String          @id @default(uuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id])
+  
+  // Order details
+  pair              String          // e.g., "ETH/USDT"
+  side              OrderSide
+  type              OrderType
+  status            OrderStatus
+  
+  // Amounts
+  price             Decimal         @db.Decimal(20, 8)
+  quantity          Decimal         @db.Decimal(20, 8)
+  filledQuantity    Decimal         @default(0) @db.Decimal(20, 8)
+  
+  // Calculated fields
+  totalVolume       Decimal         @default(0) @db.Decimal(20, 8) // filledQuantity * averagePrice
+  averagePrice      Decimal         @default(0) @db.Decimal(20, 8)
+  
+  // Timestamps
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  lastFilledAt      DateTime?
+  cancelledAt       DateTime?
+  
+  // Relations
+  trades            Trade[]
+  
+  // Additional fields
+  clientOrderId     String?
+  metadata          Json?
+  
+  @@index([userId])
+  @@index([pair])
+  @@index([status])
+  @@index([createdAt])
+  @@index([side])
+  @@index([userId, createdAt])
+}
+
+model Trade {
+  id                    String          @id @default(uuid())
+  orderId               String
+  order                 TradingOrder    @relation(fields: [orderId], references: [id])
+  
+  // Trade details
+  tradeId               String          @unique
+  price                 Decimal         @db.Decimal(20, 8)
+  quantity              Decimal         @db.Decimal(20, 8)
+  fee                   Decimal         @default(0) @db.Decimal(20, 8)
+  feeToken              String          @default("USDT")
+  
+  // Counterparty
+  counterpartyOrderId   String?
+  liquidityType         LiquidityType   @default(TAKER)
+  
+  // Timestamps
+  createdAt             DateTime        @default(now())
+  
+  @@index([orderId])
+  @@index([tradeId])
+  @@index([createdAt])
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+  STOP
+  STOP_LIMIT
+}
+
+enum OrderStatus {
+  PENDING
+  OPEN
+  PARTIALLY_FILLED
+  FILLED
+  CANCELLED
+  EXPIRED
+  FAILED
+}
+
+enum LiquidityType {
+  MAKER
+  TAKER
+}

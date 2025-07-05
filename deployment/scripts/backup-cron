@@ -1,0 +1,25 @@
+# PostgreSQL Backup Cron Schedule
+# Add this to crontab with: crontab backup-cron
+
+# Environment variables
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=admin@example.com
+
+# Load environment variables
+POSTGRES_PASSWORD=your_password_here
+BACKUP_ENCRYPTION_KEY=your_encryption_key_here
+S3_BUCKET=your-backup-bucket
+SLACK_WEBHOOK=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+
+# Daily backup at 2:00 AM
+0 2 * * * /opt/trading-platform/deployment/scripts/backup-postgres.sh >> /var/log/postgres-backup-cron.log 2>&1
+
+# Weekly full backup with verification on Sunday at 3:00 AM
+0 3 * * 0 /opt/trading-platform/deployment/scripts/backup-postgres.sh --full --verify >> /var/log/postgres-backup-cron.log 2>&1
+
+# Monthly backup report on the 1st at 4:00 AM
+0 4 1 * * /opt/trading-platform/deployment/scripts/backup-postgres.sh --report-only >> /var/log/postgres-backup-cron.log 2>&1
+
+# Clean up old backup logs monthly
+0 5 1 * * find /var/log -name "postgres-backup*.log" -mtime +90 -delete

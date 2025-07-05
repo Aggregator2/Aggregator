@@ -1,0 +1,42 @@
+# WebSocket service Dockerfile
+FROM node:18-alpine
+
+# Install dependencies
+RUN apk add --no-cache tini
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies
+RUN npm ci --only=production && \
+    npm cache clean --force
+
+# Copy WebSocket service files
+COPY --chown=nodejs:nodejs src/services/websocket ./src/services/websocket
+COPY --chown=nodejs:nodejs src/utils ./src/utils
+COPY --chown=nodejs:nodejs scripts/ws-health-check.js ./scripts/
+
+# Create log directory
+RUN mkdir -p logs && chown nodejs:nodejs logs
+
+# Switch to non-root user
+USER nodejs
+
+# Expose WebSocket port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node scripts/ws-health-check.js || exit 1
+
+# Use tini for signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Start WebSocket service
+CMD ["node", "src/services/websocket/server.js"]

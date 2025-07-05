@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npm run dev:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "Bash(curl:*)",
+      "Bash(ss:*)",
+      "Bash(pkill:*)",
+      "Bash(node:*)",
+      "Bash(rm:*)",
+      "Bash(find:*)",
+      "Bash(npx hardhat:*)",
+      "Bash(npm ls:*)",
+      "Bash(chmod:*)",
+      "Bash(rg:*)",
+      "Bash(./fetch-tokens.sh:*)",
+      "Bash(bash:*)",
+      "Bash(ls:*)",
+      "Bash(touch:*)",
+      "Bash(true)",
+      "Bash(cat:*)",
+      "Bash(RPC_URL=http://localhost:8545 API_BASE_URL=http://localhost:3000/api WS_URL=ws://localhost:3001 node test-order-flow-complete.js)",
+      "mcp__ide__getDiagnostics",
+      "Bash(./test-performance.sh:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(LIFI_API_KEY=e411f45a-05ed-47d7-aea8-def36d94442e.dcb8f395-2612-41e7-85b2-cb1d1de85502 node test-lifi-comprehensive.js)",
+      "Bash(mv:*)"
+    ],
+    "deny": []
+  }
+}

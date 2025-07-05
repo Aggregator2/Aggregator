@@ -13,7 +13,7 @@ export class ManipulationDetector extends EventEmitter {
   private readonly pumpThreshold: number = 0.15;
   private readonly dumpThreshold: number = 0.15;
   private readonly volumeSpikeThreshold: number = 5;
-  private readonly washTradingThreshold: number = 0.9;
+  private readonly washTradingThreshold: number = 0.8;
 
   detectManipulation(
     symbol: string,
@@ -102,13 +102,25 @@ export class ManipulationDetector extends EventEmitter {
     sources: PriceSource[],
     history: PriceHistory
   ): ManipulationAlert | null {
+    // Check for minimal price variance across sources
     const priceVariance = this.calculateVariance(sources.map(s => s.price));
     const avgPrice = sources.reduce((sum, s) => sum + s.price, 0) / sources.length;
     const normalizedVariance = Math.sqrt(priceVariance) / avgPrice;
 
+    // Check for repetitive volume patterns
     const volumePattern = this.detectVolumePattern(history.volumes);
     
-    if (normalizedVariance < 0.001 && volumePattern > this.washTradingThreshold) {
+    // Check for consistent price with alternating volume (typical wash trading pattern)
+    const priceStability = this.calculatePriceStability(history.prices);
+    const volumeAlternation = this.detectVolumeAlternation(history.volumes);
+    
+    // Wash trading typically shows:
+    // 1. Very low price variance (prices stay almost the same)
+    // 2. High volume pattern score (repetitive volumes)
+    // 3. Stable prices over time
+    // 4. Alternating volume patterns
+    if ((normalizedVariance < 0.001 && volumePattern > this.washTradingThreshold) ||
+        (priceStability > 0.95 && volumeAlternation > 0.7)) {
       return {
         symbol,
         type: 'wash_trading',
@@ -132,7 +144,7 @@ export class ManipulationDetector extends EventEmitter {
 
     if (spreadPercentage > 0.05 && sources.length >= 3) {
       const outlierExchanges = sources
-        .filter(s => Math.abs(s.price - avgPrice) / avgPrice > 0.03)
+        .filter(s => Math.abs(s.price - avgPrice) / avgPrice > 0.05)
         .map(s => s.exchange);
 
       if (outlierExchanges.length === 1) {
@@ -182,15 +194,53 @@ export class ManipulationDetector extends EventEmitter {
   private detectVolumePattern(volumes: number[]): number {
     if (volumes.length < 10) return 0;
 
-    const diffs = [];
-    for (let i = 1; i < volumes.length; i++) {
-      diffs.push(Math.abs(volumes[i] - volumes[i - 1]));
+    // Check for repetitive patterns
+    const uniqueVolumes = new Set(volumes);
+    const repetitionScore = 1 - (uniqueVolumes.size / volumes.length);
+    
+    // Check for alternating pattern
+    let alternatingCount = 0;
+    for (let i = 2; i < volumes.length; i++) {
+      if (Math.abs(volumes[i] - volumes[i - 2]) < volumes[i] * 0.01) {
+        alternatingCount++;
+      }
     }
+    const alternatingScore = alternatingCount / (volumes.length - 2);
+    
+    // Combined score - high when volumes are repetitive or alternating
+    return Math.max(repetitionScore, alternatingScore);
+  }
 
-    const avgDiff = diffs.reduce((a, b) => a + b, 0) / diffs.length;
-    const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length;
+  private calculatePriceStability(prices: number[]): number {
+    if (prices.length < 10) return 0;
+    
+    const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const maxDeviation = Math.max(...prices.map(p => Math.abs(p - avgPrice) / avgPrice));
+    
+    // Return stability score (1 = perfectly stable, 0 = highly volatile)
+    return 1 - maxDeviation;
+  }
 
-    return avgDiff / avgVolume;
+  private detectVolumeAlternation(volumes: number[]): number {
+    if (volumes.length < 10) return 0;
+    
+    let alternations = 0;
+    const diffs = [];
+    
+    // Calculate volume differences
+    for (let i = 1; i < volumes.length; i++) {
+      diffs.push(volumes[i] - volumes[i - 1]);
+    }
+    
+    // Count sign alternations
+    for (let i = 1; i < diffs.length; i++) {
+      if (Math.sign(diffs[i]) !== Math.sign(diffs[i - 1])) {
+        alternations++;
+      }
+    }
+    
+    // Return alternation ratio
+    return alternations / (diffs.length - 1);
   }
 
   private getTimeSinceHigh(history: PriceHistory): number {

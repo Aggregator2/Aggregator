@@ -55,8 +55,11 @@ export interface LifiRoute {
 class LifiService {
   private chainsCache: Map<number, LifiChain> = new Map();
   private tokensCache: Map<number, LifiToken[]> = new Map();
+  private allTokensCache: Map<number, LifiToken[]> | null = null;
   private cacheTimestamp: number = 0;
+  private allTokensCacheTimestamp: number = 0;
   private readonly CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+  private isLoading: boolean = false;
 
   async getChains(): Promise<LifiChain[]> {
     try {
@@ -106,7 +109,28 @@ class LifiService {
   }
 
   async getAllTokens(): Promise<Map<number, LifiToken[]>> {
+    // Check cache first
+    if (this.allTokensCache && Date.now() - this.allTokensCacheTimestamp < this.CACHE_DURATION) {
+      lifiLogger.info('Returning cached LiFi tokens');
+      return this.allTokensCache;
+    }
+
+    // Prevent concurrent loading
+    if (this.isLoading) {
+      lifiLogger.info('LiFi tokens loading in progress, waiting...');
+      // Wait and return cached result if available
+      while (this.isLoading) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return this.allTokensCache || new Map();
+    }
+
+    this.isLoading = true;
+
     try {
+      lifiLogger.info('Loading all tokens from LiFi...');
+      const startTime = Date.now();
+
       // Use SDK method to get all tokens at once (more efficient)
       const tokensResponse = await getTokens({});
       const allTokens = new Map<number, LifiToken[]>();
@@ -116,33 +140,73 @@ class LifiService {
         allTokens.set(Number(chainId), tokens as LifiToken[]);
       });
       
-      lifiLogger.info(`Loaded tokens for ${allTokens.size} chains`);
+      // Cache the result
+      this.allTokensCache = allTokens;
+      this.allTokensCacheTimestamp = Date.now();
+
+      const loadTime = Date.now() - startTime;
+      const totalTokens = Array.from(allTokens.values()).reduce((sum, tokens) => sum + tokens.length, 0);
+      
+      lifiLogger.info(`Loaded ${totalTokens} tokens for ${allTokens.size} chains in ${loadTime}ms`);
       return allTokens;
+
     } catch (error) {
-      lifiLogger.error('Failed to fetch all tokens:', error);
+      lifiLogger.error('Failed to fetch all tokens from LiFi SDK, trying fallback:', error);
       
-      // Fallback: fetch chains and tokens individually
-      const chains = await this.getChains();
-      const allTokens = new Map<number, LifiToken[]>();
-      
-      // Fetch tokens for all chains in parallel (batch by 5 to avoid rate limits)
-      const batchSize = 5;
-      for (let i = 0; i < chains.length; i += batchSize) {
-        const batch = chains.slice(i, i + batchSize);
-        const promises = batch.map(async (chain) => {
-          try {
-            const tokens = await this.getTokens(chain.id);
-            allTokens.set(chain.id, tokens);
-          } catch (error) {
-            lifiLogger.error(`Failed to fetch tokens for chain ${chain.id}:`, error);
-            allTokens.set(chain.id, []);
-          }
-        });
+      try {
+        // Fallback: fetch chains and tokens individually
+        const chains = await this.getChains();
+        const allTokens = new Map<number, LifiToken[]>();
         
-        await Promise.all(promises);
+        // Fetch tokens for main chains only to avoid rate limits
+        const mainChains = chains.filter(chain => [1, 56, 137, 42161, 10, 43114].includes(chain.id));
+        
+        // Fetch tokens for all chains in parallel (batch by 3 to avoid rate limits)
+        const batchSize = 3;
+        for (let i = 0; i < mainChains.length; i += batchSize) {
+          const batch = mainChains.slice(i, i + batchSize);
+          const promises = batch.map(async (chain) => {
+            try {
+              const tokens = await this.getTokens(chain.id);
+              allTokens.set(chain.id, tokens);
+              lifiLogger.info(`Loaded ${tokens.length} tokens for chain ${chain.id}`);
+            } catch (error) {
+              lifiLogger.error(`Failed to fetch tokens for chain ${chain.id}:`, error);
+              allTokens.set(chain.id, []);
+            }
+          });
+          
+          await Promise.all(promises);
+          
+          // Small delay between batches
+          if (i + batchSize < mainChains.length) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+        
+        // Cache the fallback result
+        this.allTokensCache = allTokens;
+        this.allTokensCacheTimestamp = Date.now();
+        
+        const totalTokens = Array.from(allTokens.values()).reduce((sum, tokens) => sum + tokens.length, 0);
+        lifiLogger.info(`Fallback loaded ${totalTokens} tokens for ${allTokens.size} chains`);
+        
+        return allTokens;
+
+      } catch (fallbackError) {
+        lifiLogger.error('Fallback method also failed:', fallbackError);
+        
+        // Return cached data if available, even if stale
+        if (this.allTokensCache) {
+          lifiLogger.warn('Returning stale cached data due to API failures');
+          return this.allTokensCache;
+        }
+        
+        // Last resort: return empty map
+        return new Map();
       }
-      
-      return allTokens;
+    } finally {
+      this.isLoading = false;
     }
   }
 
@@ -219,7 +283,22 @@ class LifiService {
   clearCache() {
     this.chainsCache.clear();
     this.tokensCache.clear();
+    this.allTokensCache = null;
     this.cacheTimestamp = 0;
+    this.allTokensCacheTimestamp = 0;
+    lifiLogger.info('LiFi cache cleared');
+  }
+
+  // Force refresh of token data
+  async refreshTokens(): Promise<Map<number, LifiToken[]>> {
+    this.clearCache();
+    return await this.getAllTokens();
+  }
+
+  // Check if data is cached and fresh
+  isCacheValid(): boolean {
+    return this.allTokensCache !== null && 
+           Date.now() - this.allTokensCacheTimestamp < this.CACHE_DURATION;
   }
 
   // Get cached data if available

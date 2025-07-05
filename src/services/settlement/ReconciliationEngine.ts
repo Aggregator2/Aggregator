@@ -26,6 +26,7 @@ export class ReconciliationEngine extends EventEmitter {
   private config: ReconciliationConfig;
   private isReconciling: boolean = false;
   private lastReconciliation: number = 0;
+  private reportCounter: number = 0;
   
   constructor(
     balanceTracker: BalanceTracker,
@@ -115,8 +116,9 @@ export class ReconciliationEngine extends EventEmitter {
   
   // Create new reconciliation report
   private async createReport(): Promise<ReconciliationReport> {
+    this.reportCounter++;
     return {
-      id: `REC_${Date.now()}`,
+      id: `REC_${Date.now()}_${this.reportCounter}`,
       startTime: Date.now(),
       endTime: 0,
       offChainBalances: new Map(),
@@ -167,6 +169,8 @@ export class ReconciliationEngine extends EventEmitter {
       const allTokens = new Set<string>();
       if (offChainUser) {
         offChainUser.balances.forEach((_, token) => allTokens.add(token));
+        // Also include tokens with pending settlements
+        offChainUser.pendingSettlements.forEach((_, token) => allTokens.add(token));
       }
       if (onChainUser) {
         onChainUser.forEach((_, token) => allTokens.add(token));
@@ -174,19 +178,22 @@ export class ReconciliationEngine extends EventEmitter {
       
       // Compare each token
       for (const token of allTokens) {
-        const offChainBalance = offChainUser?.balances.get(token) || BigInt(0);
+        const actualBalance = offChainUser?.balances.get(token) || BigInt(0);
+        const pendingSettlement = offChainUser?.pendingSettlements.get(token) || BigInt(0);
+        // For reconciliation purposes, expected off-chain balance includes pending settlements
+        const offChainBalance = actualBalance + pendingSettlement;
         const onChainBalance = onChainUser?.get(token) || BigInt(0);
         const difference = offChainBalance - onChainBalance;
         
-        // Check if difference exceeds tolerance
-        if (bigIntAbs(difference) > this.config.tolerance) {
+        // Include all discrepancies, even small ones (they might be auto-resolved later)
+        if (difference !== BigInt(0)) {
           const discrepancy: ReconciliationDiscrepancy = {
             userId,
             token,
-            offChainBalance,
+            offChainBalance: actualBalance, // Store the actual balance, not including pending
             onChainBalance,
             difference,
-            type: this.classifyDiscrepancy(difference, offChainUser),
+            type: this.classifyDiscrepancy(difference, actualBalance, onChainBalance, offChainUser, token),
             resolved: false
           };
           
@@ -202,16 +209,46 @@ export class ReconciliationEngine extends EventEmitter {
   // Classify discrepancy type
   private classifyDiscrepancy(
     difference: bigint,
-    offChainUser: UserBalance | undefined
+    offChainBalance: bigint,
+    onChainBalance: bigint,
+    offChainUser: UserBalance | undefined,
+    token: string
   ): ReconciliationDiscrepancy['type'] {
-    if (!offChainUser || offChainUser.pendingSettlements.size > 0) {
-      return 'MISSING_SETTLEMENT';
+    // Check if there's a pending settlement for this specific token
+    if (offChainUser) {
+      const pendingAmount = offChainUser.pendingSettlements.get(token);
+      if (pendingAmount && pendingAmount !== BigInt(0)) {
+        // Only classify as MISSING_SETTLEMENT if the pending amount could explain the difference
+        if (bigIntAbs(difference) === pendingAmount || 
+            bigIntAbs(difference + pendingAmount) < BigInt(1000)) {
+          return 'MISSING_SETTLEMENT';
+        }
+      }
     }
     
-    if (difference > 0) {
-      return 'DOUBLE_SETTLEMENT';
+    // Check for potential double settlement
+    // This occurs when off-chain balance is significantly higher than on-chain
+    if (difference > BigInt(0) && onChainBalance > BigInt(0)) {
+      // Check if off-chain is exactly double the on-chain balance
+      if (offChainBalance === onChainBalance * BigInt(2)) {
+        return 'DOUBLE_SETTLEMENT';
+      }
+      
+      // Or if the difference is exactly equal to the on-chain balance
+      // (meaning something was credited twice)
+      if (difference === onChainBalance) {
+        return 'DOUBLE_SETTLEMENT';
+      }
+      
+      // Or if the off-chain balance is significantly higher (more than 150% of on-chain)
+      // but only for substantial balances to avoid false positives on small amounts
+      if (onChainBalance >= BigInt(1e8) && // At least 1 token
+          offChainBalance > (onChainBalance * BigInt(3)) / BigInt(2)) {
+        return 'DOUBLE_SETTLEMENT';
+      }
     }
     
+    // Default case: general balance mismatch
     return 'BALANCE_MISMATCH';
   }
   
@@ -242,6 +279,13 @@ export class ReconciliationEngine extends EventEmitter {
   private async tryAutoResolve(
     discrepancy: ReconciliationDiscrepancy
   ): Promise<boolean> {
+    // First check if the difference is within the configured tolerance (rounding error)
+    const absDifference = bigIntAbs(discrepancy.difference);
+    if (absDifference <= this.config.tolerance) {
+      discrepancy.resolution = `Auto-resolved: rounding difference (${absDifference.toString()}) within tolerance (${this.config.tolerance.toString()})`;
+      return true;
+    }
+    
     switch (discrepancy.type) {
       case 'MISSING_SETTLEMENT':
         // Check if there are pending settlements
@@ -279,11 +323,8 @@ export class ReconciliationEngine extends EventEmitter {
         break;
         
       case 'BALANCE_MISMATCH':
-        // Small mismatches might be due to rounding
-        if (bigIntAbs(discrepancy.difference) < BigInt(10000)) {
-          discrepancy.resolution = 'Rounding difference within acceptable range';
-          return true;
-        }
+        // Already handled by tolerance check above
+        // Additional checks for balance mismatches could go here
         break;
     }
     
@@ -328,12 +369,23 @@ export class ReconciliationEngine extends EventEmitter {
       const adjustment = discrepancy.onChainBalance - currentBalance;
       
       if (adjustment !== BigInt(0)) {
-        await this.balanceTracker.processDeposit(
-          discrepancy.userId,
-          discrepancy.token,
-          adjustment > 0 ? adjustment : -adjustment,
-          `RECONCILIATION_${report.id}`
-        );
+        if (adjustment > 0) {
+          // Need to add to balance
+          await this.balanceTracker.processDeposit(
+            discrepancy.userId,
+            discrepancy.token,
+            adjustment,
+            `RECONCILIATION_${report.id}`
+          );
+        } else {
+          // Need to subtract from balance - use withdrawal
+          await this.balanceTracker.processWithdrawal(
+            discrepancy.userId,
+            discrepancy.token,
+            -adjustment,
+            `RECONCILIATION_${report.id}`
+          );
+        }
       }
     }
     

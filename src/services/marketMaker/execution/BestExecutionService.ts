@@ -48,7 +48,7 @@ export class BestExecutionService extends EventEmitter {
 
     try {
       // Get RFQ with quotes
-      const rfq = await this.prisma.rFQ.findFirst({
+      const rfq = await this.prisma.RFQ.findFirst({
         where: { id: rfqId, userId },
         include: {
           quotes: {
@@ -141,7 +141,7 @@ export class BestExecutionService extends EventEmitter {
       totalCost = totalCost.add(fillSize.mul(quote.price));
 
       // Update quote filled size
-      await this.prisma.quote.update({
+      await this.prisma.Quote.update({
         where: { id: quote.id },
         data: {
           filledSize: new Decimal(quote.filledSize.toString()).add(fillSize),
@@ -164,7 +164,7 @@ export class BestExecutionService extends EventEmitter {
     );
 
     // Update RFQ status
-    await this.prisma.rFQ.update({
+    await this.prisma.RFQ.update({
       where: { id: rfq.id },
       data: { status: 'EXECUTED' },
     });
@@ -212,7 +212,7 @@ export class BestExecutionService extends EventEmitter {
       }
 
       // Get fresh quotes for this slice
-      const freshQuotes = await this.prisma.quote.findMany({
+      const freshQuotes = await this.prisma.Quote.findMany({
         where: {
           rfqId: rfq.id,
           status: 'ACTIVE',
@@ -293,7 +293,7 @@ export class BestExecutionService extends EventEmitter {
       const sliceSize = requestedSize.mul(percentage).div(100);
 
       // Get quotes at this time
-      const quotes = await this.prisma.quote.findMany({
+      const quotes = await this.prisma.Quote.findMany({
         where: {
           rfqId: rfq.id,
           status: 'ACTIVE',
@@ -352,7 +352,7 @@ export class BestExecutionService extends EventEmitter {
       const currentSliceSize = Decimal.min(visibleSize, remainingSize);
 
       // Get best quote within price limit
-      const quotes = await this.prisma.quote.findMany({
+      const quotes = await this.prisma.Quote.findMany({
         where: {
           rfqId: rfq.id,
           status: 'ACTIVE',
@@ -409,7 +409,7 @@ export class BestExecutionService extends EventEmitter {
   ): Promise<MarketMakerTrade> {
     const quoteAmount = size.mul(quote.price);
 
-    const trade = await this.prisma.marketMakerTrade.create({
+    const trade = await this.prisma.MarketMakerTrade.create({
       data: {
         marketMakerId: quote.marketMakerId,
         quoteId: quote.id,
@@ -467,7 +467,7 @@ export class BestExecutionService extends EventEmitter {
   }
 
   async getExecutionReport(rfqId: string, userId: string): Promise<ExecutionReport | null> {
-    const rfq = await this.prisma.rFQ.findFirst({
+    const rfq = await this.prisma.RFQ.findFirst({
       where: { id: rfqId, userId },
       include: {
         quotes: true,

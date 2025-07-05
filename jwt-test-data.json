@@ -1,0 +1,11 @@
+{
+  "validToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxMjMiLCJlbWFpbCI6InVzZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTc1MTQ5NTY4NywiZXhwIjoxNzUxNTgyMDg3fQ.JkideZ25z82cWIAjKvsFWTaMTGI6IUcQ--FiMw7n8D8",
+  "expiredToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0NTYiLCJlbWFpbCI6ImV4cGlyZWRAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTc1MTQ5NTY4NywiZXhwIjoxNzUxNDkyMDg3fQ.M0MjotSm_Jqjn2OCybV1WeimVIJHeRKnHg76PO1yayg",
+  "invalidToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3ODkiLCJlbWFpbCI6ImludmFsaWRAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTc1MTQ5NTY4NywiZXhwIjoxNzUxNTgyMDg3fQ.sK6STk5_0YAUVvWWleLEPASTFDoJl5t9AFzOptyWECc",
+  "curlCommands": {
+    "valid": "curl -X GET http://localhost:3000/api/orders -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxMjMiLCJlbWFpbCI6InVzZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTc1MTQ5NTY4NywiZXhwIjoxNzUxNTgyMDg3fQ.JkideZ25z82cWIAjKvsFWTaMTGI6IUcQ--FiMw7n8D8\" -H \"Content-Type: application/json\"",
+    "noToken": "curl -X GET http://localhost:3000/api/orders -H \"Content-Type: application/json\"",
+    "expired": "curl -X GET http://localhost:3000/api/orders -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0NTYiLCJlbWFpbCI6ImV4cGlyZWRAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTc1MTQ5NTY4NywiZXhwIjoxNzUxNDkyMDg3fQ.M0MjotSm_Jqjn2OCybV1WeimVIJHeRKnHg76PO1yayg\" -H \"Content-Type: application/json\"",
+    "invalid": "curl -X GET http://localhost:3000/api/orders -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3ODkiLCJlbWFpbCI6ImludmFsaWRAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTc1MTQ5NTY4NywiZXhwIjoxNzUxNTgyMDg3fQ.sK6STk5_0YAUVvWWleLEPASTFDoJl5t9AFzOptyWECc\" -H \"Content-Type: application/json\""
+  }
+}

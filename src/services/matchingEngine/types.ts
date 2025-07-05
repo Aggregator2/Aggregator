@@ -2,6 +2,8 @@
 export enum OrderType {
   LIMIT = 'LIMIT',
   MARKET = 'MARKET',
+  STOP_LIMIT = 'STOP_LIMIT',
+  STOP_MARKET = 'STOP_MARKET',
 }
 
 export enum OrderSide {
@@ -42,6 +44,10 @@ export interface Order {
   clientOrderId?: string;
   stopPrice?: number; // For stop orders
   metadata?: Record<string, any>;
+  displayQuantity?: number; // For iceberg orders
+  postOnly?: boolean;
+  selfTradePrevention?: 'CANCEL_OLDEST' | 'CANCEL_NEWEST' | 'CANCEL_BOTH';
+  maxPriceImpact?: number;
 }
 
 // Trade execution interface
@@ -50,6 +56,8 @@ export interface Trade {
   pair: string;
   takerOrderId: string;
   makerOrderId: string;
+  takerUserId?: string;
+  makerUserId?: string;
   price: number;
   quantity: number;
   takerSide: OrderSide;

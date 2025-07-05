@@ -1,0 +1,88 @@
+// Notification-related models for Prisma
+
+model Notification {
+  id            String               @id @default(uuid())
+  userId        String
+  type          String               // NotificationType enum
+  priority      String               @default("medium") // NotificationPriority enum
+  title         String
+  message       String
+  data          Json                 // NotificationData
+  channels      String[]             // NotificationChannel[] enum
+  status        String               @default("pending") // NotificationStatus enum
+  read          Boolean              @default(false)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  deliveredAt   DateTime?
+  readAt        DateTime?
+  
+  // Relations
+  deliveries    NotificationDelivery[]
+  user          User                 @relation(fields: [userId], references: [id])
+  
+  // Indexes
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([read, userId])
+}
+
+model NotificationDelivery {
+  id              String       @id @default(uuid())
+  notificationId  String
+  channel         String       // NotificationChannel enum
+  status          String       @default("pending") // NotificationStatus enum
+  attempts        Int          @default(0)
+  lastAttemptAt   DateTime?
+  nextRetryAt     DateTime?
+  deliveredAt     DateTime?
+  error           String?
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  // Relations
+  notification    Notification @relation(fields: [notificationId], references: [id])
+  
+  // Indexes
+  @@index([notificationId])
+  @@index([status])
+  @@index([nextRetryAt])
+  @@unique([notificationId, channel])
+}
+
+model WebhookConfig {
+  id        String       @id @default(uuid())
+  userId    String
+  url       String
+  secret    String?
+  events    String[]     // NotificationType[] enum
+  active    Boolean      @default(true)
+  headers   Json?        // Record<string, string>
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  
+  // Relations
+  user      User         @relation(fields: [userId], references: [id])
+  
+  // Indexes
+  @@index([userId])
+  @@index([active])
+}
+
+model NotificationPreferences {
+  id                  String       @id @default(uuid())
+  userId              String       @unique
+  channels            Json         // { [NotificationType]: NotificationChannel[] }
+  emailNotifications  Boolean      @default(true)
+  smsNotifications    Boolean      @default(false)
+  pushNotifications   Boolean      @default(true)
+  doNotDisturb        Boolean      @default(false)
+  doNotDisturbStart   String?      // HH:mm format
+  doNotDisturbEnd     String?      // HH:mm format
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  
+  // Relations
+  user                User         @relation(fields: [userId], references: [id])
+}

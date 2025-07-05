@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { RFQService } from '../../../src/services/marketMaker/rfq/RFQService';
 import { authMiddleware } from '../../../src/middleware/auth';
-import { rateLimiter } from '../../../src/middleware/rateLimiter';
+import { rateLimiter } from '../../../src/middleware/rateLimiterSimple';
 import { logger } from '../../../src/utils/logger';
 
 const rfqService = new RFQService();

@@ -1,0 +1,152 @@
+// API Key Management Schema
+
+model ApiKey {
+  id              String          @id @default(uuid())
+  hashedKey       String          @unique
+  userId          String
+  user            User            @relation(fields: [userId], references: [id])
+  
+  // Key metadata
+  name            String
+  type            String          // 'test' or 'live'
+  scope           String          @default("read_only")
+  permissions     Json            // Array of permission strings
+  prefix          String          // 'ocp_test_' or 'ocp_live_'
+  lastFourChars   String          // Last 4 chars for identification
+  
+  // Secret key for webhook signatures
+  hashedSecretKey String?
+  
+  // Security settings
+  ipWhitelist     Json            @default("[]") // Array of IP addresses
+  allowedOrigins  Json?           // Array of allowed origins
+  
+  // Rate limiting
+  rateLimit       Int             @default(1000) // Requests per hour
+  
+  // Usage tracking
+  lastUsedAt      DateTime?
+  totalRequests   Int             @default(0)
+  
+  // Metadata
+  description     String?
+  metadata        Json?
+  
+  // Lifecycle
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  webhooks        WebhookEndpoint[]
+  usageStats      ApiKeyUsageStats[]
+  
+  @@index([userId])
+  @@index([hashedKey])
+  @@index([lastUsedAt])
+  @@index([type])
+}
+
+model WebhookEndpoint {
+  id                String      @id @default(uuid())
+  apiKeyId          String
+  apiKey            ApiKey      @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  
+  // Endpoint configuration
+  url               String
+  events            Json        // Array of event types
+  active            Boolean     @default(true)
+  description       String?
+  
+  // Security
+  signingSecret     String
+  
+  // Delivery settings
+  maxRetries        Int         @default(5)
+  timeoutSeconds    Int         @default(30)
+  
+  // Statistics
+  lastDeliveryAt    DateTime?
+  lastDeliveryStatus String?    // 'success' or 'failed'
+  failureCount      Int         @default(0)
+  successCount      Int         @default(0)
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  deliveries        WebhookDelivery[]
+  
+  @@index([apiKeyId])
+  @@index([active])
+}
+
+model WebhookDelivery {
+  id              String          @id @default(uuid())
+  webhookId       String
+  webhook         WebhookEndpoint @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  
+  // Delivery details
+  eventType       String
+  payload         Json
+  
+  // Response
+  statusCode      Int?
+  responseBody    String?
+  responseHeaders Json?
+  
+  // Timing
+  attemptNumber   Int             @default(1)
+  deliveredAt     DateTime?
+  duration        Int?            // milliseconds
+  
+  // Status
+  status          String          @default("pending") // pending, success, failed
+  error           String?
+  
+  createdAt       DateTime        @default(now())
+  
+  @@index([webhookId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ApiKeyUsageStats {
+  id                String      @id @default(uuid())
+  apiKeyId          String
+  apiKey            ApiKey      @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  
+  // Time period
+  period            String      // hour, day, week, month
+  periodStart       DateTime
+  periodEnd         DateTime
+  
+  // Request counts
+  totalRequests     Int         @default(0)
+  successfulRequests Int        @default(0)
+  failedRequests    Int         @default(0)
+  
+  // Performance metrics
+  avgResponseTime   Float       @default(0) // milliseconds
+  maxResponseTime   Float       @default(0)
+  minResponseTime   Float       @default(0)
+  
+  // Bandwidth
+  bandwidthUsed     BigInt      @default(0) // bytes
+  
+  // Detailed stats
+  endpointUsage     Json        // Map of endpoint to usage stats
+  statusCodes       Json        // Map of status code to count
+  errorTypes        Json        // Map of error type to count
+  
+  // Rate limit
+  rateLimitExceeded Int         @default(0)
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  @@unique([apiKeyId, period, periodStart])
+  @@index([apiKeyId])
+  @@index([periodStart])
+}

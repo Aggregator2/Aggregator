@@ -25,6 +25,12 @@ export class OrderBook {
     this.sequenceNumber = 0;
   }
 
+  // Round to appropriate decimal places for consistent precision
+  private roundToDecimals(value: number, decimals: number): number {
+    const factor = Math.pow(10, decimals);
+    return Math.round(value * factor) / factor;
+  }
+
   // Add a new order to the order book
   addOrder(order: Order): OrderBookUpdate | null {
     if (this.orderIndex.has(order.id)) {
@@ -50,14 +56,16 @@ export class OrderBook {
 
     // Add order to the level (FIFO - price-time priority)
     level.orders.push(order);
-    level.quantity += order.quantity - order.filledQuantity;
+    // For iceberg orders, only show display quantity in order book
+    const visibleQuantity = order.displayQuantity || (order.quantity - order.filledQuantity);
+    level.quantity += visibleQuantity;
     this.orderIndex.set(order.id, order);
 
     return {
       type: 'ADD',
       side: order.side,
       price: order.price,
-      quantity: order.quantity - order.filledQuantity,
+      quantity: visibleQuantity,
       orderId: order.id,
       timestamp: Date.now(),
       sequenceNumber: ++this.sequenceNumber,
@@ -107,10 +115,13 @@ export class OrderBook {
       return null;
     }
 
+    // Calculate the quantity delta based on the new filled quantity
     const previousRemaining = order.quantity - order.filledQuantity;
-    order.filledQuantity = filledQuantity;
-    const newRemaining = order.quantity - order.filledQuantity;
+    const newRemaining = order.quantity - filledQuantity;
     const quantityDelta = previousRemaining - newRemaining;
+    
+    // Update the order's filled quantity
+    order.filledQuantity = filledQuantity;
 
     // Update level quantity
     const side = order.side === OrderSide.BUY ? this.bids : this.asks;
@@ -199,15 +210,23 @@ export class OrderBook {
           continue;
         }
 
+        // Self-trading prevention - skip orders from the same user
+        if (passiveOrder.userId === aggressiveOrder.userId) {
+          i++;
+          continue;
+        }
+
         // Calculate match quantity
         const matchQuantity = Math.min(remainingQuantity, passiveRemaining);
 
-        // Create trade
+        // Create trade with proper decimal precision
         const trade: Trade = {
           id: this.generateTradeId(),
           pair: this.pair,
           takerOrderId: aggressiveOrder.id,
           makerOrderId: passiveOrder.id,
+          takerUserId: aggressiveOrder.userId,
+          makerUserId: passiveOrder.userId,
           price: price,
           quantity: matchQuantity,
           takerSide: aggressiveOrder.side,
@@ -218,17 +237,18 @@ export class OrderBook {
 
         trades.push(trade);
 
-        // Update filled quantities
-        aggressiveOrder.filledQuantity += matchQuantity;
-        passiveOrder.filledQuantity += matchQuantity;
-        remainingQuantity -= matchQuantity;
+        // Update filled quantities with rounding
+        aggressiveOrder.filledQuantity = this.roundToDecimals(
+          aggressiveOrder.filledQuantity + matchQuantity,
+          10
+        );
+        remainingQuantity = this.roundToDecimals(remainingQuantity - matchQuantity, 10);
 
-        // Update order status
-        if (passiveOrder.filledQuantity >= passiveOrder.quantity) {
-          passiveOrder.status = OrderStatus.FILLED;
-        } else {
-          passiveOrder.status = OrderStatus.PARTIALLY_FILLED;
-        }
+        // Don't update passive order here - let the matching engine handle it
+        // to ensure proper order book integrity
+        
+        // Verify trade maintains the equation: buyAmount * buyPrice = sellAmount * sellPrice
+        // In our system, both sides trade the same quantity at the same price, so this is always true
 
         i++;
       }
@@ -294,6 +314,31 @@ export class OrderBook {
     this.asks.clear();
     this.orderIndex.clear();
     this.sequenceNumber = 0;
+  }
+
+  // Get potential matches for an order
+  getPotentialMatches(order: Order): Order[] {
+    const side = order.side === OrderSide.BUY ? this.asks : this.bids;
+    const matches: Order[] = [];
+    
+    // Get sorted price levels
+    const sortedLevels = Array.from(side.entries()).sort((a, b) => {
+      return order.side === OrderSide.BUY ? a[0] - b[0] : b[0] - a[0];
+    });
+    
+    for (const [price, level] of sortedLevels) {
+      if (!this.canMatch(order, price)) {
+        break;
+      }
+      
+      for (const potentialMatch of level.orders) {
+        if (potentialMatch.filledQuantity < potentialMatch.quantity) {
+          matches.push(potentialMatch);
+        }
+      }
+    }
+    
+    return matches;
   }
 
   // Get order book statistics

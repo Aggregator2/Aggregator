@@ -1,0 +1,182 @@
+# Logrotate configuration for Trading Platform
+# Place this file in /etc/logrotate.d/trading-platform
+
+# Application logs
+/var/log/trading-platform/app/*.log {
+    daily
+    rotate 14
+    maxage 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%d
+    create 0644 nodejs nodejs
+    sharedscripts
+    postrotate
+        # Signal PM2 to reopen log files
+        /usr/bin/pm2 reloadLogs > /dev/null 2>&1 || true
+        
+        # Send notification about log rotation
+        if [ -f /opt/trading-platform/scripts/notify-log-rotation.sh ]; then
+            /opt/trading-platform/scripts/notify-log-rotation.sh "app"
+        fi
+    endscript
+}
+
+# WebSocket logs
+/var/log/trading-platform/websocket/*.log {
+    daily
+    rotate 7
+    maxage 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%d
+    create 0644 nodejs nodejs
+    sharedscripts
+    postrotate
+        /usr/bin/pm2 reloadLogs trading-websocket > /dev/null 2>&1 || true
+    endscript
+}
+
+# Worker logs
+/var/log/trading-platform/worker/*.log {
+    daily
+    rotate 7
+    maxage 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%d
+    create 0644 nodejs nodejs
+    sharedscripts
+    postrotate
+        /usr/bin/pm2 reloadLogs trading-worker > /dev/null 2>&1 || true
+    endscript
+}
+
+# Nginx access logs
+/var/log/nginx/access.log {
+    daily
+    rotate 30
+    maxage 90
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%d
+    create 0644 www-data adm
+    sharedscripts
+    prerotate
+        if [ -d /etc/logrotate.d/httpd-prerotate ]; then \
+            run-parts /etc/logrotate.d/httpd-prerotate; \
+        fi
+    endscript
+    postrotate
+        # Reload nginx to reopen log files
+        invoke-rc.d nginx rotate >/dev/null 2>&1 || true
+        
+        # Process logs for analytics
+        if [ -f /opt/trading-platform/scripts/process-access-logs.sh ]; then
+            /opt/trading-platform/scripts/process-access-logs.sh "$1"
+        fi
+    endscript
+}
+
+# Nginx error logs
+/var/log/nginx/error.log {
+    weekly
+    rotate 4
+    maxage 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%d
+    create 0644 www-data adm
+    sharedscripts
+    postrotate
+        invoke-rc.d nginx rotate >/dev/null 2>&1 || true
+        
+        # Alert on critical errors
+        if [ -f /opt/trading-platform/scripts/check-error-logs.sh ]; then
+            /opt/trading-platform/scripts/check-error-logs.sh "$1"
+        fi
+    endscript
+}
+
+# PostgreSQL logs (if not using Docker)
+/var/log/postgresql/*.log {
+    daily
+    rotate 7
+    maxage 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%d
+    create 0640 postgres postgres
+    sharedscripts
+    postrotate
+        # Signal PostgreSQL to reopen log files
+        su - postgres -c "pg_ctl reload" > /dev/null 2>&1 || true
+    endscript
+}
+
+# System logs
+/var/log/trading-platform/system/*.log {
+    weekly
+    rotate 4
+    maxage 60
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%d
+    create 0644 root root
+}
+
+# Backup logs
+/var/log/postgres-backup*.log {
+    monthly
+    rotate 12
+    maxage 365
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m
+    create 0644 root root
+}
+
+# Security/Audit logs
+/var/log/trading-platform/audit/*.log {
+    daily
+    rotate 90
+    maxage 365
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%d
+    create 0600 root root
+    sharedscripts
+    postrotate
+        # Archive audit logs to secure storage
+        if [ -f /opt/trading-platform/scripts/archive-audit-logs.sh ]; then
+            /opt/trading-platform/scripts/archive-audit-logs.sh "$1"
+        fi
+    endscript
+}

@@ -38,13 +38,36 @@ describe('ClearingHouse', () => {
     }],
     status: SettlementStatus.PENDING,
     cycle: SettlementCycle.CONTINUOUS,
-    netAmounts: [{
-      userId: 'user1',
-      token: 'ETH',
-      netAmount: BigInt(1e8),
-      originalAmount: BigInt(1e8),
-      nettingReduction: BigInt(0)
-    }],
+    netAmounts: [
+      {
+        userId: 'user1',
+        token: 'ETH',
+        netAmount: BigInt(1e8), // user1 receives 1 ETH
+        originalAmount: BigInt(1e8),
+        nettingReduction: BigInt(0)
+      },
+      {
+        userId: 'user1',
+        token: 'USDT',
+        netAmount: BigInt(-2000e8), // user1 pays 2000 USDT
+        originalAmount: BigInt(-2000e8),
+        nettingReduction: BigInt(0)
+      },
+      {
+        userId: 'user2',
+        token: 'ETH',
+        netAmount: BigInt(-1e8), // user2 pays 1 ETH
+        originalAmount: BigInt(-1e8),
+        nettingReduction: BigInt(0)
+      },
+      {
+        userId: 'user2',
+        token: 'USDT',
+        netAmount: BigInt(2000e8), // user2 receives 2000 USDT
+        originalAmount: BigInt(2000e8),
+        nettingReduction: BigInt(0)
+      }
+    ],
     createdAt: Date.now(),
     updatedAt: Date.now()
   });
@@ -134,28 +157,165 @@ describe('ClearingHouse', () => {
         clearingHouse.processSettlement(settlement)
       ).rejects.toThrow('suspended');
     });
+    
+    it('should reject settlement with no net amounts', async () => {
+      const invalidSettlement: Settlement = {
+        id: 'SET_INVALID',
+        trades: [{
+          id: 'TRADE_1',
+          buyOrderId: 'BUY_1',
+          sellOrderId: 'SELL_1',
+          pair: 'ETH/USDT',
+          price: 2000,
+          quantity: 1,
+          filledQuantity: 1,
+          side: 'BUY' as any,
+          buyerId: 'user1',
+          sellerId: 'user2',
+          buyerFee: 2,
+          sellerFee: 2,
+          timestamp: Date.now(),
+          settlementStatus: 'pending'
+        }],
+        status: SettlementStatus.PENDING,
+        cycle: SettlementCycle.CONTINUOUS,
+        netAmounts: [], // Empty net amounts
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      
+      await expect(
+        clearingHouse.processSettlement(invalidSettlement)
+      ).rejects.toThrow('Settlement has no net amounts calculated');
+    });
+    
+    it('should reject settlement with unbalanced net amounts', async () => {
+      const unbalancedSettlement: Settlement = {
+        id: 'SET_UNBALANCED',
+        trades: [{
+          id: 'TRADE_1',
+          buyOrderId: 'BUY_1',
+          sellOrderId: 'SELL_1',
+          pair: 'ETH/USDT',
+          price: 2000,
+          quantity: 1,
+          filledQuantity: 1,
+          side: 'BUY' as any,
+          buyerId: 'user1',
+          sellerId: 'user2',
+          buyerFee: 2,
+          sellerFee: 2,
+          timestamp: Date.now(),
+          settlementStatus: 'pending'
+        }],
+        status: SettlementStatus.PENDING,
+        cycle: SettlementCycle.CONTINUOUS,
+        netAmounts: [
+          {
+            userId: 'user1',
+            token: 'ETH',
+            netAmount: BigInt(1e8), // user1 receives 1 ETH
+            originalAmount: BigInt(1e8),
+            nettingReduction: BigInt(0)
+          },
+          {
+            userId: 'user1',
+            token: 'USDT',
+            netAmount: BigInt(-2000e8), // user1 pays 2000 USDT
+            originalAmount: BigInt(-2000e8),
+            nettingReduction: BigInt(0)
+          },
+          // Missing user2's net amounts - this creates imbalance
+        ],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      
+      await expect(
+        clearingHouse.processSettlement(unbalancedSettlement)
+      ).rejects.toThrow('Settlement does not balance for token');
+    });
   });
   
   describe('Margin Calls', () => {
     it('should issue margin calls when below threshold', async () => {
-      const settlement = createMockSettlement();
-      settlement.netAmounts[0].netAmount = BigInt(100e8); // Large exposure
-      
+      // Register both members well in advance
       await clearingHouse.registerMember('user1');
-      await clearingHouse.depositCollateral('user1', 'USDT', BigInt(1000e8));
+      await clearingHouse.registerMember('user2');
       
-      const marginCallPromise = new Promise((resolve) => {
-        clearingHouse.once('marginCall', resolve);
+      // Deposit collateral
+      // User1: 100 USDT (will trigger margin call)
+      await clearingHouse.depositCollateral('user1', 'USDT', BigInt(100e8));
+      // User2: 100 ETH (sufficient)  
+      await clearingHouse.depositCollateral('user2', 'ETH', BigInt(100e8));
+      
+      // Process a zero-value settlement first to clear "newly registered" status
+      const clearNewlyRegistered = createMockSettlement();
+      clearNewlyRegistered.id = 'CLEAR_NEW';
+      clearNewlyRegistered.netAmounts = [];
+      for (const userId of ['user1', 'user2']) {
+        for (const token of ['ETH', 'USDT']) {
+          clearNewlyRegistered.netAmounts.push({
+            userId,
+            token,
+            netAmount: BigInt(0),
+            originalAmount: BigInt(0),
+            nettingReduction: BigInt(0)
+          });
+        }
+      }
+      
+      try {
+        await clearingHouse.processSettlement(clearNewlyRegistered);
+        // Wait for settlement to complete
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } catch (error) {
+        console.log('Clear newly registered error:', error.message);
+      }
+      
+      // Set up margin call listener
+      let marginCallEvent: any = null;
+      clearingHouse.once('marginCall', (event) => {
+        marginCallEvent = event;
       });
+      
+      // Create a settlement with large exposure for user1
+      const settlement = createMockSettlement();
+      
+      // Modify net amounts to create exposure:
+      // User1 receives 10 ETH (worth 20,000 USDT at 2000 USDT/ETH)
+      // With 10% collateral requirement, needs 2,000 USDT collateral
+      // User1 only has 100 USDT, so collateral ratio = 100/2000 = 0.05 (5%)
+      // This is exactly at the liquidation threshold (5%)
+      // Let's use 9 ETH to get collateral ratio = 100/1800 ≈ 0.056 (5.6%)
+      // This is below margin call threshold (15%) but above liquidation (5%)
+      settlement.netAmounts = [
+        {
+          userId: 'user1',
+          token: 'ETH',
+          netAmount: BigInt(9e8), // user1 receives 9 ETH
+          originalAmount: BigInt(9e8),
+          nettingReduction: BigInt(0)
+        },
+        {
+          userId: 'user2',
+          token: 'ETH',
+          netAmount: BigInt(-9e8), // user2 pays 9 ETH
+          originalAmount: BigInt(-9e8),
+          nettingReduction: BigInt(0)
+        }
+      ];
       
       await clearingHouse.processSettlement(settlement);
       
-      const marginCall = await marginCallPromise;
-      expect(marginCall).toBeDefined();
-      
+      // Check results
       const member = clearingHouse.getMember('user1');
+      
+      expect(marginCallEvent).toBeDefined();
+      expect(marginCallEvent?.member?.userId).toBe('user1');
+      expect(marginCallEvent?.deficit).toBe(BigInt(1700e8)); // 1800 - 100 = 1700 USDT deficit
       expect(member?.status).toBe('MARGIN_CALL');
-    });
+    }, 15000);
     
     it('should resolve margin call after deposit', async () => {
       // Setup member with margin call
@@ -183,7 +343,7 @@ describe('ClearingHouse', () => {
       const metrics = clearingHouse.calculateRiskMetrics(member);
       
       expect(metrics.userId).toBe('user1');
-      expect(metrics.exposure).toBe(BigInt(10e8));
+      expect(metrics.exposure).toBe(BigInt(10e8 * 2000)); // ETH converted to USDT equivalent
       expect(metrics.collateralRatio).toBeGreaterThan(0);
       expect(metrics.marginUtilization).toBeGreaterThan(0);
       expect(metrics.riskScore).toBeGreaterThanOrEqual(0);

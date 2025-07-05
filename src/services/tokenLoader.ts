@@ -1,4 +1,5 @@
 import { tokenAggregator } from './tokenAggregator';
+import { lifiService } from './lifiService';
 import { logger } from '../utils/logger';
 
 class TokenLoader {
@@ -74,6 +75,33 @@ class TokenLoader {
     await this.loadTokens();
   }
 
+  // Health check for token loading system
+  getHealthStatus() {
+    const stats = this.getStats();
+    const lifiCacheValid = lifiService.isCacheValid();
+    
+    return {
+      isInitialized: this.isInitialized,
+      totalTokens: stats.total,
+      chainCount: Object.keys(stats.byChain).length,
+      lastUpdate: stats.lastUpdate,
+      lifiCacheValid,
+      status: stats.total > 100 ? 'healthy' : 'degraded'
+    };
+  }
+
+  // Force refresh LiFi cache specifically
+  async refreshLifiTokens(): Promise<void> {
+    try {
+      logger.info('Refreshing LiFi token cache...');
+      await lifiService.refreshTokens();
+      logger.info('LiFi token cache refreshed successfully');
+    } catch (error) {
+      logger.error('Failed to refresh LiFi token cache:', error);
+      throw error;
+    }
+  }
+
   destroy(): void {
     if (this.loadingInterval) {
       clearInterval(this.loadingInterval);
@@ -85,10 +113,5 @@ class TokenLoader {
 
 export const tokenLoader = TokenLoader.getInstance();
 
-// Auto-initialize when imported in API routes
-if (typeof window === 'undefined') {
-  // Only run on server side
-  tokenLoader.initialize().catch(error => {
-    logger.error('Failed to auto-initialize token loader:', error);
-  });
-}
+// Removed auto-initialization to prevent stack overflow
+// Token loading is now handled on-demand by API routes

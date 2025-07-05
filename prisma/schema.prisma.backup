@@ -1,0 +1,394 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  walletAddress String?   @unique
+  firstName     String?
+  lastName      String?
+  isActive      Boolean   @default(true)
+  role          UserRole  @default(USER)
+  orders        Order[]
+  rfqs          RFQ[]
+  trades        MarketMakerTrade[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+  @@index([walletAddress])
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  currency    String      @default("USD")
+  stock       Int         @default(0)
+  isActive    Boolean     @default(true)
+  lineItems   LineItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([name])
+}
+
+model Order {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  orderNumber     String        @unique @default(cuid())
+  status          OrderStatus   @default(PENDING)
+  totalAmount     Float       
+  currency        String        @default("USD")
+  txHash          String?
+  escrowAddress   String?
+  signature       String?
+  lineItems       LineItem[]
+  statusHistory   OrderStatusHistory[]
+  paymentMethod   String?
+  shippingAddress Json?
+  billingAddress  Json?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([orderNumber])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model LineItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  quantity   Int
+  unitPrice  Float  
+  totalPrice Float  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(uuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  comment   String?
+  changedBy String?
+  createdAt DateTime    @default(now())
+
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  MERCHANT
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  ESCROW_DEPOSITED
+  ESCROW_RELEASED
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum MarketMakerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum RFQStatus {
+  PENDING
+  QUOTED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  EXECUTED
+  CANCELLED
+}
+
+enum QuoteStatus {
+  ACTIVE
+  FILLED
+  PARTIALLY_FILLED
+  CANCELLED
+  EXPIRED
+}
+
+enum OrderFlowType {
+  PUBLIC
+  PRIVATE
+  AUCTION
+}
+
+enum FeeType {
+  MAKER_REBATE
+  TAKER_FEE
+  PLATFORM_FEE
+}
+
+enum InventoryEventType {
+  DEPOSIT
+  WITHDRAWAL
+  TRADE_BUY
+  TRADE_SELL
+  FEE
+  REBATE
+  ADJUSTMENT
+}
+
+model MarketMaker {
+  id                String              @id @default(uuid())
+  name              String
+  code              String              @unique
+  status            MarketMakerStatus   @default(PENDING)
+  apiKey            String              @unique
+  apiSecret         String
+  webhookUrl        String?
+  websocketUrl      String?
+  supportedPairs    String              @default("[]")
+  minQuoteSize      Float             @default(0) 
+  maxQuoteSize      Float             @default(1000000) 
+  quoteExpiry       Int                 @default(30000) // milliseconds
+  settlementAddress String?
+  metadata          Json?
+  isActive          Boolean             @default(true)
+  
+  pairs             MarketMakerPair[]
+  quotes            Quote[]
+  inventory         MarketMakerInventory[]
+  inventoryEvents   InventoryEvent[]
+  trades            MarketMakerTrade[]
+  feeStructures     FeeStructure[]
+  performance       MarketMakerPerformance[]
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([status])
+}
+
+model MarketMakerPair {
+  id            String      @id @default(uuid())
+  marketMakerId String
+  marketMaker   MarketMaker @relation(fields: [marketMakerId], references: [id], onDelete: Cascade)
+  baseCurrency  String
+  quoteCurrency String
+  minSize       Float     @default(0.001) 
+  maxSize       Float     @default(10000) 
+  tickSize      Float     @default(0.00001) 
+  isActive      Boolean     @default(true)
+  spreadBps     Int         @default(10) // basis points
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([marketMakerId, baseCurrency, quoteCurrency])
+}
+
+model RFQ {
+  id            String        @id @default(uuid())
+  requestId     String        @unique
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  side          String        // BUY or SELL
+  baseCurrency  String
+  quoteCurrency String
+  baseAmount    Float?      
+  quoteAmount   Float?      
+  orderFlowType OrderFlowType @default(PUBLIC)
+  status        RFQStatus     @default(PENDING)
+  expiresAt     DateTime
+  metadata      Json?
+  
+  quotes        Quote[]
+  auction       Auction?
+  trades        MarketMakerTrade[]
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model Quote {
+  id            String       @id @default(uuid())
+  rfqId         String
+  rfq           RFQ          @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  marketMakerId String
+  marketMaker   MarketMaker  @relation(fields: [marketMakerId], references: [id])
+  bidPrice      Float?     
+  askPrice      Float?     
+  bidSize       Float?     
+  askSize       Float?     
+  price         Float      
+  size          Float      
+  side          String       // BID or ASK
+  status        QuoteStatus  @default(ACTIVE)
+  expiresAt     DateTime
+  filledSize    Float      @default(0) 
+  signature     String?
+  metadata      Json?
+  
+  trades        MarketMakerTrade[]
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([rfqId])
+  @@index([marketMakerId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model Auction {
+  id              String    @id @default(uuid())
+  rfqId           String    @unique
+  rfq             RFQ       @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  startTime       DateTime
+  endTime         DateTime
+  minParticipants Int       @default(2)
+  winningQuoteId  String?
+  executedPrice   Float?  
+  executedSize    Float?  
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model MarketMakerInventory {
+  id            String           @id @default(uuid())
+  marketMakerId String
+  marketMaker   MarketMaker      @relation(fields: [marketMakerId], references: [id], onDelete: Cascade)
+  currency      String
+  balance       Float          @default(0) 
+  available     Float          @default(0) 
+  locked        Float          @default(0) 
+  lastUpdated   DateTime         @default(now())
+  
+  events        InventoryEvent[]
+  
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([marketMakerId, currency])
+}
+
+model InventoryEvent {
+  id            String             @id @default(uuid())
+  inventoryId   String
+  inventory     MarketMakerInventory @relation(fields: [inventoryId], references: [id])
+  marketMakerId String
+  marketMaker   MarketMaker        @relation(fields: [marketMakerId], references: [id])
+  eventType     InventoryEventType
+  currency      String
+  amount        Float            
+  balanceBefore Float            
+  balanceAfter  Float            
+  referenceId   String?
+  referenceType String?
+  description   String?
+  metadata      Json?
+  createdAt     DateTime           @default(now())
+
+  @@index([inventoryId])
+  @@index([marketMakerId])
+  @@index([createdAt])
+}
+
+model MarketMakerTrade {
+  id            String      @id @default(uuid())
+  marketMakerId String
+  marketMaker   MarketMaker @relation(fields: [marketMakerId], references: [id])
+  quoteId       String
+  quote         Quote       @relation(fields: [quoteId], references: [id])
+  rfqId         String
+  rfq           RFQ         @relation(fields: [rfqId], references: [id])
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  side          String      // BUY or SELL
+  baseCurrency  String
+  quoteCurrency String
+  baseAmount    Float     
+  quoteAmount   Float     
+  price         Float     
+  fee           Float     @default(0) 
+  rebate        Float     @default(0) 
+  pnl           Float?    
+  txHash        String?
+  status        String      @default("PENDING")
+  executedAt    DateTime?
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([marketMakerId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model FeeStructure {
+  id            String      @id @default(uuid())
+  marketMakerId String?
+  marketMaker   MarketMaker? @relation(fields: [marketMakerId], references: [id], onDelete: Cascade)
+  tierName      String
+  feeType       FeeType
+  baseCurrency  String?
+  quoteCurrency String?
+  minVolume     Float     @default(0) 
+  maxVolume     Float?    
+  feeBps        Int         // basis points
+  flatFee       Float?    
+  isActive      Boolean     @default(true)
+  priority      Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([marketMakerId])
+}
+
+model MarketMakerPerformance {
+  id            String      @id @default(uuid())
+  marketMakerId String
+  marketMaker   MarketMaker @relation(fields: [marketMakerId], references: [id], onDelete: Cascade)
+  date          DateTime    
+  totalVolume   Float     @default(0) 
+  totalTrades   Int         @default(0)
+  totalPnL      Float     @default(0) 
+  totalFees     Float     @default(0) 
+  totalRebates  Float     @default(0) 
+  fillRate      Float     @default(0) 
+  avgSpread     Float     @default(0) 
+  uptime        Float     @default(100) 
+  metrics       Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([marketMakerId, date])
+}

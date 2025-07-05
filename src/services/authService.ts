@@ -35,7 +35,7 @@ export class AuthService {
   private readonly jwtExpiresIn = '7d';
 
   async register(input: RegisterInput) {
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await prisma.User.findFirst({
       where: {
         OR: [
           { email: input.email },
@@ -55,7 +55,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(input.password, this.saltRounds);
 
-    const user = await prisma.user.create({
+    const user = await prisma.User.create({
       data: {
         email: input.email,
         password: hashedPassword,
@@ -87,7 +87,7 @@ export class AuthService {
   }
 
   async login(input: LoginInput) {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.User.findUnique({
       where: { email: input.email }
     });
 
@@ -121,7 +121,7 @@ export class AuthService {
 
   async updateProfile(userId: string, input: UpdateProfileInput) {
     if (input.walletAddress) {
-      const existingUser = await prisma.user.findFirst({
+      const existingUser = await prisma.User.findFirst({
         where: {
           walletAddress: input.walletAddress,
           NOT: { id: userId }
@@ -133,7 +133,7 @@ export class AuthService {
       }
     }
 
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.User.update({
       where: { id: userId },
       data: {
         firstName: input.firstName,
@@ -156,7 +156,7 @@ export class AuthService {
   }
 
   async getProfile(userId: string) {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.User.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -181,7 +181,7 @@ export class AuthService {
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.User.findUnique({
       where: { id: userId }
     });
 
@@ -196,7 +196,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(newPassword, this.saltRounds);
 
-    await prisma.user.update({
+    await prisma.User.update({
       where: { id: userId },
       data: { password: hashedPassword }
     });

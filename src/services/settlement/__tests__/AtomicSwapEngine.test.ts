@@ -108,7 +108,34 @@ describe('AtomicSwapEngine', () => {
       const invalidSwapIds = [...swapIds, 'INVALID_SWAP_ID'];
       
       await expect(atomicSwapEngine.executeSwaps(invalidSwapIds))
-        .rejects.toThrow();
+        .rejects.toThrow('Invalid swap IDs: INVALID_SWAP_ID');
+    });
+    
+    it('should throw error for multiple invalid swap IDs', async () => {
+      const invalidSwapIds = ['INVALID_1', 'INVALID_2', 'INVALID_3'];
+      
+      await expect(atomicSwapEngine.executeSwaps(invalidSwapIds))
+        .rejects.toThrow('Invalid swap IDs: INVALID_1, INVALID_2, INVALID_3');
+    });
+    
+    it('should throw error for empty swap array', async () => {
+      await expect(atomicSwapEngine.executeSwaps([]))
+        .rejects.toThrow('No valid swaps to execute');
+    });
+    
+    it('should execute successfully with all valid swap IDs', async () => {
+      const settlement = createMockSettlement();
+      const swapIds = await atomicSwapEngine.createSwapsFromSettlement(settlement);
+      
+      // All valid swap IDs should execute without error
+      await expect(atomicSwapEngine.executeSwaps(swapIds))
+        .resolves.not.toThrow();
+        
+      // Verify all swaps are executed
+      for (const swapId of swapIds) {
+        const swap = atomicSwapEngine.getSwap(swapId);
+        expect(swap?.status).toBe('EXECUTED');
+      }
     });
     
     it('should revert swaps on failure', async () => {

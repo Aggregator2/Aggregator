@@ -1,61 +1,86 @@
-require('dotenv').config({ path: '.env.local' });
+#\!/usr/bin/env node
 
-async function testLiFiIntegration() {
-  console.log('🔍 Testing LiFi Integration End-to-End\n');
-  
-  // Test 1: Direct LiFi SDK
-  console.log('1. Direct LiFi SDK Test:');
+/**
+ * Simple test script to verify LiFi integration
+ * Run with: node test-lifi-integration.js
+ */
+
+const { lifiService } = require('./src/services/lifiService');
+const { tokenAggregator } = require('./src/services/tokenAggregator');
+const { tokenLoader } = require('./src/services/tokenLoader');
+
+async function testLifiIntegration() {
+  console.log('🧪 Testing LiFi Integration...\n');
+
   try {
-    const { getRoutes } = require('@lifi/sdk');
+    // Test 1: Check LiFi service health
+    console.log('📊 1. Checking LiFi service health...');
+    const isCacheValid = lifiService.isCacheValid();
+    console.log(`   Cache valid: ${isCacheValid}`);
+
+    // Test 2: Load tokens from LiFi
+    console.log('\n🔄 2. Loading tokens from LiFi...');
+    const startTime = Date.now();
     
-    const result = await getRoutes({
-      fromChainId: 1,
-      toChainId: 1,
-      fromTokenAddress: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-      toTokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-      fromAmount: '1000000000000000000',
-      options: {
-        slippage: 0.01,
-        allowSwitchChain: false,
-        bridges: { allow: [] },
-        integrator: 'multi-chain-swap',
-        apiKey: process.env.LIFI_API_KEY
-      }
+    const lifiTokens = await lifiService.getAllTokens();
+    const loadTime = Date.now() - startTime;
+    
+    const totalTokens = Array.from(lifiTokens.values()).reduce((sum, tokens) => sum + tokens.length, 0);
+    console.log(`   ✅ Loaded ${totalTokens} tokens from ${lifiTokens.size} chains in ${loadTime}ms`);
+
+    // Test 3: Test tokenAggregator integration
+    console.log('\n🔗 3. Testing tokenAggregator integration...');
+    await tokenAggregator.loadAllTokens();
+    
+    const stats = tokenAggregator.getStats();
+    console.log(`   ✅ Total tokens in aggregator: ${stats.total}`);
+    console.log(`   ✅ Chains: ${Object.keys(stats.byChain).length}`);
+
+    // Test 4: Test tokenLoader health
+    console.log('\n🩺 4. Checking tokenLoader health...');
+    const health = tokenLoader.getHealthStatus();
+    console.log(`   Status: ${health.status}`);
+    console.log(`   Total tokens: ${health.totalTokens}`);
+    console.log(`   LiFi cache valid: ${health.lifiCacheValid}`);
+
+    // Test 5: Search functionality
+    console.log('\n🔍 5. Testing search functionality...');
+    const ethTokens = tokenAggregator.searchTokens('ETH', 1);
+    console.log(`   ✅ Found ${ethTokens.length} ETH-related tokens on Ethereum`);
+
+    const usdcTokens = tokenAggregator.searchTokens('USDC');
+    console.log(`   ✅ Found ${usdcTokens.length} USDC tokens across all chains`);
+
+    // Test 6: Check source breakdown
+    console.log('\n📈 6. Source breakdown...');
+    const allTokens = tokenAggregator.getAllTokens();
+    const sources = {};
+    
+    allTokens.forEach(token => {
+      const source = token.extensions?.source || 'unknown';
+      sources[source] = (sources[source] || 0) + 1;
     });
-    
-    if (result.routes && result.routes.length > 0) {
-      console.log('✅ LiFi SDK works! Routes:', result.routes.length);
-      console.log('   Best route amount:', result.routes[0].toAmount);
-      console.log('   Tool:', result.routes[0].steps?.[0]?.tool);
-    }
+
+    console.log('   Sources:');
+    Object.entries(sources).forEach(([source, count]) => {
+      console.log(`     ${source}: ${count} tokens`);
+    });
+
+    console.log('\n✅ All tests completed successfully\!');
+    console.log(`\n📊 Summary:
+    - LiFi tokens: ${totalTokens}
+    - Total aggregated tokens: ${stats.total}
+    - Chains supported: ${Object.keys(stats.byChain).length}
+    - Load time: ${loadTime}ms
+    - Status: ${health.status}`);
+
   } catch (error) {
-    console.log('❌ LiFi SDK failed:', error.message);
+    console.error('\n❌ Test failed:', error);
+    console.error('Stack trace:', error.stack);
+    process.exit(1);
   }
-  
-  // Test 2: API Endpoint
-  console.log('\n2. API Endpoint Test:');
-  try {
-    const axios = require('axios');
-    const response = await axios.post('http://localhost:3000/api/quote-profitable', {
-      sellToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-      buyToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-      sellAmount: '1000000000000000000',
-      chainId: 1
-    }, { timeout: 10000 });
-    
-    console.log('✅ API Response:');
-    console.log('   Source:', response.data.source);
-    console.log('   Buy Amount:', response.data.buyAmount);
-    console.log('   Original Quote Source:', response.data.originalQuote?.source);
-  } catch (error) {
-    console.log('❌ API failed:', error.response?.data?.error || error.message);
-  }
-  
-  // Test 3: Check profitableQuoteService logs
-  console.log('\n3. Analyzing flow - see server logs for:');
-  console.log('   - [ProfitableQuoteService] logs');
-  console.log('   - MultiChainQuoteService logs');
-  console.log('   - LiFi integration logs');
 }
 
-testLiFiIntegration().catch(console.error);
+// Run the test
+testLifiIntegration().catch(console.error);
+EOF < /dev/null

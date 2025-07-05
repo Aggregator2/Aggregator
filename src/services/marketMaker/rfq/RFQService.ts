@@ -56,7 +56,7 @@ export class RFQService extends EventEmitter {
       const expiresAt = new Date(Date.now() + (request.expiryMs || this.defaultExpiryMs));
 
       // Create RFQ in database
-      const rfq = await this.prisma.rFQ.create({
+      const rfq = await this.prisma.RFQ.create({
         data: {
           requestId,
           userId: request.userId,
@@ -95,7 +95,7 @@ export class RFQService extends EventEmitter {
         .filter(quote => quote !== null);
 
       // Update RFQ status
-      await this.prisma.rFQ.update({
+      await this.prisma.RFQ.update({
         where: { id: rfq.id },
         data: { status: RFQStatus.QUOTED },
       });
@@ -124,7 +124,7 @@ export class RFQService extends EventEmitter {
 
   private async requestQuoteFromMM(rfq: RFQ, marketMakerId: string): Promise<Quote | null> {
     try {
-      const mm = await this.prisma.marketMaker.findUnique({
+      const mm = await this.prisma.MarketMaker.findUnique({
         where: { id: marketMakerId },
       });
 
@@ -154,7 +154,7 @@ export class RFQService extends EventEmitter {
       }
 
       // Store quote in database
-      const quote = await this.prisma.quote.create({
+      const quote = await this.prisma.Quote.create({
         data: {
           rfqId: rfq.id,
           marketMakerId,
@@ -185,7 +185,7 @@ export class RFQService extends EventEmitter {
     quoteCurrency: string,
     orderFlowType: OrderFlowType
   ) {
-    const marketMakers = await this.prisma.marketMaker.findMany({
+    const marketMakers = await this.prisma.MarketMaker.findMany({
       where: {
         status: 'ACTIVE',
         isActive: true,
@@ -220,7 +220,7 @@ export class RFQService extends EventEmitter {
   }
 
   async acceptQuote(quoteId: string, userId: string): Promise<void> {
-    const quote = await this.prisma.quote.findUnique({
+    const quote = await this.prisma.Quote.findUnique({
       where: { id: quoteId },
       include: { rfq: true },
     });
@@ -243,11 +243,11 @@ export class RFQService extends EventEmitter {
 
     // Update quote and RFQ status
     await this.prisma.$transaction([
-      this.prisma.quote.update({
+      this.prisma.Quote.update({
         where: { id: quoteId },
         data: { status: QuoteStatus.FILLED },
       }),
-      this.prisma.rFQ.update({
+      this.prisma.RFQ.update({
         where: { id: quote.rfqId },
         data: { status: RFQStatus.ACCEPTED },
       }),
@@ -261,7 +261,7 @@ export class RFQService extends EventEmitter {
   }
 
   private async cancelOtherQuotes(rfqId: string, acceptedQuoteId: string): Promise<void> {
-    await this.prisma.quote.updateMany({
+    await this.prisma.Quote.updateMany({
       where: {
         rfqId,
         id: { not: acceptedQuoteId },
@@ -272,7 +272,7 @@ export class RFQService extends EventEmitter {
   }
 
   async getRFQStatus(rfqId: string, userId: string): Promise<RFQResponse | null> {
-    const rfq = await this.prisma.rFQ.findFirst({
+    const rfq = await this.prisma.RFQ.findFirst({
       where: {
         id: rfqId,
         userId,
@@ -303,7 +303,7 @@ export class RFQService extends EventEmitter {
   }
 
   async expireQuotes(): Promise<void> {
-    const expiredQuotes = await this.prisma.quote.updateMany({
+    const expiredQuotes = await this.prisma.Quote.updateMany({
       where: {
         status: QuoteStatus.ACTIVE,
         expiresAt: { lte: new Date() },

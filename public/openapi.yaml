@@ -1,0 +1,643 @@
+openapi: 3.0.0
+info:
+  title: Trading Platform API
+  version: 1.0.0
+  description: |
+    A comprehensive trading platform API supporting spot trading, state channels, and advanced order types.
+    
+    ## Features
+    - Real-time order matching
+    - State channels for high-frequency trading
+    - Multi-asset support
+    - WebSocket streaming
+    - Settlement and reconciliation
+    
+  contact:
+    name: API Support
+    email: api@tradingplatform.com
+    url: https://support.tradingplatform.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.tradingplatform.com/v1
+    description: Production server
+  - url: https://api-staging.tradingplatform.com/v1
+    description: Staging server
+  - url: http://localhost:3000
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Orders
+    description: Order placement and management
+  - name: Trading
+    description: Trading operations and market data
+  - name: State Channels
+    description: High-frequency trading channels
+  - name: Account
+    description: Account management and balances
+  - name: Market Data
+    description: Real-time and historical market data
+
+paths:
+  /api/orders/submit:
+    post:
+      tags:
+        - Orders
+      summary: Submit a new order
+      description: Places a new order in the matching engine
+      operationId: submitOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+            examples:
+              limitBuy:
+                summary: Limit Buy Order
+                value:
+                  pair: "BTC/USD"
+                  side: "buy"
+                  type: "limit"
+                  price: "50000"
+                  quantity: "0.5"
+                  clientOrderId: "client123"
+              marketSell:
+                summary: Market Sell Order
+                value:
+                  pair: "ETH/USD"
+                  side: "sell"
+                  type: "market"
+                  quantity: "2.0"
+      responses:
+        '200':
+          description: Order successfully submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/orders/history:
+    get:
+      tags:
+        - Orders
+      summary: Get order history
+      description: Retrieves paginated order history with filtering options
+      operationId: getOrderHistory
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of orders per page
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: pair
+          in: query
+          description: Filter by trading pair
+          schema:
+            type: string
+            example: "BTC/USD"
+        - name: status
+          in: query
+          description: Filter by order status
+          schema:
+            type: string
+            enum: [open, filled, partially_filled, cancelled]
+        - name: dateFrom
+          in: query
+          description: Start date for filtering
+          schema:
+            type: string
+            format: date-time
+        - name: dateTo
+          in: query
+          description: End date for filtering
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Order history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderHistoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/orders/cancel:
+    post:
+      tags:
+        - Orders
+      summary: Cancel an order
+      description: Cancels an open order
+      operationId: cancelOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - orderId
+              properties:
+                orderId:
+                  type: string
+                  description: Order ID to cancel
+      responses:
+        '200':
+          description: Order cancelled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelOrderResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/orderbook/{pair}:
+    get:
+      tags:
+        - Market Data
+      summary: Get order book
+      description: Retrieves current order book for a trading pair
+      operationId: getOrderBook
+      parameters:
+        - name: pair
+          in: path
+          required: true
+          description: Trading pair
+          schema:
+            type: string
+            example: "BTC/USD"
+        - name: depth
+          in: query
+          description: Number of price levels
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Order book data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderBookResponse'
+
+  /api/trades/{pair}:
+    get:
+      tags:
+        - Market Data
+      summary: Get recent trades
+      description: Retrieves recent trades for a trading pair
+      operationId: getRecentTrades
+      parameters:
+        - name: pair
+          in: path
+          required: true
+          description: Trading pair
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Number of trades to return
+          schema:
+            type: integer
+            default: 50
+            maximum: 500
+      responses:
+        '200':
+          description: Recent trades
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradesResponse'
+
+  /api/channels/create:
+    post:
+      tags:
+        - State Channels
+      summary: Create state channel
+      description: Creates a new state channel for high-frequency trading
+      operationId: createStateChannel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChannelRequest'
+      responses:
+        '200':
+          description: Channel created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+
+  /api/channels/{channelId}/trade:
+    post:
+      tags:
+        - State Channels
+      summary: Execute channel trade
+      description: Executes an off-chain trade within a state channel
+      operationId: executeChannelTrade
+      parameters:
+        - name: channelId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelTradeRequest'
+      responses:
+        '200':
+          description: Trade executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelTradeResponse'
+
+  /api/account/balance:
+    get:
+      tags:
+        - Account
+      summary: Get account balance
+      description: Retrieves current account balances
+      operationId: getAccountBalance
+      responses:
+        '200':
+          description: Account balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token authentication. Include in Authorization header:
+        ```
+        Authorization: Bearer <token>
+        ```
+
+  schemas:
+    OrderRequest:
+      type: object
+      required:
+        - pair
+        - side
+        - type
+        - quantity
+      properties:
+        pair:
+          type: string
+          description: Trading pair
+          example: "BTC/USD"
+        side:
+          type: string
+          enum: [buy, sell]
+          description: Order side
+        type:
+          type: string
+          enum: [market, limit, stop, stop_limit]
+          description: Order type
+        price:
+          type: string
+          description: Order price (required for limit orders)
+          example: "50000.00"
+        quantity:
+          type: string
+          description: Order quantity
+          example: "0.5"
+        clientOrderId:
+          type: string
+          description: Client-provided order ID
+        timeInForce:
+          type: string
+          enum: [GTC, IOC, FOK]
+          default: GTC
+          description: Time in force
+
+    OrderResponse:
+      type: object
+      properties:
+        orderId:
+          type: string
+          description: Unique order ID
+        status:
+          type: string
+          enum: [accepted, rejected]
+        message:
+          type: string
+          description: Status message
+        order:
+          $ref: '#/components/schemas/Order'
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+        pair:
+          type: string
+        side:
+          type: string
+          enum: [buy, sell]
+        type:
+          type: string
+        status:
+          type: string
+          enum: [open, filled, partially_filled, cancelled]
+        price:
+          type: string
+        quantity:
+          type: string
+        filledQuantity:
+          type: string
+        remainingQuantity:
+          type: string
+        avgExecutionPrice:
+          type: string
+        totalFees:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderHistoryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            orders:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderWithTrades'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+            statistics:
+              $ref: '#/components/schemas/OrderStatistics'
+
+    OrderWithTrades:
+      allOf:
+        - $ref: '#/components/schemas/Order'
+        - type: object
+          properties:
+            trades:
+              type: array
+              items:
+                $ref: '#/components/schemas/Trade'
+            realizedPnL:
+              type: string
+              description: Realized profit/loss
+            currentMarketPrice:
+              type: string
+
+    Trade:
+      type: object
+      properties:
+        tradeId:
+          type: string
+        price:
+          type: string
+        amount:
+          type: string
+        fee:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        counterparty:
+          type: string
+
+    OrderBookResponse:
+      type: object
+      properties:
+        pair:
+          type: string
+        bids:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderBookLevel'
+        asks:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderBookLevel'
+        timestamp:
+          type: integer
+
+    OrderBookLevel:
+      type: object
+      properties:
+        price:
+          type: string
+        quantity:
+          type: string
+        orderCount:
+          type: integer
+
+    CreateChannelRequest:
+      type: object
+      required:
+        - participants
+        - tokenAddress
+      properties:
+        participants:
+          type: array
+          items:
+            type: string
+          minItems: 2
+          description: Channel participant addresses
+        tokenAddress:
+          type: string
+          description: Token contract address
+        challengePeriod:
+          type: integer
+          default: 3600
+          description: Challenge period in seconds
+        initialBalances:
+          type: object
+          additionalProperties:
+            type: string
+          description: Initial balances for participants
+
+    ChannelResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        channelId:
+          type: string
+        channelAddress:
+          type: string
+        participants:
+          type: array
+          items:
+            type: string
+        initialState:
+          type: object
+          properties:
+            nonce:
+              type: integer
+            balances:
+              type: object
+            stateRoot:
+              type: string
+            timestamp:
+              type: integer
+
+    ChannelTradeRequest:
+      type: object
+      required:
+        - from
+        - to
+        - amount
+      properties:
+        from:
+          type: string
+          description: Sender address
+        to:
+          type: string
+          description: Receiver address
+        amount:
+          type: string
+          description: Trade amount
+        isTrustedCounterparty:
+          type: boolean
+          default: false
+          description: Enable zero-confirmation for trusted parties
+
+    ChannelTradeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        tradeId:
+          type: string
+        channelId:
+          type: string
+        executed:
+          type: boolean
+        finalityProof:
+          type: object
+
+    BalanceResponse:
+      type: object
+      properties:
+        balances:
+          type: object
+          additionalProperties:
+            type: string
+        totalValueUSD:
+          type: string
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+
+    OrderStatistics:
+      type: object
+      properties:
+        totalOrders:
+          type: integer
+        filledOrders:
+          type: integer
+        cancelledOrders:
+          type: integer
+        totalTrades:
+          type: integer
+        totalVolume:
+          type: string
+        totalFees:
+          type: string
+        successRate:
+          type: string
+        periodPnL:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        details:
+          type: string
+          description: Detailed error information
+        code:
+          type: string
+          description: Error code
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

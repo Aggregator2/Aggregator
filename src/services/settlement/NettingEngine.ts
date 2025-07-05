@@ -21,6 +21,11 @@ export class NettingEngine extends EventEmitter {
     super();
   }
   
+  // Clear all state - for testing
+  public clear(): void {
+    this.removeAllListeners();
+  }
+  
   // Calculate net positions for all users across all tokens
   public async calculateNetPositions(
     trades: Trade[]
@@ -50,6 +55,13 @@ export class NettingEngine extends EventEmitter {
     for (const trade of trades) {
       const baseToken = this.getBaseToken(trade.pair);
       const quoteToken = this.getQuoteToken(trade.pair);
+      
+      // Validate trade data
+      if (!isFinite(trade.price) || !isFinite(trade.filledQuantity) || trade.price <= 0 || trade.filledQuantity <= 0) {
+        console.warn(`Skipping invalid trade:`, { price: trade.price, filledQuantity: trade.filledQuantity, id: trade.id });
+        continue;
+      }
+      
       const tradeValue = BigInt(Math.floor(trade.price * trade.filledQuantity * 1e8)); // 8 decimals precision
       const quantity = BigInt(Math.floor(trade.filledQuantity * 1e8));
       

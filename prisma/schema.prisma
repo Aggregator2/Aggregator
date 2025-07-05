@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -15,7 +15,7 @@ model User {
   firstName     String?
   lastName      String?
   isActive      Boolean   @default(true)
-  role          UserRole  @default(USER)
+  role          String  @default("USER")
   orders        Order[]
   rfqs          RFQ[]
   trades        MarketMakerTrade[]
@@ -30,7 +30,7 @@ model Product {
   id          String      @id @default(uuid())
   name        String
   description String?
-  price       Decimal     @db.Decimal(10, 2)
+  price       Float
   currency    String      @default("USD")
   stock       Int         @default(0)
   isActive    Boolean     @default(true)
@@ -46,8 +46,8 @@ model Order {
   userId          String
   user            User          @relation(fields: [userId], references: [id])
   orderNumber     String        @unique @default(cuid())
-  status          OrderStatus   @default(PENDING)
-  totalAmount     Decimal       @db.Decimal(10, 2)
+  status          String   @default("PENDING")
+  totalAmount     Float       
   currency        String        @default("USD")
   txHash          String?
   escrowAddress   String?
@@ -74,8 +74,8 @@ model LineItem {
   productId  String
   product    Product  @relation(fields: [productId], references: [id])
   quantity   Int
-  unitPrice  Decimal  @db.Decimal(10, 2)
-  totalPrice Decimal  @db.Decimal(10, 2)
+  unitPrice  Float  
+  totalPrice Float  
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -87,7 +87,7 @@ model OrderStatusHistory {
   id        String      @id @default(uuid())
   orderId   String
   order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  status    OrderStatus
+  status    String
   comment   String?
   changedBy String?
   createdAt DateTime    @default(now())
@@ -96,84 +96,84 @@ model OrderStatusHistory {
   @@index([createdAt])
 }
 
-enum UserRole {
-  USER
-  ADMIN
-  MERCHANT
-}
+// enum String {
+//   USER
+//   ADMIN
+//   MERCHANT
+// }
 
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  PROCESSING
-  ESCROW_DEPOSITED
-  ESCROW_RELEASED
-  SHIPPED
-  DELIVERED
-  COMPLETED
-  CANCELLED
-  REFUNDED
-}
+// enum String {
+//   PENDING
+//   CONFIRMED
+//   PROCESSING
+//   ESCROW_DEPOSITED
+//   ESCROW_RELEASED
+//   SHIPPED
+//   DELIVERED
+//   COMPLETED
+//   CANCELLED
+//   REFUNDED
+// }
 
-enum MarketMakerStatus {
-  PENDING
-  ACTIVE
-  SUSPENDED
-  INACTIVE
-}
+// enum String {
+//   PENDING
+//   ACTIVE
+//   SUSPENDED
+//   INACTIVE
+// }
 
-enum RFQStatus {
-  PENDING
-  QUOTED
-  ACCEPTED
-  REJECTED
-  EXPIRED
-  EXECUTED
-  CANCELLED
-}
+// enum String {
+//   PENDING
+//   QUOTED
+//   ACCEPTED
+//   REJECTED
+//   EXPIRED
+//   EXECUTED
+//   CANCELLED
+// }
 
-enum QuoteStatus {
-  ACTIVE
-  FILLED
-  PARTIALLY_FILLED
-  CANCELLED
-  EXPIRED
-}
+// enum String {
+//   ACTIVE
+//   FILLED
+//   PARTIALLY_FILLED
+//   CANCELLED
+//   EXPIRED
+// }
 
-enum OrderFlowType {
-  PUBLIC
-  PRIVATE
-  AUCTION
-}
+// enum String {
+//   PUBLIC
+//   PRIVATE
+//   AUCTION
+// }
 
-enum FeeType {
-  MAKER_REBATE
-  TAKER_FEE
-  PLATFORM_FEE
-}
+// enum String {
+//   MAKER_REBATE
+//   TAKER_FEE
+//   PLATFORM_FEE
+// }
 
-enum InventoryEventType {
-  DEPOSIT
-  WITHDRAWAL
-  TRADE_BUY
-  TRADE_SELL
-  FEE
-  REBATE
-  ADJUSTMENT
-}
+// enum String {
+//   DEPOSIT
+//   WITHDRAWAL
+//   TRADE_BUY
+//   TRADE_SELL
+//   FEE
+//   REBATE
+//   ADJUSTMENT
+// }
 
 model MarketMaker {
   id                String              @id @default(uuid())
   name              String
   code              String              @unique
-  status            MarketMakerStatus   @default(PENDING)
+  status            String   @default("PENDING")
   apiKey            String              @unique
   apiSecret         String
   webhookUrl        String?
   websocketUrl      String?
-  supportedPairs    String[]
-  minQuoteSize      Decimal             @default(0) @db.Decimal(20, 8)
-  maxQuoteSize      Decimal             @default(1000000) @db.Decimal(20, 8)
+  supportedPairs    String              @default("[]")
+  minQuoteSize      Float             @default(0) 
+  maxQuoteSize      Float             @default(1000000) 
   quoteExpiry       Int                 @default(30000) // milliseconds
   settlementAddress String?
   metadata          Json?
@@ -199,9 +199,9 @@ model MarketMakerPair {
   marketMaker   MarketMaker @relation(fields: [marketMakerId], references: [id], onDelete: Cascade)
   baseCurrency  String
   quoteCurrency String
-  minSize       Decimal     @default(0.001) @db.Decimal(20, 8)
-  maxSize       Decimal     @default(10000) @db.Decimal(20, 8)
-  tickSize      Decimal     @default(0.00001) @db.Decimal(20, 8)
+  minSize       Float     @default(0.001) 
+  maxSize       Float     @default(10000) 
+  tickSize      Float     @default(0.00001) 
   isActive      Boolean     @default(true)
   spreadBps     Int         @default(10) // basis points
   createdAt     DateTime    @default(now())
@@ -218,10 +218,10 @@ model RFQ {
   side          String        // BUY or SELL
   baseCurrency  String
   quoteCurrency String
-  baseAmount    Decimal?      @db.Decimal(20, 8)
-  quoteAmount   Decimal?      @db.Decimal(20, 8)
-  orderFlowType OrderFlowType @default(PUBLIC)
-  status        RFQStatus     @default(PENDING)
+  baseAmount    Float?      
+  quoteAmount   Float?      
+  orderFlowType String @default("PUBLIC")
+  status        String     @default("PENDING")
   expiresAt     DateTime
   metadata      Json?
   
@@ -243,16 +243,16 @@ model Quote {
   rfq           RFQ          @relation(fields: [rfqId], references: [id], onDelete: Cascade)
   marketMakerId String
   marketMaker   MarketMaker  @relation(fields: [marketMakerId], references: [id])
-  bidPrice      Decimal?     @db.Decimal(20, 8)
-  askPrice      Decimal?     @db.Decimal(20, 8)
-  bidSize       Decimal?     @db.Decimal(20, 8)
-  askSize       Decimal?     @db.Decimal(20, 8)
-  price         Decimal      @db.Decimal(20, 8)
-  size          Decimal      @db.Decimal(20, 8)
+  bidPrice      Float?     
+  askPrice      Float?     
+  bidSize       Float?     
+  askSize       Float?     
+  price         Float      
+  size          Float      
   side          String       // BID or ASK
-  status        QuoteStatus  @default(ACTIVE)
+  status        String  @default("ACTIVE")
   expiresAt     DateTime
-  filledSize    Decimal      @default(0) @db.Decimal(20, 8)
+  filledSize    Float      @default(0) 
   signature     String?
   metadata      Json?
   
@@ -275,8 +275,8 @@ model Auction {
   endTime         DateTime
   minParticipants Int       @default(2)
   winningQuoteId  String?
-  executedPrice   Decimal?  @db.Decimal(20, 8)
-  executedSize    Decimal?  @db.Decimal(20, 8)
+  executedPrice   Float?  
+  executedSize    Float?  
   metadata        Json?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -287,9 +287,9 @@ model MarketMakerInventory {
   marketMakerId String
   marketMaker   MarketMaker      @relation(fields: [marketMakerId], references: [id], onDelete: Cascade)
   currency      String
-  balance       Decimal          @default(0) @db.Decimal(20, 8)
-  available     Decimal          @default(0) @db.Decimal(20, 8)
-  locked        Decimal          @default(0) @db.Decimal(20, 8)
+  balance       Float          @default(0) 
+  available     Float          @default(0) 
+  locked        Float          @default(0) 
   lastUpdated   DateTime         @default(now())
   
   events        InventoryEvent[]
@@ -306,11 +306,11 @@ model InventoryEvent {
   inventory     MarketMakerInventory @relation(fields: [inventoryId], references: [id])
   marketMakerId String
   marketMaker   MarketMaker        @relation(fields: [marketMakerId], references: [id])
-  eventType     InventoryEventType
+  eventType     String
   currency      String
-  amount        Decimal            @db.Decimal(20, 8)
-  balanceBefore Decimal            @db.Decimal(20, 8)
-  balanceAfter  Decimal            @db.Decimal(20, 8)
+  amount        Float            
+  balanceBefore Float            
+  balanceAfter  Float            
   referenceId   String?
   referenceType String?
   description   String?
@@ -335,12 +335,12 @@ model MarketMakerTrade {
   side          String      // BUY or SELL
   baseCurrency  String
   quoteCurrency String
-  baseAmount    Decimal     @db.Decimal(20, 8)
-  quoteAmount   Decimal     @db.Decimal(20, 8)
-  price         Decimal     @db.Decimal(20, 8)
-  fee           Decimal     @default(0) @db.Decimal(20, 8)
-  rebate        Decimal     @default(0) @db.Decimal(20, 8)
-  pnl           Decimal?    @db.Decimal(20, 8)
+  baseAmount    Float     
+  quoteAmount   Float     
+  price         Float     
+  fee           Float     @default(0) 
+  rebate        Float     @default(0) 
+  pnl           Float?    
   txHash        String?
   status        String      @default("PENDING")
   executedAt    DateTime?
@@ -358,13 +358,13 @@ model FeeStructure {
   marketMakerId String?
   marketMaker   MarketMaker? @relation(fields: [marketMakerId], references: [id], onDelete: Cascade)
   tierName      String
-  feeType       FeeType
+  feeType       String
   baseCurrency  String?
   quoteCurrency String?
-  minVolume     Decimal     @default(0) @db.Decimal(20, 8)
-  maxVolume     Decimal?    @db.Decimal(20, 8)
+  minVolume     Float     @default(0) 
+  maxVolume     Float?    
   feeBps        Int         // basis points
-  flatFee       Decimal?    @db.Decimal(20, 8)
+  flatFee       Float?    
   isActive      Boolean     @default(true)
   priority      Int         @default(0)
   createdAt     DateTime    @default(now())
@@ -377,15 +377,15 @@ model MarketMakerPerformance {
   id            String      @id @default(uuid())
   marketMakerId String
   marketMaker   MarketMaker @relation(fields: [marketMakerId], references: [id], onDelete: Cascade)
-  date          DateTime    @db.Date
-  totalVolume   Decimal     @default(0) @db.Decimal(20, 8)
+  date          DateTime    
+  totalVolume   Float     @default(0) 
   totalTrades   Int         @default(0)
-  totalPnL      Decimal     @default(0) @db.Decimal(20, 8)
-  totalFees     Decimal     @default(0) @db.Decimal(20, 8)
-  totalRebates  Decimal     @default(0) @db.Decimal(20, 8)
-  fillRate      Decimal     @default(0) @db.Decimal(5, 2)
-  avgSpread     Decimal     @default(0) @db.Decimal(10, 4)
-  uptime        Decimal     @default(100) @db.Decimal(5, 2)
+  totalPnL      Float     @default(0) 
+  totalFees     Float     @default(0) 
+  totalRebates  Float     @default(0) 
+  fillRate      Float     @default(0) 
+  avgSpread     Float     @default(0) 
+  uptime        Float     @default(100) 
   metrics       Json?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt

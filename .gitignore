@@ -77,3 +77,5 @@ generated/
 # Environment specific
 .env.*
 !.env.example
+.env.claude
+.env.backup.SECURE

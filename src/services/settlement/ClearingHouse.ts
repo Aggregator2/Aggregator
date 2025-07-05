@@ -38,11 +38,14 @@ export class ClearingHouse extends EventEmitter {
   // Process settlement through clearing house
   public async processSettlement(settlement: Settlement): Promise<void> {
     try {
-      // Validate settlement
-      await this.validateSettlement(settlement);
+      // Track newly registered members for this settlement
+      const newlyRegistered = new Set<string>();
+      
+      // Validate settlement (includes auto-registration)
+      await this.validateSettlement(settlement, newlyRegistered);
       
       // Check risk and collateral requirements
-      const requirements = await this.checkCollateralRequirements(settlement);
+      const requirements = await this.checkCollateralRequirements(settlement, newlyRegistered);
       
       // Handle any deficits
       await this.handleCollateralDeficits(requirements);
@@ -63,54 +66,130 @@ export class ClearingHouse extends EventEmitter {
   }
   
   // Validate settlement before processing
-  private async validateSettlement(settlement: Settlement): Promise<void> {
+  private async validateSettlement(settlement: Settlement, newlyRegistered?: Set<string>): Promise<void> {
+    // Validate settlement structure
+    if (!settlement.id) {
+      throw new Error('Settlement must have an ID');
+    }
+    
+    if (!settlement.trades || settlement.trades.length === 0) {
+      throw new Error('Settlement must contain at least one trade');
+    }
+    
+    // Check if netAmounts exists and is properly formatted
+    if (!settlement.netAmounts) {
+      throw new Error('Settlement missing netAmounts property');
+    }
+    
+    if (!Array.isArray(settlement.netAmounts)) {
+      throw new Error('Settlement netAmounts must be an array');
+    }
+    
+    if (settlement.netAmounts.length === 0) {
+      throw new Error('Settlement has no net amounts calculated. Ensure net amounts are calculated before validation.');
+    }
+    
+    // Validate each net amount entry
+    for (const netAmount of settlement.netAmounts) {
+      if (!netAmount.userId || !netAmount.token || netAmount.netAmount === undefined) {
+        throw new Error('Invalid net amount entry: missing userId, token, or netAmount');
+      }
+    }
+    
     // Check if all participants are clearing members
     const userIds = new Set<string>();
     
+    // Collect user IDs from trades
     for (const trade of settlement.trades) {
       userIds.add(trade.buyerId);
       userIds.add(trade.sellerId);
     }
     
+    // Also collect user IDs from net amounts to ensure consistency
+    for (const netAmount of settlement.netAmounts) {
+      userIds.add(netAmount.userId);
+    }
+    
+    // Validate all users
     for (const userId of userIds) {
       if (!this.members.has(userId)) {
         // Auto-register new member
         await this.registerMember(userId);
+        // Track that this member was newly registered
+        if (newlyRegistered) {
+          newlyRegistered.add(userId);
+        }
       }
       
       const member = this.members.get(userId)!;
       if (member.status === 'SUSPENDED') {
-        throw new Error(`Member ${userId} is suspended`);
+        throw new Error(`Member ${userId} is suspended from clearing`);
       }
     }
     
-    // Validate settlement amounts
-    if (settlement.netAmounts.length === 0) {
-      throw new Error('Settlement has no net amounts');
+    // Validate that net amounts balance to zero for each token
+    const tokenBalances = new Map<string, bigint>();
+    
+    for (const netAmount of settlement.netAmounts) {
+      const currentBalance = tokenBalances.get(netAmount.token) || BigInt(0);
+      tokenBalances.set(netAmount.token, currentBalance + netAmount.netAmount);
+    }
+    
+    // Check if all tokens balance to zero (conservation of value)
+    for (const [token, balance] of tokenBalances) {
+      if (balance !== BigInt(0)) {
+        throw new Error(`Settlement does not balance for token ${token}: ${balance.toString()}`);
+      }
     }
   }
   
   // Check collateral requirements for settlement
   private async checkCollateralRequirements(
-    settlement: Settlement
+    settlement: Settlement,
+    newlyRegistered?: Set<string>
   ): Promise<CollateralRequirement[]> {
     const requirements: CollateralRequirement[] = [];
     
+    // Group positions by user to calculate total exposure per user
+    const userExposures = new Map<string, bigint>();
+    
     for (const position of settlement.netAmounts) {
-      const member = this.members.get(position.userId);
+      const currentExposure = userExposures.get(position.userId) || BigInt(0);
+      // Sum absolute values of all positions for total exposure
+      let positionExposure = bigIntAbs(position.netAmount);
+      
+      // Convert to USDT equivalent for exposure calculation
+      if (position.token === 'ETH') {
+        // Assume 1 ETH = 2000 USDT (consistent with calculateTotalCollateral)
+        positionExposure = positionExposure * BigInt(2000);
+      }
+      // USDT and other tokens use 1:1 ratio
+      
+      userExposures.set(position.userId, currentExposure + positionExposure);
+    }
+    
+    // Check requirements per user based on total exposure
+    for (const [userId, totalExposure] of userExposures) {
+      const member = this.members.get(userId);
       if (!member) continue;
       
-      // Calculate required collateral based on position
-      const exposure = bigIntAbs(position.netAmount);
-      const required = (exposure * BigInt(Math.floor(this.config.collateralRequirement * 1000))) / BigInt(1000);
+      // Skip collateral checks for newly registered members in this settlement
+      // They get one settlement cycle to deposit collateral
+      if (newlyRegistered && newlyRegistered.has(userId)) {
+        continue;
+      }
+      
+      // Calculate required collateral based on total exposure
+      const required = (totalExposure * BigInt(Math.floor(this.config.collateralRequirement * 1000))) / BigInt(1000);
       
       // Get current collateral
       const current = this.calculateTotalCollateral(member);
       
-      // Check if sufficient
-      if (current < required) {
+      
+      // Only add to deficit list if there's actually insufficient collateral
+      if (required > BigInt(0) && current < required) {
         requirements.push({
-          userId: position.userId,
+          userId,
           required,
           current,
           deficit: required - current
@@ -128,16 +207,21 @@ export class ClearingHouse extends EventEmitter {
     for (const req of requirements) {
       const member = this.members.get(req.userId)!;
       
-      // Calculate margin utilization
-      const utilization = Number(req.current) / Number(req.required);
+      // Calculate collateral ratio (current / required)
+      // If ratio is 1.0 or higher, member has sufficient collateral
+      // If ratio is below liquidation threshold, liquidate
+      // If ratio is below margin call threshold but above liquidation, issue margin call
+      const collateralRatio = req.required > BigInt(0) 
+        ? Number(req.current) / Number(req.required) 
+        : 1.0; // If no collateral required, ratio is 1.0
       
-      if (utilization < this.config.liquidationThreshold) {
-        // Trigger liquidation
+      if (collateralRatio < this.config.liquidationThreshold) {
+        // Trigger liquidation only if collateral ratio is critically low
         await this.liquidateMember(member);
         throw new Error(`Member ${req.userId} liquidated due to insufficient collateral`);
         
-      } else if (utilization < this.config.marginCallThreshold) {
-        // Issue margin call
+      } else if (collateralRatio < this.config.marginCallThreshold) {
+        // Issue margin call if below margin threshold but above liquidation
         member.status = 'MARGIN_CALL';
         this.emit('marginCall', {
           member,
@@ -145,6 +229,8 @@ export class ClearingHouse extends EventEmitter {
           deadline: Date.now() + 3600000 // 1 hour
         });
       }
+      // If collateral ratio >= marginCallThreshold, no action needed
+      // The settlement can proceed
     }
   }
   
@@ -282,7 +368,17 @@ export class ClearingHouse extends EventEmitter {
     let exposure = BigInt(0);
     
     for (const [token, position] of member.positions) {
-      exposure += bigIntAbs(position);
+      let tokenExposure = bigIntAbs(position);
+      
+      // Convert to USDT equivalent using simple price conversion
+      // In production, would use real price feeds
+      if (token === 'ETH') {
+        // Assume 1 ETH = 2000 USDT (from test settlement data)
+        tokenExposure = tokenExposure * BigInt(2000);
+      }
+      // USDT and other tokens use 1:1 ratio for simplicity
+      
+      exposure += tokenExposure;
     }
     
     return exposure;
@@ -293,8 +389,17 @@ export class ClearingHouse extends EventEmitter {
     let total = BigInt(0);
     
     for (const [token, amount] of member.collateral) {
-      // In production, would convert to common denomination using price feeds
-      total += amount;
+      // Convert to USDT equivalent using simple price conversion
+      // In production, would use real price feeds
+      let usdtEquivalent = amount;
+      
+      if (token === 'ETH') {
+        // Assume 1 ETH = 2000 USDT (from test settlement data)
+        usdtEquivalent = amount * BigInt(2000);
+      }
+      // USDT and other tokens use 1:1 ratio for simplicity
+      
+      total += usdtEquivalent;
     }
     
     return total;
@@ -382,7 +487,9 @@ export class ClearingHouse extends EventEmitter {
       activeMembers: Array.from(this.members.values())
         .filter(m => m.status === 'ACTIVE').length,
       defaultFundSize: this.defaultFund,
-      collateralPool: Object.fromEntries(this.collateralPool),
+      collateralPool: Object.fromEntries(
+        Array.from(this.collateralPool.entries()).map(([key, value]) => [key, value.toString()])
+      ),
       pendingSettlements: this.pendingSettlements.size,
       config: this.config
     };

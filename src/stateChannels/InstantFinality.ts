@@ -7,7 +7,7 @@ export interface InstantTrade {
   channelId: string;
   from: string;
   to: string;
-  amount: ethers.BigNumber;
+  amount: bigint;
   timestamp: number;
   finalityProof: FinalityProof;
   executed: boolean;
@@ -22,7 +22,7 @@ export interface FinalityProof {
 
 export interface FinalityConfig {
   requiredSignatures: number;
-  maxTradeAmount: ethers.BigNumber;
+  maxTradeAmount: bigint;
   minConfirmationTime: number; // milliseconds
   maxPendingTrades: number;
 }
@@ -47,7 +47,7 @@ export class InstantFinalityEngine extends EventEmitter {
     channelId: string,
     from: string,
     to: string,
-    amount: ethers.BigNumber,
+    amount: bigint,
     signer: ethers.Signer
   ): Promise<InstantTrade> {
     // Validate trade parameters
@@ -153,7 +153,7 @@ export class InstantFinalityEngine extends EventEmitter {
     }
 
     const fromBalance = state.balances.get(trade.from);
-    const toBalance = state.balances.get(trade.to) || ethers.BigNumber.from(0);
+    const toBalance = state.balances.get(trade.to) || BigInt(0);
 
     if (!fromBalance || fromBalance.lt(trade.amount)) {
       throw new Error('Insufficient balance at execution time');
@@ -253,7 +253,7 @@ export class InstantFinalityEngine extends EventEmitter {
     channelId: string,
     from: string,
     to: string,
-    amount: ethers.BigNumber,
+    amount: bigint,
     timestamp: number
   ): string {
     return ethers.utils.keccak256(
@@ -278,7 +278,7 @@ export class InstantFinalityEngine extends EventEmitter {
     ).slice(0, 10); // Use first 10 chars for brevity
   }
 
-  private calculateStateRoot(balances: Map<string, ethers.BigNumber>): string {
+  private calculateStateRoot(balances: Map<string, bigint>): string {
     const sortedEntries = Array.from(balances.entries()).sort((a, b) => 
       a[0].toLowerCase().localeCompare(b[0].toLowerCase())
     );

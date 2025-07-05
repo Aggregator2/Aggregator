@@ -1,9 +1,10 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   isTokenBlacklisted,
   isWrappedNativeToken,
   getTokenWarnings,
 } from '../../src/config/tokenRegistry';
+import { enhancedLifiTokenService, EnhancedToken } from '../../src/services/enhancedLifiTokenService';
 import type { Token } from '../../types/wallet';
 
 interface UseTokenSelectionProps {
@@ -19,6 +20,10 @@ interface UseTokenSelectionReturn {
   showBuyTokenPicker: boolean;
   showUnwrapOption: boolean;
   dismissedWarnings: Set<string>;
+  availableTokens: EnhancedToken[];
+  popularTokens: EnhancedToken[];
+  isLoadingTokens: boolean;
+  tokenError: string | null;
   handleSellTokenSelect: (token: Token) => void;
   handleBuyTokenSelect: (token: Token) => void;
   handleSwitch: () => void;
@@ -27,6 +32,8 @@ interface UseTokenSelectionReturn {
   dismissWarning: (warningKey: string) => void;
   getSellTokenWarnings: () => string[];
   getBuyTokenWarnings: () => string[];
+  searchTokens: (query: string) => Promise<EnhancedToken[]>;
+  refreshTokens: () => Promise<void>;
 }
 
 export function useTokenSelection({
@@ -40,6 +47,93 @@ export function useTokenSelection({
   const [showBuyTokenPicker, setShowBuyTokenPicker] = useState(false);
   const [showUnwrapOption, setShowUnwrapOption] = useState(false);
   const [dismissedWarnings, setDismissedWarnings] = useState<Set<string>>(new Set());
+  const [availableTokens, setAvailableTokens] = useState<EnhancedToken[]>([]);
+  const [popularTokens, setPopularTokens] = useState<EnhancedToken[]>([]);
+  const [isLoadingTokens, setIsLoadingTokens] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+
+  // Get current chain ID from sellToken
+  const currentChainId = sellToken.chainId ?? 1;
+
+  /**
+   * Load tokens for the current chain
+   */
+  const loadTokens = useCallback(async (chainId: number) => {
+    setIsLoadingTokens(true);
+    setTokenError(null);
+    
+    try {
+      // Load available tokens and popular tokens in parallel
+      const [allTokens, popularTokensList] = await Promise.all([
+        enhancedLifiTokenService.getTokensForChain(chainId, {
+          includeWarnings: true,
+          includeBlacklisted: false
+        }),
+        enhancedLifiTokenService.getPopularTokens(chainId, 20)
+      ]);
+      
+      setAvailableTokens(allTokens);
+      setPopularTokens(popularTokensList);
+      
+      console.log(`Loaded ${allTokens.length} tokens for chain ${chainId}`);
+    } catch (error) {
+      console.error('Error loading tokens:', error);
+      setTokenError(error instanceof Error ? error.message : 'Failed to load tokens');
+      
+      // Try to load fallback tokens
+      try {
+        const fallbackTokens = await enhancedLifiTokenService.getTokensForChain(chainId, {
+          forceRefresh: false,
+          includeWarnings: false
+        });
+        setAvailableTokens(fallbackTokens);
+        setPopularTokens(fallbackTokens.slice(0, 10));
+      } catch (fallbackError) {
+        console.error('Fallback token loading also failed:', fallbackError);
+      }
+    } finally {
+      setIsLoadingTokens(false);
+    }
+  }, []);
+
+  /**
+   * Refresh tokens for current chain
+   */
+  const refreshTokens = useCallback(async () => {
+    enhancedLifiTokenService.clearCache();
+    await loadTokens(currentChainId);
+  }, [currentChainId, loadTokens]);
+
+  /**
+   * Search tokens
+   */
+  const searchTokens = useCallback(async (query: string): Promise<EnhancedToken[]> => {
+    if (!query || query.length < 2) {
+      return popularTokens;
+    }
+    
+    try {
+      const results = await enhancedLifiTokenService.searchTokens(query, currentChainId, {
+        includeWarnings: true,
+        includeBlacklisted: false
+      });
+      return results;
+    } catch (error) {
+      console.error('Error searching tokens:', error);
+      // Fallback to local search
+      const localResults = availableTokens.filter(token =>
+        token.symbol.toLowerCase().includes(query.toLowerCase()) ||
+        token.name.toLowerCase().includes(query.toLowerCase()) ||
+        token.address.toLowerCase() === query.toLowerCase()
+      );
+      return localResults;
+    }
+  }, [currentChainId, popularTokens, availableTokens]);
+
+  // Load tokens when chain changes
+  useEffect(() => {
+    loadTokens(currentChainId);
+  }, [currentChainId, loadTokens]);
 
   /**
    * Handle sell token selection
@@ -128,6 +222,10 @@ export function useTokenSelection({
     showBuyTokenPicker,
     showUnwrapOption,
     dismissedWarnings,
+    availableTokens,
+    popularTokens,
+    isLoadingTokens,
+    tokenError,
     handleSellTokenSelect,
     handleBuyTokenSelect,
     handleSwitch,
@@ -136,5 +234,7 @@ export function useTokenSelection({
     dismissWarning,
     getSellTokenWarnings,
     getBuyTokenWarnings,
+    searchTokens,
+    refreshTokens,
   };
 }

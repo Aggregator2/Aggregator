@@ -125,17 +125,67 @@ export class SettlementEngine extends EventEmitter {
   
   // Process immediate settlement for continuous mode
   private async processImmediateSettlement(trade: Trade): Promise<void> {
+    // Calculate net amounts for the trade
+    const netAmounts = this.calculateTradeNetAmounts(trade);
+    
     const settlement: Settlement = {
       id: `SET_${trade.id}`,
       trades: [trade],
       status: SettlementStatus.PENDING,
       cycle: SettlementCycle.CONTINUOUS,
-      netAmounts: [],
+      netAmounts,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
     
     await this.executeSettlement(settlement);
+  }
+  
+  // Calculate net amounts for a single trade
+  private calculateTradeNetAmounts(trade: Trade): NetPosition[] {
+    const netAmounts: NetPosition[] = [];
+    const baseToken = this.getBaseToken(trade.pair);
+    const quoteToken = this.getQuoteToken(trade.pair);
+    
+    // Calculate amounts
+    const baseAmount = BigInt(Math.floor(trade.filledQuantity * 1e8)); // Convert to smallest unit
+    const quoteAmount = BigInt(Math.floor(trade.filledQuantity * trade.price * 1e8));
+    
+    // Buyer receives base token, pays quote token
+    netAmounts.push({
+      userId: trade.buyerId,
+      token: baseToken,
+      netAmount: baseAmount,
+      originalAmount: baseAmount,
+      nettingReduction: BigInt(0)
+    });
+    
+    netAmounts.push({
+      userId: trade.buyerId,
+      token: quoteToken,
+      netAmount: -quoteAmount,
+      originalAmount: -quoteAmount,
+      nettingReduction: BigInt(0)
+    });
+    
+    // Seller pays base token, receives quote token
+    netAmounts.push({
+      userId: trade.sellerId,
+      token: baseToken,
+      netAmount: -baseAmount,
+      originalAmount: -baseAmount,
+      nettingReduction: BigInt(0)
+    });
+    
+    netAmounts.push({
+      userId: trade.sellerId,
+      token: quoteToken,
+      netAmount: quoteAmount,
+      originalAmount: quoteAmount,
+      nettingReduction: BigInt(0)
+    });
+    
+    return netAmounts;
   }
   
   // Start settlement cycle for batch processing

@@ -1,0 +1,12 @@
+model ApiKey {
+  id            String   @id @default(cuid())
+  hashedKey     String   @unique
+  userId        String
+  name          String
+  permissions   String[]
+  rateLimit     Int      @default(1000)
+  ipWhitelist   String[]
+  lastUsedAt    DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime @default(now())
+}

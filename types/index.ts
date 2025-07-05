@@ -7,18 +7,27 @@
 export type {
   WalletState,
   Token,
-  Order,
-  Quote,
+  Order as WalletOrder, // Renamed to avoid conflict with trading types
+  Quote as WalletQuote, // Renamed to avoid conflict with trading types
   SwapFormState,
-  ApiResponse
+  ApiResponse as WalletApiResponse // Renamed to avoid conflict with api types
 } from './wallet';
 
-// Re-export type guards
+// Re-export type guards from wallet
 export {
-  isOrder,
-  isOrderArray,
-  isQuote
+  isOrder as isWalletOrder,
+  isOrderArray as isWalletOrderArray,
+  isQuote as isWalletQuote
 } from './wallet';
+
+// Re-export all trading types
+export * from './trading';
+
+// Re-export all API types
+export * from './api';
+
+// Re-export all WebSocket types
+export * from './websocket';
 
 // Re-export token types from src/types/token.ts
 export type {

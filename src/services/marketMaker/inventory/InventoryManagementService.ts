@@ -35,9 +35,31 @@ export interface InventorySnapshot {
   totalUsdValue: Decimal;
 }
 
+export interface ReconciliationResult {
+  marketMakerId: string;
+  currency: string;
+  systemBalance: Decimal;
+  externalBalance: Decimal;
+  discrepancy: Decimal;
+  isReconciled: boolean;
+  timestamp: Date;
+  adjustmentRequired: boolean;
+}
+
+export interface ReconciliationReport {
+  marketMakerId: string;
+  reconciliationDate: Date;
+  totalCurrencies: number;
+  reconciledCount: number;
+  discrepancyCount: number;
+  totalDiscrepancyValue: Decimal;
+  details: ReconciliationResult[];
+}
+
 export class InventoryManagementService extends EventEmitter {
   private prisma: PrismaClient;
   private alertThresholds: Map<string, { low: Decimal; high: Decimal }> = new Map();
+  private reconciliationTolerance = new Decimal(0.01); // 1 cent tolerance
 
   constructor() {
     super();
@@ -57,7 +79,7 @@ export class InventoryManagementService extends EventEmitter {
     const amount = new Decimal(update.amount);
     
     // Get or create inventory record
-    let inventory = await this.prisma.marketMakerInventory.findUnique({
+    let inventory = await this.prisma.MarketMakerInventory.findUnique({
       where: {
         marketMakerId_currency: {
           marketMakerId: update.marketMakerId,
@@ -67,7 +89,7 @@ export class InventoryManagementService extends EventEmitter {
     });
 
     if (!inventory) {
-      inventory = await this.prisma.marketMakerInventory.create({
+      inventory = await this.prisma.MarketMakerInventory.create({
         data: {
           marketMakerId: update.marketMakerId,
           currency: update.currency,
@@ -128,7 +150,7 @@ export class InventoryManagementService extends EventEmitter {
     }
 
     // Update inventory
-    const updatedInventory = await this.prisma.marketMakerInventory.update({
+    const updatedInventory = await this.prisma.MarketMakerInventory.update({
       where: { id: inventory.id },
       data: {
         balance: balanceAfter,
@@ -139,7 +161,7 @@ export class InventoryManagementService extends EventEmitter {
     });
 
     // Create inventory event
-    await this.prisma.inventoryEvent.create({
+    await this.prisma.InventoryEvent.create({
       data: {
         inventoryId: inventory.id,
         marketMakerId: update.marketMakerId,
@@ -176,7 +198,7 @@ export class InventoryManagementService extends EventEmitter {
   ): Promise<void> {
     const lockAmount = new Decimal(amount);
 
-    const inventory = await this.prisma.marketMakerInventory.findUnique({
+    const inventory = await this.prisma.MarketMakerInventory.findUnique({
       where: {
         marketMakerId_currency: {
           marketMakerId,
@@ -193,7 +215,7 @@ export class InventoryManagementService extends EventEmitter {
       throw new Error('Insufficient available balance to lock');
     }
 
-    await this.prisma.marketMakerInventory.update({
+    await this.prisma.MarketMakerInventory.update({
       where: { id: inventory.id },
       data: {
         available: inventory.available.sub(lockAmount),
@@ -213,7 +235,7 @@ export class InventoryManagementService extends EventEmitter {
   ): Promise<void> {
     const unlockAmount = new Decimal(amount);
 
-    const inventory = await this.prisma.marketMakerInventory.findUnique({
+    const inventory = await this.prisma.MarketMakerInventory.findUnique({
       where: {
         marketMakerId_currency: {
           marketMakerId,
@@ -230,7 +252,7 @@ export class InventoryManagementService extends EventEmitter {
       throw new Error('Insufficient locked balance to unlock');
     }
 
-    await this.prisma.marketMakerInventory.update({
+    await this.prisma.MarketMakerInventory.update({
       where: { id: inventory.id },
       data: {
         available: inventory.available.add(unlockAmount),
@@ -247,7 +269,7 @@ export class InventoryManagementService extends EventEmitter {
     marketMakerId: string,
     prices?: Map<string, number>
   ): Promise<InventorySnapshot> {
-    const inventories = await this.prisma.marketMakerInventory.findMany({
+    const inventories = await this.prisma.MarketMakerInventory.findMany({
       where: { marketMakerId },
     });
 
@@ -296,7 +318,7 @@ export class InventoryManagementService extends EventEmitter {
       if (endDate) where.createdAt.lte = endDate;
     }
 
-    return this.prisma.inventoryEvent.findMany({
+    return this.prisma.InventoryEvent.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -318,7 +340,7 @@ export class InventoryManagementService extends EventEmitter {
     }>;
     totalDiscrepancy: Decimal;
   }> {
-    const inventories = await this.prisma.marketMakerInventory.findMany({
+    const inventories = await this.prisma.MarketMakerInventory.findMany({
       where: { marketMakerId },
     });
 
@@ -440,7 +462,7 @@ export class InventoryManagementService extends EventEmitter {
     recommendedAction?: 'BUY_BASE' | 'SELL_BASE' | 'BALANCED';
   }> {
     const [baseInventory, quoteInventory] = await Promise.all([
-      this.prisma.marketMakerInventory.findUnique({
+      this.prisma.MarketMakerInventory.findUnique({
         where: {
           marketMakerId_currency: {
             marketMakerId,
@@ -448,7 +470,7 @@ export class InventoryManagementService extends EventEmitter {
           },
         },
       }),
-      this.prisma.marketMakerInventory.findUnique({
+      this.prisma.MarketMakerInventory.findUnique({
         where: {
           marketMakerId_currency: {
             marketMakerId,
@@ -480,5 +502,210 @@ export class InventoryManagementService extends EventEmitter {
       imbalanceRatio,
       recommendedAction,
     };
+  }
+
+  async reconcileInventory(
+    marketMakerId: string,
+    externalBalances: Array<{ currency: string; balance: string }>
+  ): Promise<ReconciliationReport> {
+    try {
+      const systemInventory = await this.prisma.MarketMakerInventory.findMany({
+        where: { marketMakerId },
+      });
+
+      const results: ReconciliationResult[] = [];
+      let discrepancyCount = 0;
+      let totalDiscrepancyValue = new Decimal(0);
+
+      // Create a map of external balances for easy lookup
+      const externalMap = new Map(
+        externalBalances.map(b => [b.currency, new Decimal(b.balance)])
+      );
+
+      // Reconcile each currency
+      for (const inventory of systemInventory) {
+        const systemBalance = inventory.balance;
+        const externalBalance = externalMap.get(inventory.currency) || new Decimal(0);
+        const discrepancy = systemBalance.sub(externalBalance).abs();
+        const isReconciled = discrepancy.lte(this.reconciliationTolerance);
+
+        if (!isReconciled) {
+          discrepancyCount++;
+          totalDiscrepancyValue = totalDiscrepancyValue.add(discrepancy);
+          
+          // Log alert for significant discrepancies
+          if (discrepancy.gt(inventory.balance.mul(0.01))) { // > 1% discrepancy
+            logger.warn(`Significant inventory discrepancy for ${marketMakerId} ${inventory.currency}:`, {
+              systemBalance: systemBalance.toString(),
+              externalBalance: externalBalance.toString(),
+              discrepancy: discrepancy.toString(),
+            });
+            
+            this.emit('inventory:discrepancy', {
+              marketMakerId,
+              currency: inventory.currency,
+              systemBalance,
+              externalBalance,
+              discrepancy,
+            });
+          }
+        }
+
+        results.push({
+          marketMakerId,
+          currency: inventory.currency,
+          systemBalance,
+          externalBalance,
+          discrepancy,
+          isReconciled,
+          timestamp: new Date(),
+          adjustmentRequired: !isReconciled && discrepancy.gt(this.reconciliationTolerance),
+        });
+
+        // Remove from external map to track unmatched external balances
+        externalMap.delete(inventory.currency);
+      }
+
+      // Check for currencies in external system but not in our system
+      for (const [currency, balance] of externalMap) {
+        if (balance.gt(0)) {
+          results.push({
+            marketMakerId,
+            currency,
+            systemBalance: new Decimal(0),
+            externalBalance: balance,
+            discrepancy: balance,
+            isReconciled: false,
+            timestamp: new Date(),
+            adjustmentRequired: true,
+          });
+          discrepancyCount++;
+          totalDiscrepancyValue = totalDiscrepancyValue.add(balance);
+        }
+      }
+
+      // Create reconciliation report
+      const report: ReconciliationReport = {
+        marketMakerId,
+        reconciliationDate: new Date(),
+        totalCurrencies: results.length,
+        reconciledCount: results.filter(r => r.isReconciled).length,
+        discrepancyCount,
+        totalDiscrepancyValue,
+        details: results,
+      };
+
+      // Store reconciliation event
+      await this.storeReconciliationEvent(report);
+
+      return report;
+    } catch (error) {
+      logger.error(`Error reconciling inventory for ${marketMakerId}:`, error);
+      throw error;
+    }
+  }
+
+  private async storeReconciliationEvent(report: ReconciliationReport): Promise<void> {
+    await this.prisma.InventoryEvent.create({
+      data: {
+        marketMakerId: report.marketMakerId,
+        eventType: 'RECONCILIATION',
+        currency: 'MULTI',
+        amount: new Decimal(0),
+        balanceBefore: new Decimal(0),
+        balanceAfter: new Decimal(0),
+        description: `Inventory reconciliation: ${report.reconciledCount}/${report.totalCurrencies} reconciled`,
+        metadata: {
+          report,
+        },
+      },
+    });
+  }
+
+  async performInventoryAdjustment(
+    marketMakerId: string,
+    currency: string,
+    adjustmentAmount: Decimal,
+    reason: string
+  ): Promise<MarketMakerInventory> {
+    const inventory = await this.updateBalance({
+      marketMakerId,
+      currency,
+      amount: adjustmentAmount.toString(),
+      eventType: 'ADJUSTMENT',
+      description: `Manual adjustment: ${reason}`,
+    });
+
+    this.emit('inventory:adjusted', {
+      marketMakerId,
+      currency,
+      adjustmentAmount,
+      reason,
+      newBalance: inventory.balance,
+    });
+
+    return inventory;
+  }
+
+  async getReconciliationHistory(
+    marketMakerId: string,
+    limit: number = 10
+  ): Promise<ReconciliationReport[]> {
+    const events = await this.prisma.InventoryEvent.findMany({
+      where: {
+        marketMakerId,
+        eventType: 'RECONCILIATION',
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+
+    return events
+      .map(e => (e.metadata as any)?.report)
+      .filter(r => r !== undefined) as ReconciliationReport[];
+  }
+
+  async scheduleAutomaticReconciliation(
+    marketMakerId: string,
+    intervalHours: number = 24
+  ): Promise<void> {
+    // In a production system, this would use a job scheduler
+    setInterval(async () => {
+      try {
+        // Fetch external balances (would integrate with external API)
+        const externalBalances = await this.fetchExternalBalances(marketMakerId);
+        const report = await this.reconcileInventory(marketMakerId, externalBalances);
+        
+        if (report.discrepancyCount > 0) {
+          logger.warn(`Reconciliation discrepancies found for ${marketMakerId}:`, {
+            discrepancyCount: report.discrepancyCount,
+            totalValue: report.totalDiscrepancyValue.toString(),
+          });
+        }
+      } catch (error) {
+        logger.error(`Automatic reconciliation failed for ${marketMakerId}:`, error);
+      }
+    }, intervalHours * 60 * 60 * 1000);
+  }
+
+  private async fetchExternalBalances(
+    marketMakerId: string
+  ): Promise<Array<{ currency: string; balance: string }>> {
+    // This would integrate with the market maker's external API
+    // For now, return mock data
+    const marketMaker = await this.prisma.MarketMaker.findUnique({
+      where: { id: marketMakerId },
+      include: { inventory: true },
+    });
+
+    if (!marketMaker) {
+      throw new Error('Market maker not found');
+    }
+
+    // Mock external balances with slight variations
+    return marketMaker.inventory.map(inv => ({
+      currency: inv.currency,
+      balance: inv.balance.mul(new Decimal(0.99 + Math.random() * 0.02)).toString(),
+    }));
   }
 }

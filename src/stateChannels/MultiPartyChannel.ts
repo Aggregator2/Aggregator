@@ -5,14 +5,14 @@ import { StateManager, ChannelState, Trade } from './StateManager';
 export interface LiquidityProvider {
   address: string;
   role: 'maker' | 'taker' | 'both';
-  minBalance: ethers.BigNumber;
-  maxBalance: ethers.BigNumber;
+  minBalance: bigint;
+  maxBalance: bigint;
   feeRate: number; // basis points
 }
 
 export interface MultiPartyTrade extends Trade {
   route: string[]; // addresses in the routing path
-  fees: Map<string, ethers.BigNumber>;
+  fees: Map<string, bigint>;
   liquidityProviders: string[];
 }
 
@@ -119,7 +119,7 @@ export class MultiPartyChannel extends EventEmitter {
 
   async proposeStateUpdate(
     nonce: number,
-    balances: Map<string, ethers.BigNumber>
+    balances: Map<string, bigint>
   ): Promise<string> {
     // Validate all participants have balances
     for (const participant of this.config.participants) {
@@ -164,7 +164,7 @@ export class MultiPartyChannel extends EventEmitter {
   findLiquidityRoute(
     from: string,
     to: string,
-    amount: ethers.BigNumber
+    amount: bigint
   ): string[] | null {
     // Simple pathfinding - can be replaced with more sophisticated algorithms
     const providers = this.config.liquidityProviders;
@@ -197,8 +197,8 @@ export class MultiPartyChannel extends EventEmitter {
     return route.length > 2 ? route : null;
   }
 
-  private calculateFees(trade: MultiPartyTrade): Map<string, ethers.BigNumber> {
-    const fees = new Map<string, ethers.BigNumber>();
+  private calculateFees(trade: MultiPartyTrade): Map<string, bigint> {
+    const fees = new Map<string, bigint>();
     
     for (const lpAddress of trade.liquidityProviders) {
       const provider = this.config.liquidityProviders.find(
@@ -237,7 +237,7 @@ export class MultiPartyChannel extends EventEmitter {
     );
   }
 
-  private calculateStateRoot(balances: Map<string, ethers.BigNumber>): string {
+  private calculateStateRoot(balances: Map<string, bigint>): string {
     const sortedEntries = Array.from(balances.entries()).sort((a, b) => 
       a[0].toLowerCase().localeCompare(b[0].toLowerCase())
     );

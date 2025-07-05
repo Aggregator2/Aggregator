@@ -38,7 +38,7 @@ export class AuctionManager extends EventEmitter {
     const startTime = new Date();
     const endTime = new Date(startTime.getTime() + auctionConfig.auctionDurationMs);
 
-    const auction = await this.prisma.auction.create({
+    const auction = await this.prisma.Auction.create({
       data: {
         rfqId,
         startTime,
@@ -69,7 +69,7 @@ export class AuctionManager extends EventEmitter {
     marketMakerId: string,
     improvedQuote: Partial<Quote>
   ): Promise<Quote | null> {
-    const auction = await this.prisma.auction.findUnique({
+    const auction = await this.prisma.Auction.findUnique({
       where: { id: auctionId },
       include: {
         rfq: {
@@ -115,7 +115,7 @@ export class AuctionManager extends EventEmitter {
     }
 
     // Create improved quote
-    const newQuote = await this.prisma.quote.create({
+    const newQuote = await this.prisma.Quote.create({
       data: {
         rfqId: auction.rfqId,
         marketMakerId,
@@ -137,7 +137,7 @@ export class AuctionManager extends EventEmitter {
     });
 
     // Cancel previous quote
-    await this.prisma.quote.update({
+    await this.prisma.Quote.update({
       where: { id: currentQuote.id },
       data: { status: 'CANCELLED' },
     });
@@ -168,7 +168,7 @@ export class AuctionManager extends EventEmitter {
   }
 
   async endAuction(auctionId: string): Promise<void> {
-    const auction = await this.prisma.auction.findUnique({
+    const auction = await this.prisma.Auction.findUnique({
       where: { id: auctionId },
       include: {
         rfq: {
@@ -199,7 +199,7 @@ export class AuctionManager extends EventEmitter {
     }
 
     // Update auction with winner
-    await this.prisma.auction.update({
+    await this.prisma.Auction.update({
       where: { id: auctionId },
       data: {
         winningQuoteId: bestQuote.id,
@@ -209,7 +209,7 @@ export class AuctionManager extends EventEmitter {
     });
 
     // Update RFQ status
-    await this.prisma.rFQ.update({
+    await this.prisma.RFQ.update({
       where: { id: auction.rfqId },
       data: { status: 'QUOTED' },
     });
@@ -223,7 +223,7 @@ export class AuctionManager extends EventEmitter {
     timeRemaining: number;
     currentBest?: Quote;
   } | null> {
-    const auction = await this.prisma.auction.findUnique({
+    const auction = await this.prisma.Auction.findUnique({
       where: { id: auctionId },
       include: {
         rfq: {
@@ -265,7 +265,7 @@ export class AuctionManager extends EventEmitter {
     averageImprovementBps: number;
     completionRate: number;
   }> {
-    const auctions = await this.prisma.auction.findMany({
+    const auctions = await this.prisma.Auction.findMany({
       where: {
         createdAt: {
           gte: startDate,

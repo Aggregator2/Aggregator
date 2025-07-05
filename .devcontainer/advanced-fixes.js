@@ -1,9 +1,10 @@
+require('dotenv').config();
 const { Anthropic } = require('@anthropic-ai/sdk');
 const fs = require('fs');
 
 async function getAdvancedUIFixes() {
     const anthropic = new Anthropic({
-        apiKey: process.env.ANTHROPIC_API_KEY || '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'
+        apiKey: process.env.ANTHROPIC_API_KEY
     });
 
     const prompt = `

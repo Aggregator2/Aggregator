@@ -28,8 +28,12 @@ function clearSettledOrders() {
   settledOrders.length = 0;
 }
 
+// Alias for backward compatibility
+const getAllSettledOrders = getSettledOrders;
+
 module.exports = {
   addSettledOrder,
   getSettledOrders,
+  getAllSettledOrders,
   clearSettledOrders,
 };

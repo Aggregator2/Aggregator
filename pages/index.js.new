@@ -1,0 +1,12 @@
+// Backup of original index.js
+import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import dynamic from 'next/dynamic';
+import SwapWidget from '../components/SwapWidget';
+import Nav from '../components/Nav';
+import Footer from '../components/Footer';
+import styles from '../components/homepage.module.css';
+import { isOrderArray } from '../types/wallet';
+import Link from 'next/link';
+
+// Original content preserved here

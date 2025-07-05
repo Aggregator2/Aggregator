@@ -36,7 +36,7 @@ export class QuoteCompetitionService extends EventEmitter {
     startDate: Date,
     endDate: Date
   ): Promise<CompetitionMetrics> {
-    const marketMaker = await this.prisma.marketMaker.findUnique({
+    const marketMaker = await this.prisma.MarketMaker.findUnique({
       where: { id: marketMakerId },
     });
 
@@ -45,7 +45,7 @@ export class QuoteCompetitionService extends EventEmitter {
     }
 
     // Get all quotes submitted in period
-    const quotes = await this.prisma.quote.findMany({
+    const quotes = await this.prisma.Quote.findMany({
       where: {
         marketMakerId,
         createdAt: {
@@ -130,7 +130,7 @@ export class QuoteCompetitionService extends EventEmitter {
     const { startDate, endDate } = this.getPeriodDates(period);
 
     // Get all active market makers
-    const marketMakers = await this.prisma.marketMaker.findMany({
+    const marketMakers = await this.prisma.MarketMaker.findMany({
       where: {
         status: 'ACTIVE',
         isActive: true,
@@ -179,7 +179,7 @@ export class QuoteCompetitionService extends EventEmitter {
     const startDate = new Date(endDate.getTime() - timeWindow);
 
     // Get RFQs for this pair in time window
-    const rfqs = await this.prisma.rFQ.findMany({
+    const rfqs = await this.prisma.RFQ.findMany({
       where: {
         baseCurrency,
         quoteCurrency,

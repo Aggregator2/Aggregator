@@ -32,6 +32,15 @@ export class BalanceTracker extends EventEmitter {
     this.startSnapshotScheduler();
   }
   
+  // Clear all state - for testing
+  public clear(): void {
+    this.balances.clear();
+    this.balanceHistory = [];
+    this.snapshots = [];
+    this.lastSnapshotTime = Date.now();
+    this.removeAllListeners();
+  }
+  
   // Get user balance
   public getUserBalance(userId: string): UserBalance | undefined {
     return this.balances.get(userId);

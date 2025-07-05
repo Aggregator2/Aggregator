@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from "react";
 import { ethers } from "ethers";
+import DOMPurify from "dompurify";
 import styles from "./SwapWidget.module.css";
 import { useTokenPrice } from "../hooks/useTokenPrice";
 import { useToast } from "../hooks/useToast";
@@ -512,7 +513,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         const errorData = await response.json().catch(() => ({}));
         console.error("Quote API error:", response.status, errorData);
         throw new Error(
-          errorData.error || `HTTP ${response.status}: ${response.statusText}`
+          DOMPurify.sanitize(errorData.error || '') || `HTTP ${response.status}: ${response.statusText}`
         );
       }
       const data = await response.json();
@@ -539,7 +540,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       } else if (error.message?.includes("network")) {
         errorMessage = "Network error. Please check your connection.";
       } else if (error.message) {
-        errorMessage = error.message;
+        errorMessage = DOMPurify.sanitize(error.message);
       }
 
       setQuoteError(errorMessage);
@@ -653,7 +654,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     (token: Token) => {
       // Check if token is blacklisted
       if (isTokenBlacklisted(token.address, token.chainId ?? 1)) {
-        showError(`${token.symbol} has been flagged and cannot be traded`);
+        showError(`${DOMPurify.sanitize(token.symbol)} has been flagged and cannot be traded`);
         return;
       }
 
@@ -676,7 +677,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     (token: Token) => {
       // Check if token is blacklisted
       if (isTokenBlacklisted(token.address, token.chainId ?? 1)) {
-        showError(`${token.symbol} has been flagged and cannot be traded`);
+        showError(`${DOMPurify.sanitize(token.symbol)} has been flagged and cannot be traded`);
         return;
       }
 
@@ -756,7 +757,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       // Add pending notification
       addNotification(
         'pending',
-        `Submitting limit order: ${limitOrder.sellAmount} ${sellToken.symbol} → ${limitOrder.buyAmount} ${buyToken.symbol}`,
+        `Submitting limit order: ${DOMPurify.sanitize(String(limitOrder.sellAmount))} ${DOMPurify.sanitize(sellToken.symbol)} → ${DOMPurify.sanitize(String(limitOrder.buyAmount))} ${DOMPurify.sanitize(buyToken.symbol)}`,
         { order, signature, limitPrice: limitOrder.limitPrice }
       );
 
@@ -772,7 +773,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       if (error.code === 4001) {
         errorMessage = "Transaction rejected by user";
       } else if (error.message) {
-        errorMessage = error.message;
+        errorMessage = DOMPurify.sanitize(error.message);
       }
 
       showError(errorMessage);
@@ -781,8 +782,8 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       // Add error notification
       addNotification(
         'error',
-        `Limit order failed: ${errorMessage}`,
-        { error: error.message }
+        `Limit order failed: ${DOMPurify.sanitize(errorMessage)}`,
+        { error: DOMPurify.sanitize(error.message || '') }
       );
     }
   };
@@ -875,7 +876,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       // Add pending notification
       addNotification(
         'pending',
-        `Submitting order: ${sellAmount} ${sellToken.symbol} → ${buyToken.symbol}`,
+        `Submitting order: ${DOMPurify.sanitize(sellAmount)} ${DOMPurify.sanitize(sellToken.symbol)} → ${DOMPurify.sanitize(buyToken.symbol)}`,
         { order, signature }
       );
 
@@ -897,7 +898,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       } else if (error.message?.includes("gas")) {
         errorMessage = "Transaction failed due to gas estimation error";
       } else if (error.message) {
-        errorMessage = error.message;
+        errorMessage = DOMPurify.sanitize(error.message);
       }
 
       showError(errorMessage);
@@ -906,8 +907,8 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       // Add error notification
       addNotification(
         'error',
-        `Order failed: ${errorMessage}`,
-        { error: error.message }
+        `Order failed: ${DOMPurify.sanitize(errorMessage)}`,
+        { error: DOMPurify.sanitize(error.message || '') }
       );
     }
   };
@@ -930,7 +931,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Submission failed");
+        throw new Error(DOMPurify.sanitize(errorData.error || '') || "Submission failed");
       }
 
       const data = await response.json();
@@ -953,7 +954,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       // Add success notification
       addNotification(
         'success',
-        `Order submitted: ${sellAmount} ${sellToken.symbol} → ${buyAmountFormatted} ${buyToken.symbol}`,
+        `Order submitted: ${DOMPurify.sanitize(sellAmount)} ${DOMPurify.sanitize(sellToken.symbol)} → ${DOMPurify.sanitize(buyAmountFormatted)} ${DOMPurify.sanitize(buyToken.symbol)}`,
         { orderId, txHash: data.txHash }
       );
 
@@ -1132,7 +1133,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   ) => {
     const checkInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/orders/${orderId}`);
+        const response = await fetch(`/api/orderStatus/${orderId}`);
         if (!response.ok) return;
 
         const orderStatus = await response.json();
@@ -1183,7 +1184,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
             sellSymbol,
             buySymbol,
             sellAmountFormatted,
-            `Order ${orderStatus.status}. Dispute resolution available.`
+            `Order ${DOMPurify.sanitize(orderStatus.status)}. Dispute resolution available.`
           );
         }
       } catch (error) {
@@ -1749,7 +1750,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
 
               {quoteError && (
                 <div className={styles.error}>
-                  {quoteError}
+                  {DOMPurify.sanitize(quoteError)}
                   <button
                     type="button"
                     onClick={() => {

@@ -4,11 +4,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "functions": {
-    "pages/api/**/*.ts": {
-      "maxDuration": 30
-    },
-    "pages/api/**/*.js": {
-      "maxDuration": 30
+    "pages/api/[...path].js": {
+      "maxDuration": 60
     }
   },
   "regions": ["iad1"],

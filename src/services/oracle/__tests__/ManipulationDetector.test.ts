@@ -112,6 +112,19 @@ describe('ManipulationDetector', () => {
 
     it('should detect spoofing', () => {
       const symbol = 'BTC/USDT';
+      
+      // Build price history first (needed for detection to run)
+      for (let i = 0; i < 6; i++) {
+        const priceData: PriceData = {
+          symbol,
+          price: 100 + (Math.random() * 2 - 1),
+          volume24h: 1000,
+          timestamp: Date.now() - (6 - i) * 60000,
+          source: 'Test'
+        };
+        detector.detectManipulation(symbol, priceData, []);
+      }
+      
       const sources: PriceSource[] = [
         { exchange: 'Binance', price: 100, volume: 1000, weight: 1, timestamp: Date.now() },
         { exchange: 'Coinbase', price: 101, volume: 1000, weight: 1, timestamp: Date.now() },

@@ -93,7 +93,11 @@ export const CHAIN_INFO: Record<number, { name: string; logo: string }> = {
   60808: { name: 'BOB', logo: '🤖' },
   80094: { name: 'Berachain', logo: '🐻' },
   130: { name: 'Unichain', logo: '🦄' },
-  42793: { name: 'Etherlink', logo: '🔗' }
+  42793: { name: 'Etherlink', logo: '🔗' },
+  
+  // Non-EVM Chains
+  101: { name: 'Solana', logo: '☀️' },
+  195: { name: 'Tron', logo: '🔻' }
 };
 
 export const TokenPicker: React.FC<TokenPickerProps> = ({

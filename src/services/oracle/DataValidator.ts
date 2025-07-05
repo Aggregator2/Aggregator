@@ -5,6 +5,7 @@ export class DataValidator {
   private readonly minPrice: number = 0.00000001;
   private readonly maxPrice: number = 1000000000;
   private readonly validSymbolPattern: RegExp = /^[A-Z0-9]+\/[A-Z0-9]+$/;
+  private readonly priceVarianceThreshold: number = 0.05; // 5% variance threshold
 
   constructor(config: OracleConfig) {
     this.maxPriceAge = config.maxPriceAge || 60000;
@@ -94,7 +95,7 @@ export class DataValidator {
     });
 
     const priceVariance = this.calculatePriceVariance(sources);
-    if (priceVariance > 0.1) {
+    if (priceVariance > this.priceVarianceThreshold) {
       warnings.push(`High price variance detected: ${(priceVariance * 100).toFixed(2)}%`);
     }
 
