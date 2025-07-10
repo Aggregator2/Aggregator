@@ -2,43 +2,63 @@
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.9);
-  min-width: 380px;
-  max-width: 480px;
-  background: rgba(0, 0, 0, 0.95);
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  border-left: 4px solid;
-  backdrop-filter: blur(20px);
+  transform: translate(-50%, -50%) translateY(30px) scale(0.95);
+  min-width: 400px;
+  max-width: 500px;
+  background: linear-gradient(135deg, rgba(13, 13, 14, 0.98) 0%, rgba(20, 20, 22, 0.98) 100%);
+  border-radius: 20px;
+  box-shadow: 
+    0 32px 64px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+  border-left: 5px solid;
+  backdrop-filter: blur(32px) saturate(180%);
   overflow: hidden;
   opacity: 0;
-  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 10000;
   color: white;
+  pointer-events: none;
 }
 
 .orderToast.visible {
-  transform: translate(-50%, -50%) scale(1);
+  transform: translate(-50%, -50%) translateY(0) scale(1);
   opacity: 1;
+  pointer-events: auto;
 }
 
 .orderToast.exiting {
-  transform: translate(-50%, -50%) scale(0.8);
+  transform: translate(-50%, -50%) translateY(-20px) scale(0.9);
   opacity: 0;
-  transition: all 0.3s ease-in;
+  transition: all 0.3s cubic-bezier(0.4, 0, 1, 1);
 }
 
 .toastHeader {
   display: flex;
   align-items: flex-start;
-  padding: 16px;
-  gap: 12px;
+  padding: 20px;
+  gap: 16px;
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
 }
 
 .statusIcon {
-  font-size: 24px;
+  font-size: 28px;
   flex-shrink: 0;
   margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  box-shadow: 
+    0 2px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  animation: statusPulse 2s ease-in-out infinite;
 }
 
 .toastContent {
@@ -47,17 +67,19 @@
 }
 
 .toastTitle {
-  margin: 0 0 4px 0;
-  font-size: 16px;
-  font-weight: 600;
+  margin: 0 0 6px 0;
+  font-size: 18px;
+  font-weight: 700;
   color: white;
+  letter-spacing: 0.3px;
 }
 
 .toastMessage {
-  margin: 0 0 8px 0;
+  margin: 0 0 12px 0;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+  letter-spacing: 0.2px;
 }
 
 .orderDetails {
@@ -67,57 +89,93 @@
 }
 
 .tokenSwap {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   color: white;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-family: monospace;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
 }
 
 .closeButton {
-  background: none;
-  border: none;
-  font-size: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 22px;
   line-height: 1;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.2s ease;
+  opacity: 0.8;
+  transition: all 0.2s ease;
   padding: 0;
   width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 10px;
   flex-shrink: 0;
 }
 
 .closeButton:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: white;
 }
 
 .toastFooter {
-  padding: 0 16px 16px 52px;
+  padding: 0 20px 20px 80px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: -4px;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.2) 100%);
 }
 
 .txLink {
-  color: #2196f3;
+  color: #42a5f5;
   text-decoration: none;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  transition: color 0.2s ease;
+  gap: 6px;
+  transition: all 0.2s ease;
+  padding: 8px 12px;
+  margin-top: 8px;
+  background: rgba(33, 150, 243, 0.1);
+  border: 1px solid rgba(33, 150, 243, 0.2);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.txLink::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s ease;
 }
 
 .txLink:hover {
-  color: #1976d2;
-  text-decoration: underline;
+  color: #64b5f6;
+  background: rgba(33, 150, 243, 0.15);
+  border-color: rgba(33, 150, 243, 0.3);
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+}
+
+.txLink:hover::before {
+  left: 100%;
 }
 
 /* Celebration Animation */
@@ -135,27 +193,50 @@
   position: absolute;
   bottom: 20px;
   left: 50%;
-  font-size: 20px;
-  animation: floatUp 2s ease-out forwards;
-  filter: blur(0px);
+  font-size: 24px;
+  animation: floatUp 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  filter: blur(0px) drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
   transition: filter 0.5s ease;
 }
 
 @keyframes floatUp {
   0% {
-    transform: translateX(-50%) translateY(0) scale(1) rotate(0deg);
+    transform: translateX(-50%) translateY(0) scale(0.8) rotate(0deg);
+    opacity: 0;
+    filter: blur(0px) drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+  }
+  20% {
     opacity: 1;
-    filter: blur(0px);
+    transform: translateX(-50%) translateY(-10px) scale(1) rotate(90deg);
   }
   50% {
-    transform: translateX(-50%) translateY(-40px) scale(1.2) rotate(180deg);
+    transform: translateX(calc(-50% + 20px)) translateY(-50px) scale(1.2) rotate(180deg);
+    opacity: 1;
+    filter: blur(0px) drop-shadow(0 0 12px rgba(255, 215, 0, 0.8));
+  }
+  80% {
+    transform: translateX(calc(-50% - 10px)) translateY(-90px) scale(1) rotate(270deg);
     opacity: 0.8;
-    filter: blur(0.5px);
   }
   100% {
-    transform: translateX(-50%) translateY(-80px) scale(0.8) rotate(360deg);
+    transform: translateX(-50%) translateY(-120px) scale(0.6) rotate(360deg);
     opacity: 0;
-    filter: blur(2px);
+    filter: blur(3px) drop-shadow(0 0 4px rgba(255, 215, 0, 0.2));
+  }
+}
+
+/* Status pulse animation */
+@keyframes statusPulse {
+  0%, 100% {
+    box-shadow: 
+      0 2px 12px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 2px 20px rgba(0, 0, 0, 0.3),
+      0 0 20px currentColor,
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 }
 

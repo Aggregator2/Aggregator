@@ -5,6 +5,7 @@ import { lifiService } from '../src/services/lifiService';
 import { isTokenBlacklisted } from '../src/config/tokenRegistry';
 import { TokenMonitoringService } from '../src/services/tokenMonitoringService';
 import { tokenLogger } from '../src/utils/devLogger';
+import { getFallbackTokensMap } from '../src/config/fallbackTokens';
 
 interface TokenPickerProps {
   isOpen: boolean;
@@ -116,6 +117,17 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
   const [tokensByChain, setTokensByChain] = useState<Map<number, Token[]>>(new Map());
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // Debug effect to monitor state changes
+  useEffect(() => {
+    console.log('[TokenPicker] State updated:', {
+      allTokensLength: allTokens.length,
+      isLoading,
+      selectedChain,
+      error,
+      tokensByChainSize: tokensByChain.size
+    });
+  }, [allTokens, isLoading, selectedChain, error, tokensByChain]);
 
   // Load all tokens from LI.FI when modal opens
   useEffect(() => {
@@ -130,11 +142,23 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
 
   // Get filtered and sorted tokens
   const displayTokens = useMemo(() => {
+    console.log('[TokenPicker] Computing displayTokens:', {
+      allTokensLength: allTokens.length,
+      selectedChain,
+      searchQuery: searchQuery.trim(),
+      firstFewTokens: allTokens.slice(0, 3).map(t => ({
+        symbol: t.symbol,
+        chainId: t.chainId,
+        name: t.name
+      }))
+    });
+    
     let tokens = allTokens;
     
     // Filter by chain if not 'all'
     if (selectedChain !== 'all') {
       tokens = tokens.filter(token => token.chainId === selectedChain);
+      console.log(`[TokenPicker] After chain filter (${selectedChain}):`, tokens.length);
     }
     
     // Filter by search query
@@ -146,6 +170,7 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
           token.name.toLowerCase().includes(query) ||
           token.address.toLowerCase().includes(query)
       );
+      console.log(`[TokenPicker] After search filter (${query}):`, tokens.length);
     }
     
     // Sort tokens
@@ -168,6 +193,7 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
       return a.symbol.localeCompare(b.symbol);
     });
     
+    console.log('[TokenPicker] Final displayTokens length:', tokens.length);
     return tokens;
   }, [allTokens, selectedChain, searchQuery]);
 
@@ -212,53 +238,84 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
       // Add minimum loading time to ensure spinner is visible
       const minLoadingTime = new Promise(resolve => setTimeout(resolve, 800));
       
+      // Always log in production for debugging
+      console.log('[TokenPicker] Starting token load...');
+      
       // First try to use cached tokens from monitoring service
       const cachedTokens = TokenMonitoringService.getCachedTokens();
-      tokenLogger.info(`Cache check: ${cachedTokens.size} chains in cache`);
+      console.log(`[TokenPicker] Cache check: ${cachedTokens.size} chains in cache`);
       
       if (cachedTokens.size > 0) {
         // Use cached tokens for instant loading
-        tokenLogger.info('Using cached tokens from monitoring service');
+        console.log('[TokenPicker] Using cached tokens from monitoring service');
         await minLoadingTime; // Ensure loading state is visible
         processCachedTokens(cachedTokens);
         
         // Check if cache needs update in background
         if (TokenMonitoringService.needsUpdate()) {
-          tokenLogger.info('Cache is stale, updating in background...');
+          console.log('[TokenPicker] Cache is stale, updating in background...');
           TokenMonitoringService.forceUpdate().then(() => {
             // Reload with fresh data
             const freshTokens = TokenMonitoringService.getCachedTokens();
+            console.log('[TokenPicker] Background update complete, refreshing display');
             processCachedTokens(freshTokens);
           }).catch(error => {
-            tokenLogger.error('Background update failed:', error);
+            console.error('[TokenPicker] Background update failed:', error);
           });
         }
       } else {
         // No cache, load directly from LI.FI
-        tokenLogger.info('No cached tokens, loading from LI.FI...');
+        console.log('[TokenPicker] No cached tokens, loading from LI.FI...');
         
         try {
           const chains = await lifiService.getChains();
-          tokenLogger.info(`Loading tokens from ${chains.length} chains...`);
+          console.log(`[TokenPicker] Loading tokens from ${chains.length} chains...`);
           
           // Get tokens from all chains
           const allTokensMap = await lifiService.getAllTokens();
-          tokenLogger.info(`Loaded tokens from ${allTokensMap.size} chains`);
+          console.log(`[TokenPicker] Loaded tokens from ${allTokensMap.size} chains`);
           await minLoadingTime; // Ensure loading state is visible
           processCachedTokens(allTokensMap);
         } catch (innerError) {
-          tokenLogger.error('Failed to load tokens from LI.FI:', innerError);
+          console.error('[TokenPicker] Failed to load tokens from LI.FI:', innerError);
+          // Log more details about the error
+          if (innerError instanceof Error) {
+            console.error('[TokenPicker] Error details:', {
+              message: innerError.message,
+              stack: innerError.stack,
+              name: innerError.name
+            });
+          }
           throw innerError;
         }
       }
       
     } catch (error) {
-      tokenLogger.error('Failed to load LI.FI tokens:', error);
-      setError('Failed to load tokens. Please try again.');
+      console.error('[TokenPicker] Failed to load LI.FI tokens:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to load tokens. ';
+      if (error instanceof Error) {
+        if (error.message.includes('CORS') || error.message.includes('blocked')) {
+          errorMessage += 'Network access blocked. Please check your connection.';
+        } else if (error.message.includes('timeout')) {
+          errorMessage += 'Request timed out. Please try again.';
+        } else if (error.message.includes('Network')) {
+          errorMessage += 'Network error. Please check your internet connection.';
+        } else {
+          errorMessage += error.message;
+        }
+      } else {
+        errorMessage += 'Please try again.';
+      }
+      
+      setError(errorMessage);
       
       // Try to use cached tokens as fallback from all chains
+      console.log('[TokenPicker] Attempting to use fallback cached tokens...');
       const cachedTokens = lifiService.getCachedTokens();
       if (cachedTokens.length > 0) {
+        console.log(`[TokenPicker] Found ${cachedTokens.length} cached tokens as fallback`);
         const tokens: Token[] = cachedTokens.map(token => ({
           symbol: token.symbol,
           name: token.name,
@@ -270,6 +327,11 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
           tags: []
         }));
         setAllTokens(tokens);
+      } else {
+        console.log('[TokenPicker] No cached tokens available, using hardcoded fallback tokens');
+        // Use hardcoded fallback tokens as last resort
+        const fallbackTokensMap = getFallbackTokensMap();
+        processCachedTokens(fallbackTokensMap);
       }
     } finally {
       setIsLoading(false);
@@ -280,6 +342,8 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
   const processCachedTokens = (tokensMap: Map<number, any[]>) => {
     const allTokensArray: Token[] = [];
     const chainMap = new Map<number, Token[]>();
+    
+    console.log(`[TokenPicker] Processing tokens from ${tokensMap.size} chains`);
     
     tokensMap.forEach((chainTokens, chainId) => {
       const mappedTokens = chainTokens.map(token => ({
@@ -298,10 +362,14 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
       allTokensArray.push(...mappedTokens);
     });
     
+    console.log(`[TokenPicker] Total tokens before deduplication: ${allTokensArray.length}`);
+    
     // Remove duplicates based on address + chainId combination
     const uniqueTokens = Array.from(
       new Map(allTokensArray.map(token => [`${token.address}-${token.chainId}`, token])).values()
     );
+    
+    console.log(`[TokenPicker] Unique tokens: ${uniqueTokens.length}`);
     
     // Filter out blacklisted tokens
     const safeTokens = uniqueTokens.filter(token => 
@@ -311,7 +379,17 @@ export const TokenPicker: React.FC<TokenPickerProps> = ({
     setTokensByChain(chainMap);
     setAllTokens(safeTokens);
     
-    tokenLogger.info(`Loaded ${safeTokens.length} safe tokens from ${tokensMap.size} chains`);
+    console.log(`[TokenPicker] Loaded ${safeTokens.length} safe tokens from ${tokensMap.size} chains`);
+    console.log('[TokenPicker] Sample tokens:', safeTokens.slice(0, 5).map(t => ({
+      symbol: t.symbol,
+      chainId: t.chainId,
+      address: t.address
+    })));
+    
+    // Force a re-render to debug
+    setTimeout(() => {
+      console.log('[TokenPicker] After state update - allTokens should be set now');
+    }, 100);
   };
 
   const handleTokenSelect = (token: Token) => {

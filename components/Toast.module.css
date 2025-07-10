@@ -2,86 +2,168 @@
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.9);
-  max-width: 400px;
-  min-width: 300px;
-  padding: 1rem;
+  transform: translate(-50%, -50%) translateY(20px) scale(0.95);
+  max-width: 420px;
+  min-width: 320px;
+  padding: 16px 20px;
   border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(20px);
+  box-shadow: 
+    0 24px 48px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(24px) saturate(180%);
   z-index: 10000;
-  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   opacity: 0;
+  pointer-events: none;
 }
 
 .toast.visible {
-  transform: translate(-50%, -50%) scale(1);
+  transform: translate(-50%, -50%) translateY(0) scale(1);
   opacity: 1;
+  pointer-events: auto;
 }
 
 .toastContent {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 12px;
+  position: relative;
 }
 
 .toastIcon {
-  font-size: 1.25rem;
+  font-size: 22px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .toastMessage {
   flex: 1;
-  font-size: 0.9rem;
+  font-size: 15px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.5;
+  letter-spacing: 0.2px;
 }
 
 .toastClose {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 20px;
   cursor: pointer;
   color: inherit;
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
+  opacity: 0.8;
+  transition: all 0.2s ease;
   padding: 0;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 8px;
+  flex-shrink: 0;
 }
 
 .toastClose:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 /* Toast types */
 .success {
-  background: linear-gradient(135deg, #4caf50, #66bb6a);
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.95) 0%, rgba(102, 187, 106, 0.95) 100%);
   color: white;
-  border: 1px solid rgba(76, 175, 80, 0.3);
+  border: 1px solid rgba(129, 199, 132, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.success::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  animation: shimmer 3s ease-in-out infinite;
 }
 
 .error {
-  background: linear-gradient(135deg, #f44336, #ef5350);
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.95) 0%, rgba(239, 83, 80, 0.95) 100%);
   color: white;
-  border: 1px solid rgba(244, 67, 54, 0.3);
+  border: 1px solid rgba(229, 115, 115, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.error::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  animation: shimmer 3s ease-in-out infinite;
 }
 
 .warning {
-  background: linear-gradient(135deg, #ff9800, #ffb74d);
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.95) 0%, rgba(255, 183, 77, 0.95) 100%);
   color: white;
-  border: 1px solid rgba(255, 152, 0, 0.3);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.warning::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  animation: shimmer 3s ease-in-out infinite;
 }
 
 .info {
-  background: linear-gradient(135deg, #2196f3, #42a5f5);
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.95) 0%, rgba(66, 165, 245, 0.95) 100%);
   color: white;
-  border: 1px solid rgba(33, 150, 243, 0.3);
+  border: 1px solid rgba(100, 181, 246, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.info::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Shimmer animation */
+@keyframes shimmer {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Mobile responsiveness */

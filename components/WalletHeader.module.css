@@ -307,7 +307,7 @@
 .notificationDropdown {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  right: -100px; /* Move further left to ensure full visibility */
   background: rgba(20, 20, 20, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
@@ -321,8 +321,6 @@
   flex-direction: column;
   z-index: 3000;
   overflow: hidden;
-  /* Ensure dropdown stays within viewport */
-  transform: translateX(calc(-100% + 50px));
 }
 
 .notificationHeader {
@@ -477,7 +475,7 @@
     width: calc(100vw - 30px);
     max-width: 320px;
     max-height: calc(100vh - 120px);
-    right: 0;
+    right: 15px;
     left: auto;
   }
 }

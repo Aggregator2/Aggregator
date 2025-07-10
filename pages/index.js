@@ -6,9 +6,9 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>SwappiQ - Cross-Chain Trading Platform</title>
-        <meta name="description" content="Trade across multiple blockchains with SwappiQ" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Swappiq - Cross-Chain Trading Platform</title>
+        <meta name="description" content="Trade across multiple blockchains with Swappiq" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 

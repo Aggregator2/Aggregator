@@ -47,8 +47,8 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>SwappiQ - Cross-Chain Trading Platform</title>
-        <meta name="description" content="Trade across multiple blockchains with SwappiQ" />
+        <title>Swappiq - Cross-Chain Trading Platform</title>
+        <meta name="description" content="Trade across multiple blockchains with Swappiq" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
@@ -56,7 +56,7 @@ export default function Home() {
         {/* Header */}
         <header style={{ background: '#111', padding: '20px 0', borderBottom: '1px solid #333' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6' }}>SwappiQ</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6' }}>Swappiq</h1>
             <nav>
               <a href="#swap" style={{ color: 'white', textDecoration: 'none', marginLeft: '20px' }}>Swap</a>
               <a href="/api/health" style={{ color: 'white', textDecoration: 'none', marginLeft: '20px' }}>API</a>

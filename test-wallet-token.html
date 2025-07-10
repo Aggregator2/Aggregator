@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet & Token Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+        .warning { color: #ffc107; }
+    </style>
+</head>
+<body>
+    <h1>Wallet & Token Connection Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Browser Environment Check</h2>
+        <button onclick="checkEnvironment()">Check Environment</button>
+        <div id="env-log" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Wallet Detection</h2>
+        <button onclick="detectWallets()">Detect Wallets</button>
+        <div id="wallet-log" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Connect Wallet</h2>
+        <button onclick="connectWallet()">Connect MetaMask</button>
+        <button onclick="getAccounts()">Get Accounts</button>
+        <div id="connect-log" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Test LiFi API</h2>
+        <button onclick="testLiFiAPI()">Test LiFi Token API</button>
+        <div id="lifi-log" class="log"></div>
+    </div>
+
+    <script>
+        function log(elementId, message, type = 'info') {
+            const logElement = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function checkEnvironment() {
+            const envLog = 'env-log';
+            document.getElementById(envLog).innerHTML = '';
+            
+            log(envLog, 'Checking browser environment...', 'info');
+            
+            // Check window object
+            log(envLog, `Window object: ${typeof window !== 'undefined' ? 'Available' : 'Not available'}`, 'info');
+            
+            // Check ethereum object
+            if (typeof window !== 'undefined' && window.ethereum) {
+                log(envLog, '✅ window.ethereum detected', 'success');
+                log(envLog, `isMetaMask: ${window.ethereum.isMetaMask || false}`, 'info');
+                log(envLog, `isCoinbaseWallet: ${window.ethereum.isCoinbaseWallet || false}`, 'info');
+                log(envLog, `isTrust: ${window.ethereum.isTrust || false}`, 'info');
+            } else {
+                log(envLog, '❌ window.ethereum not found', 'error');
+            }
+            
+            // Check web3 legacy
+            if (typeof window !== 'undefined' && window.web3) {
+                log(envLog, '✅ Legacy web3 detected', 'success');
+            }
+            
+            // Check user agent
+            log(envLog, `User Agent: ${navigator.userAgent}`, 'info');
+        }
+
+        async function detectWallets() {
+            const walletLog = 'wallet-log';
+            document.getElementById(walletLog).innerHTML = '';
+            
+            log(walletLog, 'Detecting wallet providers...', 'info');
+            
+            // Wait a bit for wallets to inject
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const providers = [];
+            
+            if (window.ethereum) {
+                if (window.ethereum.isMetaMask) {
+                    providers.push('MetaMask');
+                }
+                if (window.ethereum.isCoinbaseWallet) {
+                    providers.push('Coinbase Wallet');
+                }
+                if (window.ethereum.isTrust) {
+                    providers.push('Trust Wallet');
+                }
+                if (providers.length === 0) {
+                    providers.push('Unknown Ethereum Wallet');
+                }
+            }
+            
+            if (providers.length > 0) {
+                log(walletLog, `✅ Found ${providers.length} wallet(s): ${providers.join(', ')}`, 'success');
+            } else {
+                log(walletLog, '❌ No wallet providers detected', 'error');
+                log(walletLog, 'Please install MetaMask or another Web3 wallet', 'warning');
+            }
+        }
+
+        async function connectWallet() {
+            const connectLog = 'connect-log';
+            document.getElementById(connectLog).innerHTML = '';
+            
+            if (!window.ethereum) {
+                log(connectLog, '❌ No ethereum provider found', 'error');
+                return;
+            }
+            
+            try {
+                log(connectLog, 'Requesting account access...', 'info');
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+                
+                if (accounts.length > 0) {
+                    log(connectLog, `✅ Connected successfully!`, 'success');
+                    log(connectLog, `Account: ${accounts[0]}`, 'success');
+                    
+                    // Get chain ID
+                    const chainId = await window.ethereum.request({ 
+                        method: 'eth_chainId' 
+                    });
+                    log(connectLog, `Chain ID: ${chainId} (${parseInt(chainId, 16)})`, 'info');
+                } else {
+                    log(connectLog, '❌ No accounts returned', 'error');
+                }
+            } catch (error) {
+                log(connectLog, `❌ Connection error: ${error.message}`, 'error');
+                if (error.code) {
+                    log(connectLog, `Error code: ${error.code}`, 'error');
+                }
+            }
+        }
+
+        async function getAccounts() {
+            const connectLog = 'connect-log';
+            
+            if (!window.ethereum) {
+                log(connectLog, '❌ No ethereum provider found', 'error');
+                return;
+            }
+            
+            try {
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_accounts' 
+                });
+                
+                if (accounts.length > 0) {
+                    log(connectLog, `Current accounts: ${accounts.join(', ')}`, 'info');
+                } else {
+                    log(connectLog, 'No accounts connected', 'warning');
+                }
+            } catch (error) {
+                log(connectLog, `❌ Error getting accounts: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLiFiAPI() {
+            const lifiLog = 'lifi-log';
+            document.getElementById(lifiLog).innerHTML = '';
+            
+            log(lifiLog, 'Testing LiFi API...', 'info');
+            
+            try {
+                // Test chains endpoint
+                log(lifiLog, 'Fetching chains...', 'info');
+                const chainsResponse = await fetch('https://li.quest/v1/chains');
+                
+                if (chainsResponse.ok) {
+                    const chains = await chainsResponse.json();
+                    log(lifiLog, `✅ Fetched ${chains.length} chains`, 'success');
+                } else {
+                    log(lifiLog, `❌ Chains request failed: ${chainsResponse.status}`, 'error');
+                }
+                
+                // Test tokens endpoint
+                log(lifiLog, 'Fetching tokens for Ethereum...', 'info');
+                const tokensResponse = await fetch('https://li.quest/v1/tokens?chains=1');
+                
+                if (tokensResponse.ok) {
+                    const data = await tokensResponse.json();
+                    const ethTokens = data.tokens['1'] || [];
+                    log(lifiLog, `✅ Fetched ${ethTokens.length} Ethereum tokens`, 'success');
+                    
+                    // Show sample tokens
+                    const sampleTokens = ethTokens.slice(0, 3).map(t => t.symbol).join(', ');
+                    log(lifiLog, `Sample tokens: ${sampleTokens}`, 'info');
+                } else {
+                    log(lifiLog, `❌ Tokens request failed: ${tokensResponse.status}`, 'error');
+                }
+                
+            } catch (error) {
+                log(lifiLog, `❌ API test failed: ${error.message}`, 'error');
+                log(lifiLog, 'Check browser console for CORS errors', 'warning');
+            }
+        }
+
+        // Run environment check on load
+        window.addEventListener('load', () => {
+            checkEnvironment();
+        });
+    </script>
+</body>
+</html>

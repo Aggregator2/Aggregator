@@ -21,14 +21,20 @@ export class TokenMonitoringService {
    * Initialize the token monitoring service
    */
   static async initialize(): Promise<void> {
-    console.log('🔄 Initializing token monitoring service...');
+    console.log('🔄 [TokenMonitoring] Initializing token monitoring service...');
     
     try {
       // Load initial tokens
       await this.updateTokenCache();
-      console.log(`✅ Token monitoring service initialized with ${this.getTotalTokenCount()} tokens from ${this.cache.tokens.size} chains`);
+      console.log(`✅ [TokenMonitoring] Service initialized with ${this.getTotalTokenCount()} tokens from ${this.cache.tokens.size} chains`);
     } catch (error) {
-      console.error('❌ Failed to initialize token monitoring service:', error);
+      console.error('❌ [TokenMonitoring] Failed to initialize token monitoring service:', error);
+      if (error instanceof Error) {
+        console.error('[TokenMonitoring] Init error details:', {
+          message: error.message,
+          stack: error.stack
+        });
+      }
       // Don't throw - service can still work without initial cache
     }
     
@@ -69,7 +75,7 @@ export class TokenMonitoringService {
    */
   private static async updateTokenCache(): Promise<void> {
     if (this.isUpdating) {
-      console.log('⏳ Token update already in progress, skipping...');
+      console.log('⏳ [TokenMonitoring] Token update already in progress, skipping...');
       return;
     }
     
@@ -77,7 +83,7 @@ export class TokenMonitoringService {
     const startTime = Date.now();
     
     try {
-      console.log('🔍 Fetching latest tokens from LI.FI...');
+      console.log('🔍 [TokenMonitoring] Fetching latest tokens from LI.FI...');
       
       // Get all tokens from LI.FI
       const allTokensMap = await lifiService.getAllTokens();

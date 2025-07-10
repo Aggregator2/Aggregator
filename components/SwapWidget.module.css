@@ -11,6 +11,15 @@
   }
 }
 
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 /* Body styles are handled in globals.css */
 
 
@@ -37,6 +46,22 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .floatingLogo {
+    top: 15px;
+    transform: translateX(-50%) scale(0.75);
+    gap: 4px;
+  }
+  
+  .logoImage {
+    width: 60px;
+  }
+  
+  .logoText {
+    font-size: 32px;
+  }
 }
 
 .logoContainer {
@@ -160,17 +185,18 @@
 
 
 .settingsButton {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  width: 32px;
-  height: 32px;
+  background: rgba(15, 15, 15, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 18px;
   outline: none;
   -webkit-tap-highlight-color: transparent;
   position: relative;
@@ -179,21 +205,95 @@
   -webkit-user-select: none;
   touch-action: manipulation;
   flex-shrink: 0;
+  box-shadow: 
+    0 4px 24px rgba(0, 0, 0, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.settingsButton::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.settingsButton::after {
+  content: '⚙';
+  position: absolute;
+  font-size: 18px;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .settingsButton:hover {
-  background: rgba(255, 255, 255, 0.08);
-  transform: rotate(90deg);
+  background: rgba(20, 20, 20, 0.9);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.settingsButton:hover::before {
+  opacity: 1;
+}
+
+.settingsButton:hover::after {
+  transform: rotate(180deg);
 }
 
 .settingsButton:active {
-  transform: scale(0.95);
-  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(0) scale(0.95);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.settingsButton:active::after {
+  transform: rotate(90deg);
 }
 
 .settingsButton:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    0 0 0 2px rgba(102, 126, 234, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Rotation animation for settings icon */
+@keyframes settingsRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.settingsButton.active {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 
+    0 4px 24px rgba(99, 102, 241, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.24),
+    inset 0 0 20px rgba(99, 102, 241, 0.1);
+}
+
+.settingsButton.active::after {
+  animation: settingsRotate 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #6366f1;
 }
 
 .offlineIndicator {
@@ -412,14 +512,75 @@
 }
 
 .submitButton {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  background: #0a0a0a;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  background-image: linear-gradient(#0a0a0a, #0a0a0a),
+                    linear-gradient(90deg, #00dc82 0%, #36e4da 50%, #0047e1 100%);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 
+    0 0 20px rgba(0, 220, 130, 0.15),
+    inset 0 0 20px rgba(0, 0, 0, 0.5);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.submitButton::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(circle, rgba(0, 220, 130, 0.4) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border-radius: 50%;
+}
+
+.submitButton::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(90deg, #00dc82 0%, #36e4da 50%, #0047e1 100%);
+  border-radius: 14px;
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.4s ease;
+  filter: blur(15px);
 }
 
 .submitButton:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0 10px 40px rgba(0, 220, 130, 0.3),
+    0 0 60px rgba(0, 220, 130, 0.15),
+    inset 0 0 30px rgba(0, 0, 0, 0.7);
+  background-image: linear-gradient(#0f0f0f, #0f0f0f),
+                    linear-gradient(90deg, #00dc82 0%, #36e4da 50%, #0047e1 100%);
+}
+
+.submitButton:hover:not(:disabled)::before {
+  width: 300px;
+  height: 300px;
+  opacity: 1;
+}
+
+.submitButton:hover:not(:disabled)::after {
+  opacity: 0.5;
+}
+
+.submitButton:active:not(:disabled) {
+  transform: translateY(-1px) scale(0.98);
+  box-shadow: 
+    0 5px 20px rgba(0, 220, 130, 0.3),
+    inset 0 0 20px rgba(0, 0, 0, 0.8);
 }
 
 .connectButton:disabled,
@@ -427,6 +588,38 @@
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  box-shadow: none;
+}
+
+/* Smooth glow animation for ready state */
+@keyframes buttonGlow {
+  0%, 100% {
+    box-shadow: 
+      0 0 20px rgba(0, 220, 130, 0.15),
+      0 0 40px rgba(0, 220, 130, 0.1),
+      inset 0 0 20px rgba(0, 0, 0, 0.5);
+  }
+  50% {
+    box-shadow: 
+      0 0 30px rgba(0, 220, 130, 0.25),
+      0 0 60px rgba(0, 220, 130, 0.15),
+      inset 0 0 20px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.submitButton:not(:disabled):not(:hover) {
+  animation: buttonGlow 3s ease-in-out infinite;
+}
+
+/* Add subtle shimmer effect on hover */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
 }
 
 .escrowButton {
@@ -733,9 +926,17 @@
 /* Responsive design */
 @media (max-width: 640px) {
   .tradeCard {
-    padding: 20px;
-    max-width: calc(100vw - 32px);
-    border-radius: 20px;
+    padding: 16px;
+    max-width: calc(100vw - 20px);
+    width: calc(100vw - 20px);
+    border-radius: 16px;
+    position: fixed;
+    top: auto;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
   }
   
   .tradeHeader {
@@ -747,20 +948,25 @@
   }
   
   .floatingAbout {
-    top: 20px;
-    right: 20px;
+    top: 15px;
+    right: 15px;
   }
   
   .aboutLink {
-    padding: 8px 20px;
-    font-size: 14px;
-    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 13px;
+    border-radius: 16px;
   }
   
   .settingsButton {
-    width: 30px;
-    height: 30px;
-    font-size: 13px;
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+  
+  .settingsButton:hover {
+    transform: rotate(180deg) scale(1.05);
   }
   
   .tabRow {
@@ -782,24 +988,25 @@
   }
   
   .tokenPanel {
-    padding: 14px;
-    gap: 10px;
-    min-height: 60px;
+    padding: 12px;
+    gap: 8px;
+    min-height: 56px;
+    border-radius: 12px;
   }
   
   .amountInput {
-    font-size: 18px;
+    font-size: 16px;
   }
   
   .switchContainer {
-    height: 36px;
-    margin: 6px 0;
+    height: 32px;
+    margin: 4px 0;
   }
   
   .switchButton {
-    width: 32px;
-    height: 32px;
-    font-size: 13px;
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
   }
   
   .connectButton,
@@ -809,6 +1016,10 @@
     margin-top: 16px;
     min-height: 48px;
     border-radius: 12px;
+  }
+  
+  .submitButton:not(:disabled):not(:hover) {
+    animation: buttonPulse 2.5s infinite;
   }
   
   .escrowButton {
@@ -860,6 +1071,45 @@
     margin-top: 12px;
     padding: 12px;
     border-radius: 12px;
+  }
+  
+  /* Mobile-specific input adjustments */
+  .tradeCard input,
+  .tradeCard select,
+  .amountInput,
+  .slippageInput,
+  .tokenPanel input,
+  .settingsPanel input {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    /* Better touch targets for mobile */
+    min-height: 44px;
+    /* Prevent text selection issues on mobile */
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  
+  /* Ensure number inputs don't show spinners on mobile */
+  .amountInput[type="number"]::-webkit-inner-spin-button,
+  .amountInput[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  /* Ensure floating controls don't overlap */
+  .floatingControls {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    transform: scale(0.85);
+  }
+  
+  /* Better scrolling on mobile */
+  .tradeCard {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
   }
   
   .error {

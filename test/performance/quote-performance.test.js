@@ -18,7 +18,7 @@ class QuotePerformanceTest {
     async measureQuoteLatency(sellToken, buyToken, sellAmount) {
         const startTime = perf_hooks_1.performance.now();
         try {
-            const response = await axios_1.default.post(`${this.baseUrl}/api/unified-quote-simple`, {
+            const response = await axios_1.default.post(`${this.baseUrl}/api/quote-profitable`, {
                 sellToken,
                 buyToken,
                 sellAmount,

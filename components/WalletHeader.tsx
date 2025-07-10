@@ -44,6 +44,7 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
   const [isSwitching, setIsSwitching] = useState(false);
   const walletRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const notifDropdownRef = useRef<HTMLDivElement>(null);
 
   // Format wallet address
   const formatAddress = (address: string) => {
@@ -119,6 +120,35 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
       setUnreadCount(recentNotifications.length);
     }
   }, [notifications, showNotifications]);
+
+  // Adjust notification dropdown position to stay within viewport
+  useEffect(() => {
+    if (showNotifications && notifDropdownRef.current) {
+      const dropdown = notifDropdownRef.current;
+      const rect = dropdown.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const padding = 40; // Increased padding from viewport edge
+      
+      // Check if dropdown extends beyond right edge
+      if (rect.right > viewportWidth - padding) {
+        const overflow = rect.right - (viewportWidth - padding);
+        dropdown.style.transform = `translateX(-${overflow}px)`;
+      } else if (rect.left < padding) {
+        // Also check if it goes too far left
+        const overflow = padding - rect.left;
+        dropdown.style.transform = `translateX(${overflow}px)`;
+      } else {
+        dropdown.style.transform = 'none';
+      }
+      
+      // Check if dropdown extends beyond bottom edge
+      const viewportHeight = window.innerHeight;
+      if (rect.bottom > viewportHeight - padding) {
+        const maxHeight = viewportHeight - rect.top - padding;
+        dropdown.style.maxHeight = `${maxHeight}px`;
+      }
+    }
+  }, [showNotifications]);
 
   const getStatusIcon = (type: string) => {
     switch (type) {
@@ -331,6 +361,7 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
 
           {showNotifications && (
             <div 
+              ref={notifDropdownRef}
               className={styles.notificationDropdown}
               onClick={(e) => {
                 e.stopPropagation();

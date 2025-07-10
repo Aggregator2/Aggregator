@@ -16,21 +16,21 @@ interface Theme {
 
 const themes: Record<'light' | 'dark', Theme> = {
   dark: {
-    background: 'linear-gradient(135deg, #0a0a0b 0%, #121214 50%, #0a0a0b 100%)',
-    tokenColors: ['#627eea15', '#f7931a10', '#9945ff15', '#00d4aa10', '#ff6b6b10'],
-    lineColor: '#627eea08',
-    waveColor: '#627eea06',
-    particleColor: '#627eea12',
-    glowColor: '#627eea05',
+    background: '#0a0a0b',
+    tokenColors: ['#627eea', '#f7931a', '#9945ff', '#00d4aa', '#ff6b6b'],
+    lineColor: '#627eea',
+    waveColor: '#627eea',
+    particleColor: '#627eea',
+    glowColor: '#627eea',
     overlayOpacity: 0.03
   },
   light: {
-    background: 'linear-gradient(135deg, #fefefe 0%, #f9fafb 50%, #fefefe 100%)',
-    tokenColors: ['#4f46e510', '#f59e0b08', '#8b5cf610', '#10b98108', '#ef444408'],
-    lineColor: '#4f46e506',
-    waveColor: '#4f46e504',
-    particleColor: '#4f46e508',
-    glowColor: '#4f46e503',
+    background: '#fefefe',
+    tokenColors: ['#4f46e5', '#f59e0b', '#8b5cf6', '#10b981', '#ef4444'],
+    lineColor: '#4f46e5',
+    waveColor: '#4f46e5',
+    particleColor: '#4f46e5',
+    glowColor: '#4f46e5',
     overlayOpacity: 0.02
   }
 }

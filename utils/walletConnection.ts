@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { injectMetaMaskFix, getBestProvider } from './walletFallback';
 
 export interface WalletConnectionResult {
   success: boolean;
@@ -41,7 +42,24 @@ const ERROR_MESSAGES: Record<string | number, string> = {
 
 // Check if MetaMask is installed
 export function isMetaMaskInstalled(): boolean {
-  return typeof window !== 'undefined' && !!window.ethereum?.isMetaMask;
+  if (typeof window === 'undefined') {
+    console.log('[Wallet] Window is undefined (SSR)');
+    return false;
+  }
+  
+  // Try to fix missing MetaMask detection
+  injectMetaMaskFix();
+  
+  const hasEthereum = !!window.ethereum;
+  const isMetaMask = window.ethereum?.isMetaMask || false;
+  
+  console.log('[Wallet] MetaMask check:', {
+    hasEthereum,
+    isMetaMask,
+    ethereum: window.ethereum
+  });
+  
+  return hasEthereum && isMetaMask;
 }
 
 // Wait for MetaMask to be available
@@ -215,8 +233,11 @@ export async function connectWallet(options: WalletConnectionOptions = {}): Prom
     onPendingRequest 
   } = options;
   
+  console.log('[Wallet] Connect wallet called with options:', options);
+  
   // Check if connection is already in progress
   if (connectionInProgress) {
+    console.log('[Wallet] Connection already in progress, aborting');
     return {
       success: false,
       error: 'Connection already in progress',
@@ -229,15 +250,18 @@ export async function connectWallet(options: WalletConnectionOptions = {}): Prom
   try {
     // Check if MetaMask is installed
     if (!isMetaMaskInstalled()) {
+      console.log('[Wallet] MetaMask not detected, waiting...');
       // Wait briefly for MetaMask to be available (useful for browser extensions loading)
       const available = await waitForMetaMask(3000);
       if (!available) {
+        console.error('[Wallet] MetaMask not available after waiting');
         return {
           success: false,
           error: ERROR_MESSAGES.NO_ETHEREUM,
           errorCode: 'NO_ETHEREUM',
         };
       }
+      console.log('[Wallet] MetaMask became available after waiting');
     }
     
     // Check for pending requests
@@ -251,7 +275,15 @@ export async function connectWallet(options: WalletConnectionOptions = {}): Prom
       };
     }
     
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    // Get the best available provider
+    const ethereumProvider = window.ethereum || getBestProvider();
+    if (!ethereumProvider) {
+      throw new Error('No Ethereum provider found');
+    }
+    
+    const provider = new ethers.BrowserProvider(ethereumProvider);
+    
+    console.log('[Wallet] Requesting account access...');
     
     // Request account access with timeout
     const accounts = await Promise.race([
@@ -260,6 +292,8 @@ export async function connectWallet(options: WalletConnectionOptions = {}): Prom
         setTimeout(() => reject(new Error('TIMEOUT')), timeout)
       ),
     ]) as string[];
+    
+    console.log('[Wallet] Accounts received:', accounts);
     
     if (!accounts || accounts.length === 0) {
       return {
@@ -302,13 +336,20 @@ export async function connectWallet(options: WalletConnectionOptions = {}): Prom
     // Save connection to localStorage
     saveWalletConnection(address, chainId);
     
+    console.log('[Wallet] Connection successful:', { address, chainId });
+    
     return {
       success: true,
       address,
     };
     
   } catch (error: any) {
-    console.error('Wallet connection error:', error);
+    console.error('[Wallet] Connection error:', error);
+    console.error('[Wallet] Error details:', {
+      code: error.code,
+      message: error.message,
+      stack: error.stack
+    });
     
     // Determine error type and message
     let errorCode: string | number = 'UNKNOWN';

@@ -151,15 +151,23 @@ class LifiService {
       return allTokens;
 
     } catch (error) {
-      lifiLogger.error('Failed to fetch all tokens from LiFi SDK, trying fallback:', error);
+      console.error('[LiFi] Failed to fetch all tokens from LiFi SDK, trying fallback:', error);
+      if (error instanceof Error) {
+        console.error('[LiFi] Primary error details:', {
+          message: error.message,
+          stack: error.stack
+        });
+      }
       
       try {
         // Fallback: fetch chains and tokens individually
+        console.log('[LiFi] Attempting fallback method: fetching chains first...');
         const chains = await this.getChains();
         const allTokens = new Map<number, LifiToken[]>();
         
         // Fetch tokens for main chains only to avoid rate limits
         const mainChains = chains.filter(chain => [1, 56, 137, 42161, 10, 43114].includes(chain.id));
+        console.log(`[LiFi] Fetching tokens for ${mainChains.length} main chains...`);
         
         // Fetch tokens for all chains in parallel (batch by 3 to avoid rate limits)
         const batchSize = 3;
@@ -169,9 +177,9 @@ class LifiService {
             try {
               const tokens = await this.getTokens(chain.id);
               allTokens.set(chain.id, tokens);
-              lifiLogger.info(`Loaded ${tokens.length} tokens for chain ${chain.id}`);
+              console.log(`[LiFi] Loaded ${tokens.length} tokens for chain ${chain.id}`);
             } catch (error) {
-              lifiLogger.error(`Failed to fetch tokens for chain ${chain.id}:`, error);
+              console.error(`[LiFi] Failed to fetch tokens for chain ${chain.id}:`, error);
               allTokens.set(chain.id, []);
             }
           });
@@ -189,20 +197,27 @@ class LifiService {
         this.allTokensCacheTimestamp = Date.now();
         
         const totalTokens = Array.from(allTokens.values()).reduce((sum, tokens) => sum + tokens.length, 0);
-        lifiLogger.info(`Fallback loaded ${totalTokens} tokens for ${allTokens.size} chains`);
+        console.log(`[LiFi] Fallback loaded ${totalTokens} tokens for ${allTokens.size} chains`);
         
         return allTokens;
 
       } catch (fallbackError) {
-        lifiLogger.error('Fallback method also failed:', fallbackError);
+        console.error('[LiFi] Fallback method also failed:', fallbackError);
+        if (fallbackError instanceof Error) {
+          console.error('[LiFi] Fallback error details:', {
+            message: fallbackError.message,
+            stack: fallbackError.stack
+          });
+        }
         
         // Return cached data if available, even if stale
         if (this.allTokensCache) {
-          lifiLogger.warn('Returning stale cached data due to API failures');
+          console.warn('[LiFi] Returning stale cached data due to API failures');
           return this.allTokensCache;
         }
         
         // Last resort: return empty map
+        console.error('[LiFi] No cached data available, returning empty map');
         return new Map();
       }
     } finally {

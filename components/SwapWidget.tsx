@@ -12,6 +12,8 @@ import { useTokenPrice } from "../hooks/useTokenPrice";
 import { useToast } from "../hooks/useToast";
 import { useOrderToast } from "../hooks/useOrderToast";
 import { useNetworkStatus } from "../hooks/useFallback";
+import { useSimpleNotifications } from "../hooks/useSimpleNotifications";
+import NotificationSystem from "./NotificationSystem";
 import MarketOrderWidget from "./MarketOrderWidget";
 import QuoteSummary from "./QuoteSummary";
 import SkeletonLoader from "./SkeletonLoader";
@@ -123,7 +125,6 @@ export function useEscrowContract(walletAddress: string | null) {
           signerResult.signer
         );
       } catch (error) {
-        console.error("Error creating escrow contract:", error);
         throw error;
       }
     };
@@ -141,13 +142,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     userAddress || null
   );
   const [localOrders, setLocalOrders] = useState<any[]>([]);
-  const [notifications, setNotifications] = useState<Array<{
-    id: string;
-    type: 'success' | 'error' | 'pending' | 'info';
-    message: string;
-    timestamp: Date;
-    details?: any;
-  }>>([]);
+  const { notifications, notify, removeNotification } = useSimpleNotifications();
   const [tokens] = useState(DEFAULT_TOKENS);
   const [sellToken, setSellToken] = useState<Token>(DEFAULT_TOKENS[0]);
   const [buyToken, setBuyToken] = useState<Token>(DEFAULT_TOKENS[1]);
@@ -240,12 +235,12 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     try {
       const sellAmountWei = ethers.parseUnits(sellAmount, sellToken.decimals || 18);
       const balanceWei = BigInt(userBalance);
-      return balanceWei >= sellAmountWei;
+      const isSufficient = balanceWei >= sellAmountWei;
+      return isSufficient;
     } catch (error) {
-      console.error('Error comparing balance:', error);
       return true; // Assume true on error to avoid blocking
     }
-  }, [userBalance, sellAmount, sellToken.decimals, balanceLoading]);
+  }, [userBalance, sellAmount, sellToken.decimals, sellToken.symbol, balanceLoading]);
 
   // Cross-chain is now supported
   const isValidChainPair = useMemo(
@@ -271,9 +266,9 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         sellAmount: parsedAmount,
         chainId: sellTokenChainId,
         toChainId: buyTokenChainId, // Add destination chain for cross-chain swaps
+        slippageTolerance: slippageTolerance, // Add user's slippage preference
       };
     } catch (e) {
-      console.error("Failed to parse sell amount:", e);
       return null;
     }
   }, [
@@ -283,6 +278,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     sellTokenChainId,
     sellToken.decimals,
     hasValidAmount,
+    slippageTolerance,
   ]);
 
   // Hooks
@@ -307,16 +303,14 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         attemptReconnection().then((result) => {
           if (result.success && result.address) {
             setWalletAddress(result.address);
-            console.log("Wallet reconnected successfully");
             onConnect?.();
           }
         }).catch((error) => {
-          console.log("Auto-reconnect failed:", error);
           // Silent fail - user can manually connect if needed
         });
       }
     }
-  }, []); // Run only on mount
+  }, [onConnect]); // Include onConnect in dependencies
 
   /**
    * Fetch user balance for selected token
@@ -343,27 +337,30 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         const balance = await provider.getBalance(walletAddress);
         setUserBalance(balance.toString());
       } else {
-        // Fetch ERC20 token balance
-        // Minimal ERC20 ABI for balanceOf
-        const minimalERC20ABI = [
-          "function balanceOf(address account) view returns (uint256)"
-        ];
-        const tokenContract = new ethers.Contract(
-          sellToken.address,
-          minimalERC20ABI,
-          provider
-        );
-        const balance = await tokenContract.balanceOf(walletAddress);
-        setUserBalance(balance.toString());
+        // Fetch ERC20 token balance - wrapped in try-catch to handle any errors
+        try {
+          const minimalERC20ABI = [
+            "function balanceOf(address account) view returns (uint256)"
+          ];
+          const tokenContract = new ethers.Contract(
+            sellToken.address,
+            minimalERC20ABI,
+            provider
+          );
+          const balance = await tokenContract.balanceOf(walletAddress);
+          setUserBalance(balance.toString());
+        } catch (error) {
+          // Silently fail and assume no balance
+          setUserBalance('0');
+        }
       }
     } catch (error: any) {
-      console.error('Error fetching balance:', error);
-      setBalanceError('Failed to fetch balance');
-      setUserBalance(null);
+      // Silently fail and assume no balance
+      setUserBalance('0');
     } finally {
       setBalanceLoading(false);
     }
-  }, [walletAddress, sellToken.address, sellToken.symbol]);
+  }, [walletAddress, sellToken.address, sellToken.symbol, sellToken.decimals]);
 
   // Debounced balance fetch
   const debouncedFetchBalance = useMemo(() => {
@@ -383,26 +380,16 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     }
   }, [walletAddress, sellToken, debouncedFetchBalance]);
 
-  // Update insufficient balance state
+  // Update insufficient balance state only (no automatic notification)
   useEffect(() => {
-    setInsufficientBalance(!hasSufficientBalance && hasValidAmount);
-  }, [hasSufficientBalance, hasValidAmount]);
+    const isNowInsufficientBalance = !hasSufficientBalance && hasValidAmount;
+    
+    // Only update state if it actually changes
+    if (insufficientBalance !== isNowInsufficientBalance) {
+      setInsufficientBalance(isNowInsufficientBalance);
+    }
+  }, [hasSufficientBalance, hasValidAmount, insufficientBalance]);
 
-  // Helper function to add notifications
-  const addNotification = useCallback((
-    type: 'success' | 'error' | 'pending' | 'info',
-    message: string,
-    details?: any
-  ) => {
-    const notification = {
-      id: Date.now().toString(),
-      type,
-      message,
-      timestamp: new Date(),
-      details
-    };
-    setNotifications(prev => [notification, ...prev].slice(0, 50)); // Keep last 50
-  }, []);
 
   // Update wallet address from props with stability check
   useEffect(() => {
@@ -428,23 +415,18 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         timeout: 15000, // Reduced from 30s to 15s
         requiredChainId: 31337, // Local development network
         onPendingRequest: () => {
-          console.log(
-            "Connection request already pending. Please check MetaMask."
-          );
+          // Connection request already pending
         },
       });
 
       if (result.success && result.address) {
         setWalletAddress(result.address);
-        // Remove intrusive popup, just log connection
-        console.log(`Wallet connected: ${result.address}`);
         onConnect?.();
       } else {
         const errorMsg = result.error || "Failed to connect wallet";
         showError(errorMsg);
       }
     } catch (error: unknown) {
-      console.error("Wallet connection error:", error);
       const errorMsg =
         (error as Error).message || "Unexpected error connecting wallet";
       showError(errorMsg);
@@ -460,13 +442,10 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     try {
       await disconnectWalletUtil();
       setWalletAddress(null);
-      console.log("Wallet disconnected");
     } catch (error) {
-      console.error('Error disconnecting wallet:', error);
       // Fallback: clear local state anyway
       setWalletAddress(null);
       clearWalletConnection();
-      console.log("Wallet disconnected");
     }
   }, []);
 
@@ -499,7 +478,6 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      console.log("Quote request:", quoteRequestParams);
       const response = await fetch("/api/quote-profitable", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -511,7 +489,6 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error("Quote API error:", response.status, errorData);
         throw new Error(
           DOMPurify.sanitize(errorData.error || '') || `HTTP ${response.status}: ${response.statusText}`
         );
@@ -519,13 +496,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       const data = await response.json();
 
       if (data.warning) {
-        console.warn(data.warning);
-      } // Add developer logs for quote source and fallbacks
-      if (data.source) {
-        console.log(`💰 Quote source: ${data.source}`);
-        if (data.source !== "0x") {
-          console.log(`🔄 Fallback used: ${data.source}`);
-        }
+        // Warning present but not logged
       }
 
       setCurrentQuote(data);
@@ -547,7 +518,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       setCurrentQuote(null);
 
       if (!networkStatus.isOnline) {
-        console.warn("You appear to be offline. Please check your connection.");
+        // User appears to be offline
       }
     } finally {
       setQuoteLoading(false);
@@ -591,14 +562,10 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         }
       } catch (error) {
         consecutiveFailures++;
-        console.warn(
-          `Quote fetch failed (${consecutiveFailures}/${MAX_FAILURES})`
-        );
 
         // Stop polling after max failures
         if (consecutiveFailures >= MAX_FAILURES) {
           clearInterval(pollingInterval);
-          console.warn("Stopping quote polling due to repeated failures");
         }
       }
     };
@@ -694,10 +661,41 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   /**
    * Handle limit order submission from MarketOrderWidget
    */
+  /**
+   * Fetch unique nonce from API
+   */
+  const fetchNonce = async (address: string): Promise<string> => {
+    try {
+      const response = await fetch(`/api/nonce?address=${address}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch nonce');
+      }
+      const data = await response.json();
+      return data.nonce;
+    } catch (error) {
+      // Fallback to timestamp-based nonce if API fails
+      return `${Date.now()}${Math.random().toString(36).substring(2, 9)}`;
+    }
+  };
+
   const handleLimitOrderSubmit = async (limitOrder: any) => {
     if (!walletAddress) {
       showError("Please connect your wallet first");
       await connectWallet();
+      return;
+    }
+
+    // Check for insufficient balance
+    if (insufficientBalance && limitOrder.sellAmount === sellAmount) {
+      const availableAmount = userBalance ? ethers.formatUnits(userBalance, sellToken.decimals || 18) : '0';
+      const shortage = parseFloat(limitOrder.sellAmount) - parseFloat(availableAmount);
+      
+      // Only show external notification
+      notify.error(
+        'Cannot Place Order',
+        `You need ${shortage.toFixed(6)} more ${sellToken.symbol}`,
+        20000
+      );
       return;
     }
 
@@ -716,6 +714,9 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         return;
       }
 
+      // Fetch unique nonce
+      const nonce = await fetchNonce(address || walletAddress);
+
       // Create order object for limit order
       const order: Order = {
         sellToken: limitOrder.sellToken,
@@ -731,7 +732,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         partiallyFillable: true, // Limit orders are typically partially fillable
         kind: "sell",
         signingScheme: "eip712",
-        nonce: 0,
+        nonce: parseInt(nonce) || Date.now(),
       };
 
       // Validate order
@@ -745,8 +746,6 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         throw new Error(`Missing order fields: ${missingFields.join(", ")}`);
       }
 
-      console.log("Please sign the limit order in your wallet...");
-
       // Sign the order
       const signature = await signer.signTypedData(
         EIP712_DOMAIN,
@@ -755,10 +754,9 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       );
 
       // Add pending notification
-      addNotification(
-        'pending',
-        `Submitting limit order: ${DOMPurify.sanitize(String(limitOrder.sellAmount))} ${DOMPurify.sanitize(sellToken.symbol)} → ${DOMPurify.sanitize(String(limitOrder.buyAmount))} ${DOMPurify.sanitize(buyToken.symbol)}`,
-        { order, signature, limitPrice: limitOrder.limitPrice }
+      notify.info(
+        'Submitting Limit Order',
+        `${limitOrder.sellAmount} ${sellToken.symbol} → ${limitOrder.buyAmount} ${buyToken.symbol}`
       );
 
       // Submit to backend
@@ -777,13 +775,11 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       }
 
       showError(errorMessage);
-      console.error("Limit order submission error:", error);
       
       // Add error notification
-      addNotification(
-        'error',
-        `Limit order failed: ${DOMPurify.sanitize(errorMessage)}`,
-        { error: DOMPurify.sanitize(error.message || '') }
+      notify.error(
+        'Limit Order Failed',
+        errorMessage
       );
     }
   };
@@ -811,6 +807,20 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       return;
     }
 
+    // Check for insufficient balance
+    if (insufficientBalance) {
+      const availableAmount = userBalance ? ethers.formatUnits(userBalance, sellToken.decimals || 18) : '0';
+      const shortage = parseFloat(sellAmount) - parseFloat(availableAmount);
+      
+      // Only show external notification
+      notify.error(
+        'Cannot Execute Swap',
+        `You need ${shortage.toFixed(6)} more ${sellToken.symbol}`,
+        20000
+      );
+      return;
+    }
+
     try {
       // Get signer safely
       const signerResult = await getSigner();
@@ -825,6 +835,9 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         showError("Connected wallet address doesn't match. Please reconnect.");
         return;
       }
+
+      // Fetch unique nonce
+      const nonce = await fetchNonce(address || walletAddress);
 
       const baseUnits = ethers.parseUnits(sellAmount, sellToken.decimals || 18).toString();
       const validTo = Math.floor(Date.now() / 1000) + 1800; // 30 minutes
@@ -843,7 +856,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         partiallyFillable: false,
         kind: "sell",
         signingScheme: "eip712",
-        nonce: 0,
+        nonce: parseInt(nonce) || Date.now(),
       };
 
       // Validate order
@@ -857,14 +870,8 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         throw new Error(`Missing order fields: ${missingFields.join(", ")}`);
       }
 
-      // Log order for debugging
-      console.log("Order to sign:", order);
-      console.log("Order field types:", Object.entries(order).map(([k, v]) => `${k}: ${typeof v} = ${v}`))
-
       // Skip pre-validation to speed up MetaMask prompt
       // Validation will happen server-side after signing
-
-      console.log("Please sign the transaction in your wallet...");
 
       // Sign the order
       const signature = await signer.signTypedData(
@@ -874,10 +881,9 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       );
 
       // Add pending notification
-      addNotification(
-        'pending',
-        `Submitting order: ${DOMPurify.sanitize(sellAmount)} ${DOMPurify.sanitize(sellToken.symbol)} → ${DOMPurify.sanitize(buyToken.symbol)}`,
-        { order, signature }
+      notify.info(
+        'Submitting Order',
+        `${sellAmount} ${sellToken.symbol} → ${buyToken.symbol}`
       );
 
       // Submit to backend or parent component
@@ -902,13 +908,11 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       }
 
       showError(errorMessage);
-      console.error("Order submission error:", error);
       
       // Add error notification
-      addNotification(
-        'error',
-        `Order failed: ${DOMPurify.sanitize(errorMessage)}`,
-        { error: DOMPurify.sanitize(error.message || '') }
+      notify.error(
+        'Order Failed',
+        errorMessage
       );
     }
   };
@@ -952,10 +956,10 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       );
       
       // Add success notification
-      addNotification(
-        'success',
-        `Order submitted: ${DOMPurify.sanitize(sellAmount)} ${DOMPurify.sanitize(sellToken.symbol)} → ${DOMPurify.sanitize(buyAmountFormatted)} ${DOMPurify.sanitize(buyToken.symbol)}`,
-        { orderId, txHash: data.txHash }
+      notify.success(
+        'Order Submitted',
+        `${sellAmount} ${sellToken.symbol} → ${buyAmountFormatted} ${buyToken.symbol}`,
+        20000 // 20 seconds for success
       );
 
       // Add to local orders for notifications
@@ -1039,11 +1043,9 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         currentQuote.sellAmount
       );
 
-      console.log("Transaction submitted. Waiting for confirmation...");
       await tx.wait();
 
       await submitEscrowTx(orderId, tx.hash);
-      console.log("Deposited to Escrow successfully!");
     } catch (error: any) {
       const errorMessage = error.message || "Escrow deposit failed";
       setEscrowError(errorMessage);
@@ -1188,7 +1190,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
           );
         }
       } catch (error) {
-        console.error("Failed to check order status:", error);
+        // Failed to check order status
       }
     }, 3000); // Check every 3 seconds
 
@@ -1217,7 +1219,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         }),
       });
     } catch (error) {
-      console.error("Failed to log dispute:", error);
+      // Failed to log dispute
     }
   };
 
@@ -1228,8 +1230,6 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     if (!disputeOrder) return;
 
     try {
-      console.log("Initiating on-chain settlement...");
-
       // Call settlement API
       const response = await fetch("/api/disputes/settle", {
         method: "POST",
@@ -1242,9 +1242,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       });
 
       if (response.ok) {
-        console.log(
-          "Settlement initiated. Transaction will be processed on-chain."
-        );
+        // Settlement initiated. Transaction will be processed on-chain.
       } else {
         throw new Error("Settlement failed");
       }
@@ -1261,8 +1259,6 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     if (!disputeOrder) return;
 
     try {
-      console.log("Processing fund return...");
-
       // Call return API
       const response = await fetch("/api/disputes/return", {
         method: "POST",
@@ -1274,7 +1270,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       });
 
       if (response.ok) {
-        console.log("Funds will be returned to your wallet shortly.");
+        // Funds will be returned to your wallet shortly.
       } else {
         throw new Error("Return failed");
       }
@@ -1284,37 +1280,6 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     }
   };
 
-  // Combine notifications with orders for display
-  const combinedNotifications = useMemo(() => {
-    // Convert orders to notification format
-    const orderNotifications = localOrders.map(order => ({
-      id: order.id,
-      type: order.status as 'pending' | 'success' | 'error',
-      message: `${order.sellAmount} ${order.sellToken} → ${order.buyAmount} ${order.buyToken}`,
-      timestamp: order.timestamp || new Date(),
-      details: {
-        orderId: order.id,
-        txHash: order.txHash,
-        sellToken: order.sellToken,
-        buyToken: order.buyToken,
-        sellAmount: order.sellAmount,
-        buyAmount: order.buyAmount
-      }
-    }));
-    
-    // Merge with actual notifications, removing duplicates
-    const allNotifications = [...notifications];
-    orderNotifications.forEach(orderNotif => {
-      if (!allNotifications.find(n => n.details?.orderId === orderNotif.id)) {
-        allNotifications.push(orderNotif);
-      }
-    });
-    
-    // Sort by timestamp, newest first
-    return allNotifications.sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-  }, [notifications, localOrders]);
   
   // Ensure orders is always an array and map to expected format
   const safeOrders = useMemo(() => {
@@ -1361,9 +1326,16 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   return (
     <ErrorBoundary>
       <>
-        {/* Global animated background */}
-        <AnimatedBackground theme="dark" />
+        {/* Global animated background - temporarily disabled to fix THREE.js errors */}
+        {/* <AnimatedBackground theme="dark" /> */}
         
+        {/* New Professional Notification System */}
+        <NotificationSystem 
+          notifications={notifications}
+          onDismiss={removeNotification}
+        />
+        
+        {/* Old toast containers - kept for non-insufficient funds messages */}
         <ToastContainer />
         <OrderToastContainer />
         
@@ -1398,8 +1370,6 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
             onConnect={connectWallet}
             onDisconnect={disconnectWallet}
             orders={safeOrders}
-            notifications={combinedNotifications}
-            onClearNotifications={() => setNotifications([])}
           />
         </div>
 
@@ -1413,7 +1383,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
             </div>
             <button
               type="button"
-              className={styles.settingsButton}
+              className={`${styles.settingsButton} ${showSettings ? styles.active : ''}`}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1422,7 +1392,6 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
               onMouseDown={(e) => e.preventDefault()}
               title="Settings"
             >
-              ⚙️
             </button>
           </div>
 
@@ -1564,6 +1533,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
                     )}
                   </div>
                 )}
+                
                 {sellTokenPriceData.error && (
                   <div className={styles.priceError}>
                     Price unavailable: {sellTokenPriceData.error}
@@ -1741,7 +1711,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
                       fontSize: "12px",
                       cursor: "pointer",
                     }}
-                    onClick={() => console.log("Unwrap feature coming soon!")}
+                    onClick={() => {}}
                   >
                     Unwrap
                   </button>
@@ -1829,16 +1799,49 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
                   }
                 >
                   {quoteLoading && !currentQuote ? (
-                    <>
-                      <SkeletonLoader
-                        variant="text"
-                        width="60px"
-                        height="16px"
-                      />
-                      Getting Quote...
-                    </>
+                    <span style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      letterSpacing: '0.8px',
+                      textTransform: 'uppercase'
+                    }}>
+                      <span style={{
+                        width: '14px',
+                        height: '14px',
+                        border: '2px solid rgba(255, 255, 255, 0.3)',
+                        borderTopColor: 'white',
+                        borderRadius: '50%',
+                        animation: 'spin 0.8s linear infinite'
+                      }} />
+                      Loading
+                    </span>
+                  ) : insufficientBalance && !balanceLoading ? (
+                    <span style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      letterSpacing: '0.8px',
+                      textTransform: 'uppercase'
+                    }}>
+                      Insufficient Funds
+                    </span>
                   ) : (
-                    "Swap"
+                    <span style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      letterSpacing: '0.8px',
+                      textTransform: 'uppercase'
+                    }}>
+                      Execute Swap
+                    </span>
                   )}
                 </button>
               )}
