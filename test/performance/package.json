@@ -1,0 +1,36 @@
+{
+  "name": "swappiq-load-tests",
+  "version": "1.0.0",
+  "description": "Database load testing framework for SwappiQ Protocol",
+  "main": "load-test-runner.js",
+  "scripts": {
+    "test": "node load-test-runner.js",
+    "test:orders": "node load-test-runner.js -s orderPlacement",
+    "test:matching": "node load-test-runner.js -s orderMatching",
+    "test:settlement": "node load-test-runner.js -s settlement",
+    "test:queries": "node load-test-runner.js -s queries",
+    "test:connections": "node load-test-runner.js -s connectionExhaustion",
+    "test:mixed": "node load-test-runner.js -s mixed",
+    "test:all": "node load-test-runner.js -s all -d 300",
+    "test:stress": "node load-test-runner.js -s all -d 600 -r 20000 -c 200",
+    "analyze": "node analyze-results.js",
+    "report": "node generate-report.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.0.0",
+    "chalk": "^4.1.2",
+    "cli-table3": "^0.6.3",
+    "ioredis": "^5.3.2",
+    "ora": "^5.4.1",
+    "p-limit": "^3.1.0",
+    "pg": "^8.11.3",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

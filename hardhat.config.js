@@ -51,6 +51,54 @@ module.exports = {
       url: process.env.SEPOLIA_RPC_URL || "",
       accounts: getAccounts(),
       chainId: 11155111
+    },
+    mainnet: {
+      url: process.env.MAINNET_RPC_URL || "",
+      accounts: getAccounts(),
+      chainId: 1
+    },
+    arbitrum: {
+      url: process.env.ARBITRUM_RPC_URL || "https://arb1.arbitrum.io/rpc",
+      accounts: getAccounts(),
+      chainId: 42161
+    },
+    arbitrumGoerli: {
+      url: process.env.ARBITRUM_GOERLI_RPC_URL || "https://goerli-rollup.arbitrum.io/rpc",
+      accounts: getAccounts(),
+      chainId: 421613
+    },
+    polygon: {
+      url: process.env.POLYGON_RPC_URL || "https://polygon-rpc.com",
+      accounts: getAccounts(),
+      chainId: 137
+    },
+    polygonMumbai: {
+      url: process.env.POLYGON_MUMBAI_RPC_URL || "https://rpc-mumbai.maticvigil.com",
+      accounts: getAccounts(),
+      chainId: 80001
+    },
+    optimism: {
+      url: process.env.OPTIMISM_RPC_URL || "https://mainnet.optimism.io",
+      accounts: getAccounts(),
+      chainId: 10
+    },
+    optimismGoerli: {
+      url: process.env.OPTIMISM_GOERLI_RPC_URL || "https://goerli.optimism.io",
+      accounts: getAccounts(),
+      chainId: 420
+    }
+  },
+  etherscan: {
+    apiKey: {
+      mainnet: process.env.ETHERSCAN_API_KEY || "",
+      goerli: process.env.ETHERSCAN_API_KEY || "",
+      sepolia: process.env.ETHERSCAN_API_KEY || "",
+      arbitrumOne: process.env.ARBISCAN_API_KEY || "",
+      arbitrumGoerli: process.env.ARBISCAN_API_KEY || "",
+      polygon: process.env.POLYGONSCAN_API_KEY || "",
+      polygonMumbai: process.env.POLYGONSCAN_API_KEY || "",
+      optimisticEthereum: process.env.OPTIMISM_API_KEY || "",
+      optimisticGoerli: process.env.OPTIMISM_API_KEY || ""
     }
   },
  

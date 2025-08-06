@@ -1,0 +1,191 @@
+apiVersion: 1
+groups:
+  - name: dex_monitoring
+    interval: 30s
+    rules:
+      # Matching Engine Alerts
+      - alert: HighOrderProcessingLatency
+        expr: histogram_quantile(0.95, matching_engine_order_processing_time_bucket) > 200
+        for: 5m
+        labels:
+          severity: warning
+          component: matching_engine
+        annotations:
+          summary: "High order processing latency detected"
+          description: "P95 order processing latency is {{ $value }}ms (threshold: 200ms)"
+
+      - alert: LowOrderMatchingRate
+        expr: (rate(matching_engine_orders_matched_total[5m]) / rate(matching_engine_orders_submitted_total[5m])) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+          component: matching_engine
+        annotations:
+          summary: "Low order matching rate"
+          description: "Only {{ $value | humanizePercentage }} of orders are being matched"
+
+      - alert: HighCPUUsage
+        expr: matching_engine_cpu_usage > 80
+        for: 5m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% (threshold: 80%)"
+
+      # Settlement Alerts
+      - alert: LowSettlementSuccessRate
+        expr: settlements_success_rate_hourly < 0.95
+        for: 10m
+        labels:
+          severity: critical
+          component: settlement
+        annotations:
+          summary: "Low settlement success rate"
+          description: "Settlement success rate is {{ $value | humanizePercentage }} (threshold: 95%)"
+
+      - alert: StuckSettlements
+        expr: settlements_stuck > 0
+        for: 5m
+        labels:
+          severity: critical
+          component: settlement
+        annotations:
+          summary: "Stuck settlements detected"
+          description: "{{ $value }} settlements are stuck for more than 10 minutes"
+
+      - alert: HighSettlementGasUsage
+        expr: settlements_gas_average > 500000
+        for: 15m
+        labels:
+          severity: warning
+          component: settlement
+        annotations:
+          summary: "High settlement gas usage"
+          description: "Average gas per settlement is {{ $value }} (threshold: 500000)"
+
+      # Security Alerts
+      - alert: SuspiciousActivitySpike
+        expr: rate(suspicious_activity_alerts_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "Spike in suspicious activity alerts"
+          description: "{{ $value }} suspicious activity alerts per second"
+
+      - alert: CriticalSecurityAlert
+        expr: suspicious_activity_alerts_by_severity{severity="critical"} > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "Critical security alert detected"
+          description: "{{ $value }} critical security alerts"
+
+      - alert: HighWashTradingActivity
+        expr: suspicious_activity_alerts_by_type{type="wash_trading"} > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "High wash trading activity detected"
+          description: "{{ $value }} wash trading alerts in the last 10 minutes"
+
+      # Gas Price Alerts
+      - alert: HighGasPrice
+        expr: gas_price_mainnet_standard > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: gas
+        annotations:
+          summary: "High gas prices on mainnet"
+          description: "Gas price is {{ $value }} gwei (threshold: 100 gwei)"
+
+      - alert: GasPriceSpike
+        expr: (gas_price_mainnet_standard - gas_price_mainnet_standard offset 5m) / gas_price_mainnet_standard offset 5m > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: gas
+        annotations:
+          summary: "Gas price spike detected"
+          description: "Gas price increased by {{ $value | humanizePercentage }} in 5 minutes"
+
+      # Order Book Alerts
+      - alert: WideSpread
+        expr: orderbook_spread_percent > 2
+        for: 10m
+        labels:
+          severity: warning
+          component: orderbook
+        annotations:
+          summary: "Wide spread detected"
+          description: "Spread for {{ $labels.pair }} is {{ $value }}% (threshold: 2%)"
+
+      - alert: LowLiquidity
+        expr: orderbook_depth_1pct_total < 10000
+        for: 15m
+        labels:
+          severity: warning
+          component: orderbook
+        annotations:
+          summary: "Low liquidity detected"
+          description: "Order book depth for {{ $labels.pair }} is {{ $value }} (threshold: 10000)"
+
+      - alert: OrderBookImbalance
+        expr: abs(orderbook_pressure_score) > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: orderbook
+        annotations:
+          summary: "Order book imbalance detected"
+          description: "Pressure score for {{ $labels.pair }} is {{ $value }}"
+
+      # Performance Alerts
+      - alert: PerformanceRegression
+        expr: benchmark_order_matching_p95 > 100
+        for: 15m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "Performance regression detected"
+          description: "Order matching P95 latency is {{ $value }}ms (baseline: 50ms)"
+
+      - alert: LowThroughput
+        expr: benchmark_order_matching_ops_per_second < 1000
+        for: 10m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "Low throughput detected"
+          description: "Order matching throughput is {{ $value }} ops/sec (threshold: 1000)"
+
+      # System Health Alerts
+      - alert: HighMemoryUsage
+        expr: matching_engine_memory_usage > 2147483648  # 2GB
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanize1024 }}B"
+
+      - alert: ServiceDown
+        expr: up{job="dex-monitoring"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Service is down"
+          description: "{{ $labels.instance }} has been down for more than 5 minutes"

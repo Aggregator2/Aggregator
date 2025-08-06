@@ -1,0 +1,202 @@
+{
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "swappiq_test",
+    "user": "swappiq_test",
+    "password": "${TEST_DB_PASSWORD}",
+    "max": 100,
+    "min": 20,
+    "idleTimeoutMillis": 30000,
+    "connectionTimeoutMillis": 10000
+  },
+  "testScenarios": {
+    "orderPlacement": {
+      "enabled": true,
+      "description": "High-volume order placement test",
+      "targetRate": 10000,
+      "duration": 60,
+      "config": {
+        "batchSize": 100,
+        "priceVariation": 0.1,
+        "orderSizeVariation": 0.5,
+        "orderTypes": ["LIMIT"],
+        "timeInForce": ["GTC", "IOC", "FOK"]
+      }
+    },
+    "orderMatching": {
+      "enabled": true,
+      "description": "Order matching engine stress test",
+      "targetRate": 5000,
+      "duration": 60,
+      "config": {
+        "concurrency": 50,
+        "matchingDelay": 10,
+        "isolationLevel": "SERIALIZABLE",
+        "lockTimeout": 5000
+      }
+    },
+    "settlementProcessing": {
+      "enabled": true,
+      "description": "Settlement batch processing test",
+      "targetRate": 1000,
+      "duration": 60,
+      "config": {
+        "batchSize": 100,
+        "processingInterval": 100,
+        "balanceUpdateRetries": 3,
+        "settlementTimeout": 30000
+      }
+    },
+    "queryPerformance": {
+      "enabled": true,
+      "description": "Query performance under load",
+      "targetRate": 20000,
+      "duration": 60,
+      "config": {
+        "queryTypes": [
+          "orderBookDepth",
+          "userOrderHistory",
+          "tradeAggregation",
+          "balanceCheck",
+          "marketStats"
+        ],
+        "maxConcurrency": 200,
+        "statementTimeout": 5000,
+        "cacheEnabled": false
+      }
+    },
+    "connectionExhaustion": {
+      "enabled": true,
+      "description": "Connection pool exhaustion test",
+      "phases": [
+        {
+          "name": "Normal Load",
+          "connections": 50,
+          "holdTime": 1000
+        },
+        {
+          "name": "High Load",
+          "connections": 100,
+          "holdTime": 2000
+        },
+        {
+          "name": "Extreme Load",
+          "connections": 200,
+          "holdTime": 3000
+        },
+        {
+          "name": "Exhaustion",
+          "connections": 500,
+          "holdTime": 5000
+        }
+      ]
+    },
+    "mixedWorkload": {
+      "enabled": true,
+      "description": "Mixed workload simulating real usage",
+      "duration": 120,
+      "workloadMix": {
+        "orderPlacement": 0.3,
+        "orderMatching": 0.2,
+        "queries": 0.4,
+        "settlement": 0.1
+      }
+    }
+  },
+  "performanceThresholds": {
+    "orderPlacement": {
+      "maxLatency": 50,
+      "p95Latency": 20,
+      "p99Latency": 40,
+      "minThroughput": 9000,
+      "maxErrorRate": 0.01
+    },
+    "orderMatching": {
+      "maxLatency": 100,
+      "p95Latency": 50,
+      "p99Latency": 80,
+      "minThroughput": 4500,
+      "maxErrorRate": 0.02,
+      "maxDeadlocks": 10
+    },
+    "settlement": {
+      "maxLatency": 200,
+      "p95Latency": 100,
+      "p99Latency": 150,
+      "minThroughput": 900,
+      "maxErrorRate": 0.001
+    },
+    "queries": {
+      "maxLatency": 100,
+      "p95Latency": 50,
+      "p99Latency": 80,
+      "minThroughput": 18000,
+      "maxErrorRate": 0.01,
+      "maxDegradation": 20
+    },
+    "connectionPool": {
+      "maxWaitTime": 1000,
+      "minSuccessRate": 0.95,
+      "maxConcurrent": 80
+    }
+  },
+  "monitoring": {
+    "metricsInterval": 1000,
+    "detailedMetrics": true,
+    "realTimeUpdates": true,
+    "saveResults": true,
+    "resultsPath": "./test-results",
+    "exportFormats": ["json", "csv", "html"],
+    "alerts": {
+      "enabled": true,
+      "channels": ["console", "file"],
+      "thresholds": {
+        "errorRate": 0.05,
+        "latencySpike": 2.0,
+        "throughputDrop": 0.8
+      }
+    }
+  },
+  "testData": {
+    "userCount": 10000,
+    "assetPairs": [
+      { "base": "ETH", "quote": "USDT" },
+      { "base": "BTC", "quote": "USDT" },
+      { "base": "SOL", "quote": "USDT" },
+      { "base": "AVAX", "quote": "USDT" },
+      { "base": "MATIC", "quote": "USDT" }
+    ],
+    "initialOrderBook": {
+      "depth": 1000,
+      "spread": 0.001,
+      "basePrice": {
+        "ETH": 1500,
+        "BTC": 30000,
+        "SOL": 20,
+        "AVAX": 15,
+        "MATIC": 0.5
+      }
+    }
+  },
+  "optimization": {
+    "connectionPooling": {
+      "pgBouncer": {
+        "enabled": true,
+        "poolMode": "transaction",
+        "maxClientConn": 10000,
+        "defaultPoolSize": 25
+      }
+    },
+    "queryOptimization": {
+      "preparedStatements": true,
+      "statementCaching": true,
+      "queryPlanCaching": true
+    },
+    "indexing": {
+      "autoAnalyze": true,
+      "parallelIndexCreation": true,
+      "fillFactor": 90
+    }
+  }
+}

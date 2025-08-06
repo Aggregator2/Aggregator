@@ -1,0 +1,51 @@
+# JavaScript/TypeScript files that contain method calls
+*.js
+*.jsx
+*.ts
+*.tsx
+*.mjs
+*.cjs
+
+# Source directories
+src/
+components/
+lib/
+utils/
+hooks/
+pages/
+app/
+
+# Build and dependency directories
+node_modules/
+.next/
+dist/
+build/
+out/
+
+# Configuration files that might contain problematic patterns
+*.config.js
+*.config.ts
+next.config.js
+webpack.config.js
+vite.config.js
+rollup.config.js
+
+# Environment and cache files
+.env*
+.cache/
+.vercel/
+.turbo/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git and version control
+.git/
+.gitignore
+
+# Documentation that might contain code examples
+*.md
+docs/

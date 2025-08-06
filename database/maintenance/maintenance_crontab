@@ -1,0 +1,52 @@
+# PostgreSQL Maintenance Crontab for High-Frequency Trading System
+# Add these entries to your crontab with: crontab -e
+
+# Environment variables
+PGDATABASE=trading
+PGHOST=localhost
+PGPORT=5432
+PGUSER=postgres
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Minute-level tasks (every minute)
+* * * * * /usr/local/bin/pgbouncer-monitor.sh > /dev/null 2>&1
+
+# High-frequency materialized view refreshes (every 10 seconds via systemd timer recommended)
+# */1 * * * * for i in {0..5}; do (sleep $((i*10)); psql -d trading -c "SELECT refresh_materialized_view_with_timing('best_bid_ask');") & done
+
+# Medium frequency tasks (every 5 minutes)
+*/5 * * * * psql -d trading -c "REFRESH MATERIALIZED VIEW CONCURRENTLY order_book_depth;"
+*/5 * * * * psql -d trading -c "REFRESH MATERIALIZED VIEW CONCURRENTLY market_stats_24h;"
+
+# Hourly tasks
+0 * * * * psql -d trading -c "REFRESH MATERIALIZED VIEW CONCURRENTLY user_positions;"
+15 * * * * psql -d trading -c "REFRESH MATERIALIZED VIEW CONCURRENTLY order_book_imbalance;"
+30 * * * * psql -d trading -c "REFRESH MATERIALIZED VIEW CONCURRENTLY top_traders_daily;"
+
+# Daily maintenance (2 AM)
+0 2 * * * /workspace/database/maintenance/automated_maintenance.sh
+
+# Weekly deep maintenance (Sunday 3 AM)
+0 3 * * 0 psql -d trading -c "VACUUM ANALYZE;"
+
+# Monthly full maintenance (First Sunday 4 AM)
+0 4 1-7 * 0 psql -d trading -c "VACUUM FULL ANALYZE;"
+
+# Partition creation (daily at 1 AM)
+0 1 * * * psql -d trading -c "SELECT create_monthly_partition('orders', (date_trunc('month', now()) + interval '3 months')::date);"
+0 1 * * * psql -d trading -c "SELECT create_weekly_partition('trades', (date_trunc('week', now()) + interval '4 weeks')::date);"
+
+# Performance snapshot capture (every hour)
+0 * * * * psql -d trading -c "INSERT INTO performance_history SELECT * FROM capture_performance_snapshot();"
+
+# Backup verification (every 6 hours)
+0 */6 * * * psql -d trading -c "SELECT * FROM performance_alerts WHERE severity = 'CRITICAL';" | mail -s "Trading DB Critical Alerts" admin@example.com
+
+# Log rotation (daily at midnight)
+0 0 * * * /usr/sbin/logrotate -f /etc/logrotate.d/postgresql
+
+# Connection pool restart (weekly, Sunday 5 AM)
+0 5 * * 0 systemctl restart pgbouncer
+
+# Statistics reset (monthly, first day)
+0 0 1 * * psql -d trading -c "SELECT pg_stat_reset(); SELECT pg_stat_statements_reset();"

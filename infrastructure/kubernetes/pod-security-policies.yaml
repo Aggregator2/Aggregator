@@ -1,0 +1,108 @@
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: auth-services-psp
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+  supplementalGroups:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1
+        max: 65535
+  fsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1
+        max: 65535
+  readOnlyRootFilesystem: false
+  seLinux:
+    rule: 'RunAsAny'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: auth-services-psp-user
+  namespace: dex-platform
+rules:
+- apiGroups: ['policy']
+  resources: ['podsecuritypolicies']
+  verbs: ['use']
+  resourceNames:
+  - auth-services-psp
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: auth-services-psp-binding
+  namespace: dex-platform
+roleRef:
+  kind: Role
+  name: auth-services-psp-user
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: auth-service-account
+  namespace: dex-platform
+---
+# Pod Disruption Budget for Authentication Service
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: authentication-service-pdb
+  namespace: dex-platform
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: authentication-service
+---
+# Pod Disruption Budget for Session Manager Service
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: session-manager-service-pdb
+  namespace: dex-platform
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: session-manager-service
+---
+# Pod Disruption Budget for Wallet Auth Service
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: wallet-auth-service-pdb
+  namespace: dex-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: wallet-auth-service
+---
+# Pod Disruption Budget for RBAC Service
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rbac-service-pdb
+  namespace: dex-platform
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: rbac-service

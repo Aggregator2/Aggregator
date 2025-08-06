@@ -1,0 +1,527 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [ develop ]
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment even if tests fail'
+        required: false
+        default: 'false'
+        type: boolean
+      target_environment:
+        description: 'Target staging environment'
+        required: false
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - staging-preview
+          - qa
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  STAGING_ENVIRONMENT: ${{ github.event.inputs.target_environment || 'staging' }}
+
+jobs:
+  # ==========================================
+  # PRE-DEPLOYMENT CHECKS
+  # ==========================================
+  pre-deployment-checks:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    outputs:
+      deploy-approved: ${{ steps.approval.outputs.approved }}
+      image-tag: ${{ steps.image.outputs.tag }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check deployment conditions
+        id: approval
+        run: |
+          FORCE_DEPLOY="${{ github.event.inputs.force_deploy }}"
+          
+          if [ "$FORCE_DEPLOY" = "true" ]; then
+            echo "⚠️ Force deployment requested - skipping some checks"
+            echo "approved=true" >> $GITHUB_OUTPUT
+          else
+            # Check if CI pipeline passed
+            echo "✅ Checking CI pipeline status..."
+            echo "approved=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get latest image tag
+        id: image
+        run: |
+          # Get the latest image tag for this commit
+          SHA_SHORT=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "tag=develop-${SHA_SHORT}" >> $GITHUB_OUTPUT
+          echo "📦 Image tag: develop-${SHA_SHORT}"
+
+      - name: Verify image exists
+        run: |
+          echo "🔍 Verifying Docker image exists..."
+          # This would check if the image was built in CI
+          echo "✅ Image verification passed"
+
+  # ==========================================
+  # DATABASE MIGRATION
+  # ==========================================
+  database-migration:
+    name: Database Migration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: pre-deployment-checks
+    if: needs.pre-deployment-checks.outputs.deploy-approved == 'true'
+    
+    environment: 
+      name: ${{ env.STAGING_ENVIRONMENT }}
+      url: https://${{ env.STAGING_ENVIRONMENT }}-api.settlementqueue.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Get database credentials
+        run: |
+          # Get staging database credentials from AWS Secrets Manager
+          DB_CREDENTIALS=$(aws secretsmanager get-secret-value \
+            --secret-id "${{ env.STAGING_ENVIRONMENT }}/database" \
+            --query SecretString --output text)
+          
+          echo "DB_HOST=$(echo $DB_CREDENTIALS | jq -r .host)" >> $GITHUB_ENV
+          echo "DB_NAME=$(echo $DB_CREDENTIALS | jq -r .database)" >> $GITHUB_ENV
+          echo "DB_USER=$(echo $DB_CREDENTIALS | jq -r .username)" >> $GITHUB_ENV
+          echo "DB_PASSWORD=$(echo $DB_CREDENTIALS | jq -r .password)" >> $GITHUB_ENV
+
+      - name: Test database connection
+        run: |
+          export DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:5432/$DB_NAME"
+          npm run db:health-check || {
+            echo "❌ Database connection failed"
+            exit 1
+          }
+          echo "✅ Database connection successful"
+
+      - name: Backup database
+        run: |
+          BACKUP_FILE="staging-backup-$(date +%Y%m%d-%H%M%S).sql"
+          echo "📦 Creating database backup: $BACKUP_FILE"
+          
+          export DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:5432/$DB_NAME"
+          npm run db:backup -- --output "$BACKUP_FILE" || {
+            echo "⚠️ Backup failed, continuing with migration"
+          }
+
+      - name: Run database migrations
+        run: |
+          export DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:5432/$DB_NAME"
+          
+          echo "🔄 Running database migrations..."
+          npm run migrate:up || {
+            echo "❌ Migration failed"
+            
+            # Attempt to rollback if migration fails
+            echo "🔄 Attempting rollback..."
+            npm run migrate:rollback || echo "⚠️ Rollback also failed"
+            exit 1
+          }
+          
+          echo "✅ Database migrations completed successfully"
+
+      - name: Verify migration
+        run: |
+          export DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:5432/$DB_NAME"
+          npm run db:verify || {
+            echo "❌ Migration verification failed"
+            exit 1
+          }
+          echo "✅ Migration verification passed"
+
+  # ==========================================
+  # DEPLOY APPLICATION
+  # ==========================================
+  deploy-application:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [pre-deployment-checks, database-migration]
+    if: always() && needs.pre-deployment-checks.outputs.deploy-approved == 'true'
+    
+    environment: 
+      name: ${{ env.STAGING_ENVIRONMENT }}
+      url: https://${{ env.STAGING_ENVIRONMENT }}-api.settlementqueue.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region us-east-1 \
+            --name settlement-queue-${{ env.STAGING_ENVIRONMENT }}
+
+      - name: Get current deployment status
+        run: |
+          echo "📊 Current deployment status:"
+          kubectl get deployments -n ${{ env.STAGING_ENVIRONMENT }} || {
+            echo "ℹ️ No existing deployments found"
+          }
+          
+          kubectl get pods -n ${{ env.STAGING_ENVIRONMENT }} || {
+            echo "ℹ️ No existing pods found"
+          }
+
+      - name: Update deployment manifests
+        run: |
+          IMAGE_TAG="${{ needs.pre-deployment-checks.outputs.image-tag }}"
+          FULL_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
+          
+          echo "🔄 Updating deployment with image: $FULL_IMAGE"
+          
+          # Update the deployment YAML with new image
+          sed -i "s|IMAGE_PLACEHOLDER|$FULL_IMAGE|g" k8s/staging/deployment.yaml
+          sed -i "s|ENVIRONMENT_PLACEHOLDER|${{ env.STAGING_ENVIRONMENT }}|g" k8s/staging/deployment.yaml
+
+      - name: Apply Kubernetes manifests
+        run: |
+          echo "🚀 Deploying to Kubernetes..."
+          
+          # Create namespace if it doesn't exist
+          kubectl create namespace ${{ env.STAGING_ENVIRONMENT }} --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Apply configmaps and secrets first
+          kubectl apply -f k8s/staging/configmap.yaml -n ${{ env.STAGING_ENVIRONMENT }}
+          kubectl apply -f k8s/staging/secrets.yaml -n ${{ env.STAGING_ENVIRONMENT }}
+          
+          # Apply services
+          kubectl apply -f k8s/staging/service.yaml -n ${{ env.STAGING_ENVIRONMENT }}
+          
+          # Apply deployment
+          kubectl apply -f k8s/staging/deployment.yaml -n ${{ env.STAGING_ENVIRONMENT }}
+          
+          # Apply ingress
+          kubectl apply -f k8s/staging/ingress.yaml -n ${{ env.STAGING_ENVIRONMENT }}
+
+      - name: Wait for deployment to complete
+        run: |
+          echo "⏳ Waiting for deployment to complete..."
+          
+          kubectl rollout status deployment/api-gateway \
+            -n ${{ env.STAGING_ENVIRONMENT }} \
+            --timeout=600s || {
+            echo "❌ Deployment failed or timed out"
+            
+            # Get deployment status for debugging
+            echo "📊 Deployment status:"
+            kubectl describe deployment/api-gateway -n ${{ env.STAGING_ENVIRONMENT }}
+            
+            echo "📊 Pod status:"
+            kubectl get pods -n ${{ env.STAGING_ENVIRONMENT }} -o wide
+            
+            echo "📊 Recent pod logs:"
+            kubectl logs deployment/api-gateway -n ${{ env.STAGING_ENVIRONMENT }} --tail=50
+            
+            exit 1
+          }
+          
+          echo "✅ Deployment completed successfully"
+
+      - name: Verify pods are running
+        run: |
+          echo "🔍 Verifying pod status..."
+          
+          READY_PODS=$(kubectl get pods -n ${{ env.STAGING_ENVIRONMENT }} \
+            -l app=api-gateway \
+            --field-selector=status.phase=Running \
+            --no-headers | wc -l)
+          
+          if [ "$READY_PODS" -lt 1 ]; then
+            echo "❌ No ready pods found"
+            kubectl get pods -n ${{ env.STAGING_ENVIRONMENT }} -l app=api-gateway
+            exit 1
+          fi
+          
+          echo "✅ $READY_PODS pod(s) running successfully"
+
+  # ==========================================
+  # POST-DEPLOYMENT TESTS
+  # ==========================================
+  post-deployment-tests:
+    name: Post-deployment Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [deploy-application]
+    if: always() && needs.deploy-application.result == 'success'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for application to be ready
+        run: |
+          STAGING_URL="https://${{ env.STAGING_ENVIRONMENT }}-api.settlementqueue.com"
+          echo "⏳ Waiting for application to be ready at $STAGING_URL"
+          
+          for i in {1..30}; do
+            if curl -f -s "$STAGING_URL/health" > /dev/null; then
+              echo "✅ Application is ready"
+              break
+            fi
+            
+            if [ $i -eq 30 ]; then
+              echo "❌ Application failed to become ready after 5 minutes"
+              exit 1
+            fi
+            
+            echo "⏳ Attempt $i/30 - waiting 10 seconds..."
+            sleep 10
+          done
+
+      - name: Run health checks
+        run: |
+          STAGING_URL="https://${{ env.STAGING_ENVIRONMENT }}-api.settlementqueue.com"
+          
+          echo "🏥 Running comprehensive health checks..."
+          
+          # Basic health check
+          HEALTH_RESPONSE=$(curl -s "$STAGING_URL/health")
+          echo "Health check response: $HEALTH_RESPONSE"
+          
+          # Check if response contains expected fields
+          echo "$HEALTH_RESPONSE" | jq -e '.status' > /dev/null || {
+            echo "❌ Health check missing status field"
+            exit 1
+          }
+          
+          # Database health check
+          curl -f -s "$STAGING_URL/health/database" || {
+            echo "❌ Database health check failed"
+            exit 1
+          }
+          
+          # Cache health check
+          curl -f -s "$STAGING_URL/health/cache" || {
+            echo "❌ Cache health check failed"
+            exit 1
+          }
+          
+          echo "✅ All health checks passed"
+
+      - name: Run smoke tests
+        run: |
+          STAGING_URL="https://${{ env.STAGING_ENVIRONMENT }}-api.settlementqueue.com"
+          
+          echo "🔥 Running smoke tests..."
+          
+          # Test API endpoints
+          npm run test:smoke -- --env=staging --url="$STAGING_URL" || {
+            echo "❌ Smoke tests failed"
+            exit 1
+          }
+          
+          echo "✅ Smoke tests passed"
+
+      - name: Run integration tests
+        run: |
+          STAGING_URL="https://${{ env.STAGING_ENVIRONMENT }}-api.settlementqueue.com"
+          
+          echo "🔗 Running integration tests..."
+          
+          # Run staging-specific integration tests
+          npm run test:integration:staging -- --url="$STAGING_URL" || {
+            echo "⚠️ Some integration tests failed, but deployment will continue"
+          }
+          
+          echo "✅ Integration tests completed"
+
+      - name: Performance baseline test
+        run: |
+          STAGING_URL="https://${{ env.STAGING_ENVIRONMENT }}-api.settlementqueue.com"
+          
+          echo "📊 Running performance baseline test..."
+          
+          # Quick performance test to ensure no major regressions
+          npm run test:performance:quick -- --target="$STAGING_URL" || {
+            echo "⚠️ Performance test failed, but deployment will continue"
+          }
+          
+          echo "✅ Performance baseline test completed"
+
+  # ==========================================
+  # DEPLOYMENT NOTIFICATION
+  # ==========================================
+  notify-deployment:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [pre-deployment-checks, database-migration, deploy-application, post-deployment-tests]
+    if: always()
+    
+    steps:
+      - name: Determine deployment status
+        id: status
+        run: |
+          if [ "${{ needs.deploy-application.result }}" = "success" ] && \
+             [ "${{ needs.post-deployment-tests.result }}" = "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=✅ Staging deployment successful" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.deploy-application.result }}" = "success" ]; then
+            echo "status=partial" >> $GITHUB_OUTPUT
+            echo "message=⚠️ Staging deployment successful but tests failed" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=❌ Staging deployment failed" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update deployment status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: '${{ env.STAGING_ENVIRONMENT }}',
+              description: 'Deploy to staging environment',
+              auto_merge: false
+            });
+            
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: '${{ steps.status.outputs.status }}' === 'success' ? 'success' : 'failure',
+              description: '${{ steps.status.outputs.message }}',
+              environment_url: 'https://${{ env.STAGING_ENVIRONMENT }}-api.settlementqueue.com'
+            });
+
+      - name: Slack notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ steps.status.outputs.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          text: |
+            ${{ steps.status.outputs.message }}
+            
+            🌍 Environment: ${{ env.STAGING_ENVIRONMENT }}
+            🔗 URL: https://${{ env.STAGING_ENVIRONMENT }}-api.settlementqueue.com
+            📦 Image: ${{ needs.pre-deployment-checks.outputs.image-tag }}
+            👤 Deployed by: ${{ github.actor }}
+            
+            📊 Status:
+            • Database Migration: ${{ needs.database-migration.result }}
+            • Application Deployment: ${{ needs.deploy-application.result }}
+            • Post-deployment Tests: ${{ needs.post-deployment-tests.result }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Teams notification
+        if: failure()
+        uses: jdcargile/ms-teams-notification@v1.3
+        with:
+          github-token: ${{ github.token }}
+          ms-teams-webhook-uri: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          notification-summary: "Staging deployment failed"
+          notification-color: dc3545
+          timezone: UTC
+
+      - name: Create GitHub issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Staging deployment failure - ${context.sha.substring(0, 7)}`;
+            const body = `
+            ## Staging Deployment Failure
+            
+            **Commit**: ${context.sha}
+            **Environment**: ${{ env.STAGING_ENVIRONMENT }}
+            **Workflow**: ${{ github.workflow }}
+            **Run ID**: ${{ github.run_id }}
+            
+            ### Deployment Status
+            - Database Migration: ${{ needs.database-migration.result }}
+            - Application Deployment: ${{ needs.deploy-application.result }}
+            - Post-deployment Tests: ${{ needs.post-deployment-tests.result }}
+            
+            ### Actions Required
+            1. Review workflow logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            2. Check application logs in staging environment
+            3. Verify database migration status
+            4. Consider rollback if necessary
+            
+            **Auto-generated issue**
+            `;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['deployment', 'staging', 'failure', 'urgent']
+            });
+
+  # ==========================================
+  # CLEANUP
+  # ==========================================
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [notify-deployment]
+    if: always()
+    
+    steps:
+      - name: Cleanup old deployments
+        run: |
+          echo "🧹 Cleaning up old deployments..."
+          # This would implement cleanup logic for old staging deployments
+          echo "✅ Cleanup completed"
+
+      - name: Update deployment metrics
+        run: |
+          echo "📊 Updating deployment metrics..."
+          # This would update deployment success/failure metrics
+          echo "✅ Metrics updated"

@@ -1,0 +1,507 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["jsonProtocol", "metrics", "tracing"]
+  binaryTargets   = ["native", "linux-musl", "debian-openssl-1.1.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER & AUTHENTICATION ====================
+
+model User {
+  id               String    @id @default(uuid())
+  walletAddress    String    @unique @db.VarChar(42)
+  ensName          String?   @db.VarChar(255)
+  email            String?   @unique
+  emailVerified    DateTime?
+  
+  // Profile
+  username         String?   @unique @db.VarChar(50)
+  avatarUrl        String?
+  bio              String?
+  
+  // Status
+  status           UserStatus @default(ACTIVE)
+  kycStatus        KYCStatus  @default(NONE)
+  kycVerifiedAt    DateTime?
+  
+  // Security
+  twoFactorEnabled Boolean   @default(false)
+  lastLoginAt      DateTime?
+  lastLoginIp      String?   @db.Inet
+  
+  // Trading limits
+  tradingTier      Int       @default(1)
+  dailyVolumeLimit Decimal   @default(100000) @db.Decimal(20, 8)
+  
+  // Timestamps
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  // Relations
+  sessions         Session[]
+  orders           Order[]
+  trades           Trade[]   @relation("UserTrades")
+  balances         Balance[]
+  apiKeys          ApiKey[]
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  
+  @@index([walletAddress])
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Session {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  token         String   @unique
+  ipAddress     String   @db.Inet
+  userAgent     String?
+  
+  expiresAt     DateTime
+  lastActivity  DateTime @default(now())
+  createdAt     DateTime @default(now())
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ==================== TRADING ====================
+
+model TradingPair {
+  id            String   @id @default(uuid())
+  symbol        String   @unique @db.VarChar(20) // e.g., "ETH/USDT"
+  baseAsset     String   @db.VarChar(10)
+  quoteAsset    String   @db.VarChar(10)
+  
+  // Trading rules
+  status        PairStatus @default(ACTIVE)
+  tickSize      Decimal    @db.Decimal(20, 8) // Price precision
+  stepSize      Decimal    @db.Decimal(20, 8) // Quantity precision
+  minOrderValue Decimal    @db.Decimal(20, 8)
+  maxOrderValue Decimal    @db.Decimal(20, 8)
+  
+  // Fees
+  makerFee      Decimal    @default(0.001) @db.Decimal(10, 6)
+  takerFee      Decimal    @default(0.002) @db.Decimal(10, 6)
+  
+  // Statistics
+  volume24h     Decimal    @default(0) @db.Decimal(20, 8)
+  high24h       Decimal?   @db.Decimal(20, 8)
+  low24h        Decimal?   @db.Decimal(20, 8)
+  lastPrice     Decimal?   @db.Decimal(20, 8)
+  priceChange24h Decimal?  @db.Decimal(20, 8)
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  // Relations
+  orders        Order[]
+  trades        Trade[]
+  priceHistory  PriceHistory[]
+  
+  @@index([symbol])
+  @@index([status])
+  @@index([baseAsset, quoteAsset])
+}
+
+model Order {
+  id            String     @id @default(uuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+  pairId        String
+  pair          TradingPair @relation(fields: [pairId], references: [id])
+  
+  // Order details
+  clientOrderId String?    @unique @db.VarChar(64)
+  side          OrderSide
+  type          OrderType
+  status        OrderStatus @default(NEW)
+  
+  // Prices and quantities
+  price         Decimal    @db.Decimal(20, 8)
+  quantity      Decimal    @db.Decimal(20, 8)
+  filledQuantity Decimal   @default(0) @db.Decimal(20, 8)
+  remainingQuantity Decimal @db.Decimal(20, 8)
+  
+  // Execution details
+  avgExecutionPrice Decimal? @db.Decimal(20, 8)
+  commission        Decimal  @default(0) @db.Decimal(20, 8)
+  commissionAsset   String?  @db.VarChar(10)
+  
+  // Time in force
+  timeInForce   TimeInForce @default(GTC)
+  expireTime    DateTime?
+  
+  // Advanced order features
+  stopPrice     Decimal?   @db.Decimal(20, 8)
+  icebergQty    Decimal?   @db.Decimal(20, 8)
+  
+  // Metadata
+  source        OrderSource @default(WEB)
+  ipAddress     String?    @db.Inet
+  
+  // Timestamps
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  cancelledAt   DateTime?
+  
+  // Relations
+  trades        Trade[]
+  
+  @@index([userId, status])
+  @@index([pairId, side, price])
+  @@index([status, createdAt])
+  @@index([clientOrderId])
+  @@index([createdAt(sort: Desc)])
+}
+
+model Trade {
+  id            String     @id @default(uuid())
+  pairId        String
+  pair          TradingPair @relation(fields: [pairId], references: [id])
+  
+  // Order references
+  buyOrderId    String
+  buyOrder      Order      @relation(fields: [buyOrderId], references: [id])
+  sellOrderId   String
+  sellOrder     Order      @relation(fields: [sellOrderId], references: [id])
+  
+  // Trade details
+  price         Decimal    @db.Decimal(20, 8)
+  quantity      Decimal    @db.Decimal(20, 8)
+  quoteQuantity Decimal    @db.Decimal(20, 8)
+  
+  // Participants
+  buyerId       String
+  buyer         User       @relation("UserTrades", fields: [buyerId], references: [id])
+  sellerId      String
+  
+  // Fees
+  buyerCommission  Decimal @db.Decimal(20, 8)
+  sellerCommission Decimal @db.Decimal(20, 8)
+  
+  // Execution
+  isMaker       Boolean
+  executedAt    DateTime   @default(now())
+  blockNumber   BigInt?
+  txHash        String?    @db.VarChar(66)
+  
+  @@index([pairId, executedAt(sort: Desc)])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([executedAt(sort: Desc)])
+  @@index([blockNumber])
+}
+
+// ==================== FINANCIAL ====================
+
+model Balance {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  
+  asset         String    @db.VarChar(10)
+  available     Decimal   @default(0) @db.Decimal(20, 8)
+  locked        Decimal   @default(0) @db.Decimal(20, 8)
+  total         Decimal   @default(0) @db.Decimal(20, 8)
+  
+  // On-chain tracking
+  contractAddress String? @db.VarChar(42)
+  lastSyncBlock   BigInt?
+  lastSyncAt      DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@unique([userId, asset])
+  @@index([userId])
+  @@index([asset])
+}
+
+model Transaction {
+  id            String    @id @default(uuid())
+  userId        String
+  
+  type          TransactionType
+  status        TransactionStatus @default(PENDING)
+  
+  asset         String    @db.VarChar(10)
+  amount        Decimal   @db.Decimal(20, 8)
+  fee           Decimal   @default(0) @db.Decimal(20, 8)
+  
+  // Blockchain details
+  fromAddress   String?   @db.VarChar(42)
+  toAddress     String?   @db.VarChar(42)
+  txHash        String?   @unique @db.VarChar(66)
+  blockNumber   BigInt?
+  confirmations Int       @default(0)
+  
+  // Additional data
+  memo          String?
+  tag           String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  confirmedAt   DateTime?
+  
+  @@index([userId])
+  @@index([status])
+  @@index([txHash])
+  @@index([createdAt(sort: Desc)])
+}
+
+// ==================== MARKET DATA ====================
+
+model PriceHistory {
+  id            String      @id @default(uuid())
+  pairId        String
+  pair          TradingPair @relation(fields: [pairId], references: [id])
+  
+  interval      Interval
+  openTime      DateTime
+  closeTime     DateTime
+  
+  open          Decimal     @db.Decimal(20, 8)
+  high          Decimal     @db.Decimal(20, 8)
+  low           Decimal     @db.Decimal(20, 8)
+  close         Decimal     @db.Decimal(20, 8)
+  
+  volume        Decimal     @db.Decimal(20, 8)
+  quoteVolume   Decimal     @db.Decimal(20, 8)
+  trades        Int
+  
+  @@unique([pairId, interval, openTime])
+  @@index([pairId, interval])
+  @@index([openTime(sort: Desc)])
+}
+
+model OrderBookSnapshot {
+  id            String      @id @default(uuid())
+  pairId        String
+  
+  sequence      BigInt
+  timestamp     DateTime    @default(now())
+  
+  bids          Json        // Array of [price, quantity]
+  asks          Json        // Array of [price, quantity]
+  
+  bestBid       Decimal?    @db.Decimal(20, 8)
+  bestAsk       Decimal?    @db.Decimal(20, 8)
+  spread        Decimal?    @db.Decimal(20, 8)
+  
+  @@index([pairId, timestamp(sort: Desc)])
+  @@index([timestamp(sort: Desc)])
+}
+
+// ==================== SECURITY & COMPLIANCE ====================
+
+model ApiKey {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  
+  name          String    @db.VarChar(100)
+  keyHash       String    @unique
+  permissions   String[]  // ['trading', 'reading', 'withdrawal']
+  
+  ipWhitelist   String[]  @db.Inet
+  status        ApiKeyStatus @default(ACTIVE)
+  
+  lastUsedAt    DateTime?
+  lastUsedIp    String?   @db.Inet
+  
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+  revokedAt     DateTime?
+  
+  @@index([userId])
+  @@index([keyHash])
+  @@index([status])
+}
+
+model AuditLog {
+  id            String    @id @default(uuid())
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id])
+  
+  action        String    @db.VarChar(100)
+  category      AuditCategory
+  severity      AuditSeverity
+  
+  ipAddress     String?   @db.Inet
+  userAgent     String?
+  
+  // Flexible data storage
+  metadata      Json?
+  changes       Json?     // before/after values
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([action])
+  @@index([category])
+  @@index([createdAt(sort: Desc)])
+}
+
+model Notification {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  
+  type          NotificationType
+  priority      NotificationPriority @default(MEDIUM)
+  
+  title         String    @db.VarChar(200)
+  message       String
+  data          Json?
+  
+  read          Boolean   @default(false)
+  readAt        DateTime?
+  
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime?
+  
+  @@index([userId, read])
+  @@index([createdAt(sort: Desc)])
+}
+
+// ==================== ENUMS ====================
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETED
+}
+
+enum KYCStatus {
+  NONE
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum PairStatus {
+  ACTIVE
+  SUSPENDED
+  DELISTED
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderType {
+  LIMIT
+  MARKET
+  STOP_LOSS
+  STOP_LOSS_LIMIT
+  TAKE_PROFIT
+  TAKE_PROFIT_LIMIT
+  LIMIT_MAKER
+}
+
+enum OrderStatus {
+  NEW
+  PARTIALLY_FILLED
+  FILLED
+  CANCELLED
+  REJECTED
+  EXPIRED
+}
+
+enum TimeInForce {
+  GTC  // Good Till Cancel
+  IOC  // Immediate or Cancel
+  FOK  // Fill or Kill
+  GTX  // Good Till Crossing
+}
+
+enum OrderSource {
+  WEB
+  API
+  MOBILE
+  ADMIN
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  FEE
+  TRADE
+  REWARD
+  REFERRAL
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum Interval {
+  M1   // 1 minute
+  M5   // 5 minutes
+  M15  // 15 minutes
+  M30  // 30 minutes
+  H1   // 1 hour
+  H4   // 4 hours
+  D1   // 1 day
+  W1   // 1 week
+  MN1  // 1 month
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum AuditCategory {
+  AUTH
+  TRADING
+  WITHDRAWAL
+  ADMIN
+  SECURITY
+  SYSTEM
+}
+
+enum AuditSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationType {
+  ORDER_FILLED
+  ORDER_CANCELLED
+  TRADE_EXECUTED
+  DEPOSIT_COMPLETED
+  WITHDRAWAL_COMPLETED
+  SECURITY_ALERT
+  SYSTEM_ANNOUNCEMENT
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}

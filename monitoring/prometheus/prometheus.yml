@@ -1,0 +1,235 @@
+# Prometheus configuration for SwappiQ Protocol
+# Author: SwappiQ Protocol
+# Description: Production-ready monitoring configuration with service discovery
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'swappiq-production'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+      timeout: 10s
+      api_version: v2
+
+# Rules files specifying alerting rules
+rule_files:
+  - "rules/*.yml"
+
+# Scrape configuration
+scrape_configs:
+  # SwappiQ API services
+  - job_name: 'swappiq-api'
+    static_configs:
+      - targets:
+          - 'api-1:8080'
+          - 'api-2:8080'
+          - 'api-3:8080'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    scheme: https
+    tls_config:
+      insecure_skip_verify: false
+      ca_file: /etc/prometheus/certs/ca.crt
+      cert_file: /etc/prometheus/certs/client.crt
+      key_file: /etc/prometheus/certs/client.key
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/auth/password
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # WebSocket services
+  - job_name: 'swappiq-websocket'
+    static_configs:
+      - targets:
+          - 'ws-1:8081'
+          - 'ws-2:8081'
+          - 'ws-3:8081'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.*):(.*)'
+        target_label: 'service'
+        replacement: 'websocket'
+
+  # Order matching engine
+  - job_name: 'matching-engine'
+    static_configs:
+      - targets:
+          - 'matching-1:8082'
+          - 'matching-2:8082'
+    metrics_path: '/metrics'
+    scrape_interval: 5s  # Higher frequency for trading metrics
+    
+  # Settlement service
+  - job_name: 'settlement-service'
+    static_configs:
+      - targets:
+          - 'settlement-1:8083'
+          - 'settlement-2:8083'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Balance service
+  - job_name: 'balance-service'
+    static_configs:
+      - targets:
+          - 'balance-1:8084'
+          - 'balance-2:8084'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # Risk management service
+  - job_name: 'risk-service'
+    static_configs:
+      - targets:
+          - 'risk-1:8085'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Infrastructure monitoring
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets:
+          - 'node-1:9100'
+          - 'node-2:9100'
+          - 'node-3:9100'
+    scrape_interval: 30s
+
+  # Database monitoring
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets:
+          - 'postgres-exporter:9187'
+    scrape_interval: 30s
+
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets:
+          - 'redis-exporter:9121'
+    scrape_interval: 30s
+
+  # Message queue monitoring
+  - job_name: 'rabbitmq-exporter'
+    static_configs:
+      - targets:
+          - 'rabbitmq-exporter:9419'
+    scrape_interval: 30s
+
+  # Kubernetes monitoring (if deployed on K8s)
+  - job_name: 'kubernetes-apiservers'
+    kubernetes_sd_configs:
+      - role: endpoints
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: default;kubernetes;https
+
+  - job_name: 'kubernetes-nodes'
+    kubernetes_sd_configs:
+      - role: node
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics
+
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+
+  # Blackbox monitoring for external endpoints
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - https://api.swappiq.com/health
+        - https://ws.swappiq.com/health
+        - https://app.swappiq.com
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # Custom business metrics
+  - job_name: 'business-metrics'
+    static_configs:
+      - targets:
+          - 'metrics-collector:8090'
+    metrics_path: '/business-metrics'
+    scrape_interval: 30s
+
+# Remote write configuration for long-term storage
+remote_write:
+  - url: "https://prometheus-remote-write.swappiq.com/api/v1/write"
+    basic_auth:
+      username: "swappiq"
+      password_file: "/etc/prometheus/remote-write-password"
+    queue_config:
+      max_samples_per_send: 10000
+      max_shards: 200
+      capacity: 500000
+    write_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'swappiq_.*'
+        action: keep
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus/data
+    retention.time: 15d
+    retention.size: 50GB
+    wal-compression: true

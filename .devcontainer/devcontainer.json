@@ -8,7 +8,7 @@
   },  "runArgs": [
     "--cap-add=NET_ADMIN",
     "--cap-add=NET_RAW",
-    "-e", "ANTHROPIC_API_KEY=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"
+    "-e", "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"
   ],
   "customizations": {
     "vscode": {

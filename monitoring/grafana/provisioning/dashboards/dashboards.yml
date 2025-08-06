@@ -1,0 +1,31 @@
+# Grafana Dashboard Provisioning Configuration
+# Author: SwappiQ Protocol
+# Description: Automatic dashboard provisioning for production monitoring
+
+apiVersion: 1
+
+providers:
+  - name: 'SwappiQ Dashboards'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: true
+
+  - name: 'System Dashboards'
+    type: file
+    folder: 'Infrastructure'
+    disableDeletion: false
+    updateIntervalSeconds: 60
+    options:
+      path: /etc/grafana/provisioning/dashboards/system
+
+  - name: 'Business Dashboards'
+    type: file
+    folder: 'Business Metrics'
+    disableDeletion: false
+    updateIntervalSeconds: 60
+    options:
+      path: /etc/grafana/provisioning/dashboards/business

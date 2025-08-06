@@ -1,0 +1,230 @@
+# Jaeger configuration for SwappiQ Protocol distributed tracing
+# Author: SwappiQ Protocol
+# Description: Production-ready distributed tracing configuration
+
+# Jaeger Collector configuration
+collector:
+  # gRPC server configuration
+  grpc-server:
+    host-port: 0.0.0.0:14250
+    tls:
+      enabled: true
+      cert: /etc/jaeger/certs/server.crt
+      key: /etc/jaeger/certs/server.key
+      client-ca: /etc/jaeger/certs/ca.crt
+      
+  # HTTP server configuration  
+  http-server:
+    host-port: 0.0.0.0:14268
+    cors:
+      allowed-origins: ["https://jaeger.swappiq.com"]
+      allowed-headers: ["Content-Type", "Authorization"]
+      
+  # Zipkin compatibility
+  zipkin:
+    host-port: 0.0.0.0:9411
+    
+  # Queue configuration for high throughput
+  queue:
+    size: 10000
+    
+  # Number of workers to pull from queue
+  num-workers: 50
+  
+  # Batch size for writing to storage
+  write-buffer-size: 1000
+  
+  # Metrics configuration
+  metrics:
+    backend: prometheus
+    http-route: /metrics
+
+# Jaeger Query configuration
+query:
+  # Web UI configuration
+  http-server:
+    host-port: 0.0.0.0:16686
+    tls:
+      enabled: true
+      cert: /etc/jaeger/certs/server.crt
+      key: /etc/jaeger/certs/server.key
+      
+  # gRPC server for internal communication
+  grpc-server:
+    host-port: 0.0.0.0:16685
+    tls:
+      enabled: true
+      cert: /etc/jaeger/certs/server.crt
+      key: /etc/jaeger/certs/server.key
+      client-ca: /etc/jaeger/certs/ca.crt
+      
+  # Base path for UI
+  query:
+    base-path: /jaeger
+    
+  # Additional UI configuration
+  ui-config: |
+    {
+      "monitor": {
+        "menuEnabled": true
+      },
+      "dependencies": {
+        "menuEnabled": true
+      }
+    }
+
+# Storage configuration
+storage:
+  type: elasticsearch
+  
+  # Elasticsearch configuration
+  elasticsearch:
+    # Cluster endpoints
+    server-urls: 
+      - https://elasticsearch-1:9200
+      - https://elasticsearch-2:9200
+      - https://elasticsearch-3:9200
+      
+    # Authentication
+    username: jaeger
+    password: ${ELASTICSEARCH_PASSWORD}
+    
+    # TLS configuration
+    tls:
+      enabled: true
+      ca: /etc/jaeger/certs/ca.crt
+      cert: /etc/jaeger/certs/client.crt
+      key: /etc/jaeger/certs/client.key
+      server-name: elasticsearch
+      
+    # Index configuration
+    index-prefix: jaeger
+    create-index-templates: true
+    
+    # Index settings
+    num-shards: 3
+    num-replicas: 1
+    
+    # Data retention
+    max-span-age: 168h  # 7 days
+    
+    # Bulk processing
+    bulk:
+      size: 5000000  # 5MB
+      workers: 10
+      actions: 1000
+      flush-interval: 200ms
+      
+    # Index rollover
+    adaptive-sampling:
+      max-traces-per-second: 1000
+      
+  # Span storage configuration
+  span-storage:
+    type: elasticsearch
+
+# Jaeger Agent configuration (if deployed separately)
+agent:
+  # UDP receivers
+  processors:
+    jaeger:
+      compact:
+        server:
+          host-port: 0.0.0.0:6831
+      binary:
+        server:
+          host-port: 0.0.0.0:6832
+          
+    zipkin:
+      compact:
+        server:
+          host-port: 0.0.0.0:5775
+          
+  # gRPC reporter to collector
+  reporter:
+    grpc:
+      host-port: jaeger-collector:14250
+      tls:
+        enabled: true
+        ca: /etc/jaeger/certs/ca.crt
+        cert: /etc/jaeger/certs/client.crt
+        key: /etc/jaeger/certs/client.key
+        server-name: jaeger-collector
+        
+  # Local agent metrics
+  metrics:
+    backend: prometheus
+    http-route: /metrics
+
+# Sampling configuration
+sampling:
+  # Default sampling strategy
+  default_strategy:
+    type: probabilistic
+    param: 0.1  # 10% sampling rate
+    
+  # Per-service sampling strategies
+  per_service_strategies:
+    - service: "swappiq-api"
+      type: "adaptive"
+      max_traces_per_second: 100
+      operation_strategies:
+        - operation: "POST /api/v1/orders"
+          type: "probabilistic"
+          param: 1.0  # 100% sampling for order creation
+        - operation: "GET /api/v1/health"
+          type: "probabilistic"
+          param: 0.01  # 1% sampling for health checks
+          
+    - service: "matching-engine"
+      type: "probabilistic"
+      param: 1.0  # 100% sampling for trading engine
+      
+    - service: "settlement-service"
+      type: "probabilistic"
+      param: 1.0  # 100% sampling for settlements
+      
+    - service: "websocket-service"
+      type: "adaptive"
+      max_traces_per_second: 50
+      
+    - service: "balance-service"
+      type: "probabilistic"
+      param: 0.5  # 50% sampling for balance operations
+      
+    - service: "risk-service"
+      type: "probabilistic"
+      param: 1.0  # 100% sampling for risk management
+
+# Logging configuration
+log-level: info
+
+# Health check configuration
+health-check:
+  http-port: 14269
+
+# Metrics configuration
+metrics:
+  backend: prometheus
+  http-route: /metrics
+  
+# Environment-specific overrides
+# These can be set via environment variables
+env:
+  production:
+    log-level: warn
+    sampling:
+      default_strategy:
+        param: 0.01  # 1% sampling in production
+  
+  staging:
+    log-level: info
+    sampling:
+      default_strategy:
+        param: 0.1  # 10% sampling in staging
+        
+  development:
+    log-level: debug
+    sampling:
+      default_strategy:
+        param: 1.0  # 100% sampling in development

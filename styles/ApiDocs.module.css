@@ -1,0 +1,527 @@
+/* API Documentation Styles */
+.apiDocs {
+  min-height: 100vh;
+  background: #0a0a0b;
+  color: #ffffff;
+}
+
+/* Header - Reuse from DeveloperPortal */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(10, 10, 11, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 1000;
+}
+
+.headerContent {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.logo img {
+  height: 36px;
+  width: auto;
+}
+
+.nav {
+  display: flex;
+  gap: 36px;
+  align-items: center;
+}
+
+.nav a {
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.nav a.active,
+.nav a:hover {
+  color: #ffffff;
+}
+
+.nav a.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #00dc82 0%, #36e4da 50%, #0047e1 100%);
+  opacity: 1;
+}
+
+/* Docs Container */
+.docsContainer {
+  display: flex;
+  padding-top: 72px;
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 300px;
+  background: rgba(255, 255, 255, 0.02);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 32px 24px;
+  overflow-y: auto;
+  position: sticky;
+  top: 72px;
+  height: calc(100vh - 72px);
+}
+
+.sidebarHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.sidebarHeader h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.version {
+  background: rgba(0, 220, 130, 0.2);
+  color: #00dc82;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.apiKeyInput {
+  margin-bottom: 32px;
+}
+
+.apiKeyInput label {
+  display: block;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 8px;
+}
+
+.apiKeyInput input {
+  width: 100%;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 14px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  transition: all 0.2s ease;
+}
+
+.apiKeyInput input:focus {
+  outline: none;
+  border-color: rgba(0, 220, 130, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.endpointList {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.endpointCategory h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+
+.endpointItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.endpointItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.endpointItem.active {
+  background: rgba(0, 220, 130, 0.1);
+  color: #ffffff;
+  border-color: rgba(0, 220, 130, 0.3);
+}
+
+.method {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.method.get {
+  background: rgba(79, 172, 254, 0.2);
+  color: #4facfe;
+}
+
+.method.post {
+  background: rgba(0, 220, 130, 0.2);
+  color: #00dc82;
+}
+
+.method.put {
+  background: rgba(250, 112, 154, 0.2);
+  color: #fa709a;
+}
+
+.method.delete {
+  background: rgba(245, 87, 108, 0.2);
+  color: #f5576c;
+}
+
+.endpointTitle {
+  flex: 1;
+}
+
+/* Main Content */
+.mainContent {
+  flex: 1;
+  padding: 48px 64px;
+  overflow-y: auto;
+}
+
+.endpointHeader {
+  margin-bottom: 48px;
+}
+
+.endpointHeader h1 {
+  font-size: 48px;
+  font-weight: 800;
+  margin: 0 0 16px;
+  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.7) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.endpointPath {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.methodBadge {
+  font-size: 14px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.methodBadge.get {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: #000000;
+}
+
+.methodBadge.post {
+  background: linear-gradient(135deg, #00dc82 0%, #36e4da 100%);
+  color: #000000;
+}
+
+.endpointPath code {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+/* Sections */
+.description {
+  font-size: 18px;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 48px;
+}
+
+.parameters,
+.example,
+.tryIt,
+.rateLimits,
+.errorCodes {
+  margin-bottom: 64px;
+}
+
+.parameters h2,
+.example h2,
+.tryIt h2,
+.rateLimits h2,
+.errorCodes h2 {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0 0 32px;
+}
+
+/* Parameter Table */
+.paramTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.paramTable thead {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.paramTable th {
+  padding: 16px 24px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.paramTable td {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.paramTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.paramTable code {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  font-size: 14px;
+  background: rgba(0, 220, 130, 0.1);
+  color: #00dc82;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.type {
+  color: #4facfe;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.required {
+  color: #fa709a;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.optional {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Code Sections */
+.codeSection {
+  margin-bottom: 32px;
+}
+
+.codeSection h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.codeBlock {
+  background: #1a1a1b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 24px;
+  overflow-x: auto;
+}
+
+.codeBlock code {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #e0e0e0;
+  white-space: pre;
+}
+
+/* Try It Section */
+.tryItBox {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 32px;
+}
+
+.runButton {
+  padding: 12px 32px;
+  background: linear-gradient(90deg, #00dc82 0%, #36e4da 50%, #0047e1 100%);
+  color: #000000;
+  font-weight: 700;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.runButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 220, 130, 0.3);
+}
+
+.responseBox {
+  margin-top: 24px;
+  background: #1a1a1b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 20px;
+  overflow-x: auto;
+}
+
+.responseBox code {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #00dc82;
+}
+
+/* Info Box */
+.infoBox {
+  background: rgba(79, 172, 254, 0.1);
+  border: 1px solid rgba(79, 172, 254, 0.3);
+  border-radius: 12px;
+  padding: 24px;
+  color: #4facfe;
+}
+
+.infoBox p {
+  margin: 0 0 16px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.infoBox ul {
+  margin: 0;
+  padding-left: 24px;
+}
+
+.infoBox li {
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+/* Error Table */
+.errorTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.errorTable thead {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.errorTable th {
+  padding: 16px 24px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.errorTable td {
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.errorTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.errorTable code {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  font-size: 14px;
+  color: #fa709a;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .sidebar {
+    display: none;
+  }
+  
+  .mainContent {
+    padding: 32px 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav {
+    display: none;
+  }
+  
+  .endpointHeader h1 {
+    font-size: 32px;
+  }
+  
+  .paramTable,
+  .errorTable {
+    font-size: 14px;
+  }
+  
+  .paramTable th,
+  .paramTable td,
+  .errorTable th,
+  .errorTable td {
+    padding: 12px 16px;
+  }
+}

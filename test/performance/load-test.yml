@@ -1,0 +1,306 @@
+# Artillery Load Testing Configuration
+config:
+  target: 'http://localhost:3000'
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm-up"
+    
+    # Ramp-up phase
+    - duration: 120
+      arrivalRate: 5
+      rampTo: 50
+      name: "Ramp-up"
+    
+    # Sustained load phase
+    - duration: 300
+      arrivalRate: 50
+      name: "Sustained load"
+    
+    # Peak load phase
+    - duration: 180
+      arrivalRate: 50
+      rampTo: 100
+      name: "Peak load"
+    
+    # Cool-down phase
+    - duration: 60
+      arrivalRate: 100
+      rampTo: 10
+      name: "Cool-down"
+
+  # Performance thresholds
+  ensure:
+    # Response time thresholds
+    - thresholds:
+        - http.response_time.p95: 500  # 95th percentile < 500ms
+        - http.response_time.p99: 1000 # 99th percentile < 1000ms
+        - http.response_time.median: 200 # Median < 200ms
+    
+    # Error rate thresholds
+    - thresholds:
+        - http.codes.200: 95           # 95% success rate
+        - http.codes.4xx: 2            # < 2% client errors
+        - http.codes.5xx: 1            # < 1% server errors
+
+  # Load test configuration
+  http:
+    timeout: 30
+    pool: 50  # Connection pool size
+    
+  # Variables for dynamic testing
+  variables:
+    userAddress:
+      - "0x742d35Cc6634C0532925a3b8A8C0e6C6F2E8b6A"
+      - "0x8ba1f109551bD432803012645Hac136c22C4Ae"
+      - "0x123456789abcdef123456789abcdef123456789a"
+      - "0x987654321fedcba987654321fedcba9876543210"
+      - "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+    
+    tokenAddress:
+      - "0xA0b86a33E6F23d1E6a7B9C5d9E2F8A5b7F4C3D2E"  # USDC
+      - "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"  # WETH
+      - "0x6B175474E89094C44Da98b954EedeAC495271d0F"  # DAI
+      - "0xdAC17F958D2ee523a2206206994597C13D831ec7"  # USDT
+    
+    amount:
+      - "1000000000000000000"      # 1 ETH
+      - "1000000"                  # 1 USDC
+      - "100000000000000000000"    # 100 DAI
+      - "50000000"                 # 50 USDT
+
+  # Plugins for enhanced metrics
+  plugins:
+    expect: {}
+    metrics-by-endpoint: {}
+    publish-metrics:
+      - type: cloudwatch
+        region: us-east-1
+        namespace: "SettlementQueue/LoadTest"
+    apdex:
+      threshold: 200  # 200ms threshold for "satisfactory"
+
+scenarios:
+  # Health check scenario
+  - name: "Health Check"
+    weight: 5
+    flow:
+      - get:
+          url: "/health"
+          headers:
+            User-Agent: "Artillery-LoadTest/1.0"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: status
+          capture:
+            - json: "$.status"
+              as: "healthStatus"
+
+  # API Gateway load testing
+  - name: "API Gateway Load Test"
+    weight: 40
+    flow:
+      # Get API version info
+      - get:
+          url: "/api/v1/version"
+          headers:
+            User-Agent: "Artillery-LoadTest/1.0"
+          expect:
+            - statusCode: 200
+
+      # Authenticate and get token
+      - post:
+          url: "/api/v1/auth/login"
+          headers:
+            Content-Type: "application/json"
+          json:
+            address: "{{ userAddress }}"
+            signature: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12"
+            message: "Login to SettlementQueue"
+            nonce: "{{ $randomString() }}"
+          expect:
+            - statusCode: [200, 401]  # Allow auth failures in load test
+          capture:
+            - json: "$.data.token"
+              as: "authToken"
+              ifExists: true
+
+      # Get orders (with auth if available)
+      - get:
+          url: "/api/v1/orders?page=1&limit=20"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            User-Agent: "Artillery-LoadTest/1.0"
+          expect:
+            - statusCode: [200, 401, 403]
+
+      # Submit order (if authenticated)
+      - post:
+          url: "/api/v1/orders"
+          headers:
+            Content-Type: "application/json"
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            tokenIn: "{{ tokenAddress }}"
+            tokenOut: "{{ tokenAddress }}"
+            amountIn: "{{ amount }}"
+            minAmountOut: "950000000000000000"
+            deadline: "{{ $timestamp() + 3600 }}"
+            signature: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+            nonce: "{{ $randomInt(1, 1000000) }}"
+          expect:
+            - statusCode: [200, 201, 400, 401, 403]
+          ifTrue: "authToken"
+
+  # GraphQL load testing
+  - name: "GraphQL Load Test"
+    weight: 30
+    flow:
+      # GraphQL introspection query
+      - post:
+          url: "/graphql"
+          headers:
+            Content-Type: "application/json"
+            User-Agent: "Artillery-LoadTest/1.0"
+          json:
+            query: |
+              query IntrospectionQuery {
+                __schema {
+                  types {
+                    name
+                  }
+                }
+              }
+          expect:
+            - statusCode: 200
+            - contentType: json
+
+      # Query orders
+      - post:
+          url: "/graphql"
+          headers:
+            Content-Type: "application/json"
+            User-Agent: "Artillery-LoadTest/1.0"
+          json:
+            query: |
+              query GetOrders($first: Int!, $after: String) {
+                orders(first: $first, after: $after) {
+                  edges {
+                    node {
+                      id
+                      tokenIn
+                      tokenOut
+                      amountIn
+                      status
+                      createdAt
+                    }
+                  }
+                  pageInfo {
+                    hasNextPage
+                    endCursor
+                  }
+                }
+              }
+            variables:
+              first: 20
+              after: null
+          expect:
+            - statusCode: 200
+
+      # Query user statistics
+      - post:
+          url: "/graphql"
+          headers:
+            Content-Type: "application/json"
+            User-Agent: "Artillery-LoadTest/1.0"
+          json:
+            query: |
+              query GetUserStats($userAddress: Address!) {
+                user(address: $userAddress) {
+                  address
+                  totalOrders
+                  totalVolume
+                  successRate
+                }
+              }
+            variables:
+              userAddress: "{{ userAddress }}"
+          expect:
+            - statusCode: 200
+
+  # WebSocket connection testing
+  - name: "WebSocket Load Test"
+    weight: 15
+    engine: ws
+    flow:
+      # Connect to WebSocket
+      - connect:
+          url: "ws://localhost:3000/ws"
+          headers:
+            User-Agent: "Artillery-LoadTest-WS/1.0"
+
+      # Subscribe to order updates
+      - send:
+          payload: |
+            {
+              "type": "SUBSCRIBE",
+              "channel": "orders",
+              "params": {
+                "userAddress": "{{ userAddress }}"
+              }
+            }
+
+      # Subscribe to market data
+      - send:
+          payload: |
+            {
+              "type": "SUBSCRIBE",
+              "channel": "market",
+              "params": {
+                "pair": "ETH/USDC"
+              }
+            }
+
+      # Keep connection alive for a period
+      - think: 10
+
+      # Unsubscribe and disconnect
+      - send:
+          payload: |
+            {
+              "type": "UNSUBSCRIBE",
+              "channel": "orders"
+            }
+
+  # Analytics and metrics testing
+  - name: "Analytics Load Test"
+    weight: 10
+    flow:
+      # Get dashboard data
+      - get:
+          url: "/api/v1/analytics/dashboard?timeRange=24h"
+          headers:
+            User-Agent: "Artillery-LoadTest/1.0"
+          expect:
+            - statusCode: [200, 401]
+
+      # Get market statistics
+      - get:
+          url: "/api/v1/analytics/market/stats"
+          headers:
+            User-Agent: "Artillery-LoadTest/1.0"
+          expect:
+            - statusCode: 200
+
+      # Get system health metrics
+      - get:
+          url: "/api/v1/analytics/system/health"
+          headers:
+            User-Agent: "Artillery-LoadTest/1.0"
+          expect:
+            - statusCode: 200
+
+# Custom processor for advanced metrics
+processor: "./test/performance/processor.js"

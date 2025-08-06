@@ -1,0 +1,705 @@
+---
+# Network Policy for Real-time Data Feeds - Default Deny All
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: realtime-feeds-default-deny
+  namespace: production
+  labels:
+    app: realtime-feeds
+    tier: security
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Network Policy for Real-time Data Feeds Application
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: realtime-feeds-app-policy
+  namespace: production
+  labels:
+    app: realtime-feeds
+    tier: security
+spec:
+  podSelector:
+    matchLabels:
+      app: realtime-feeds
+      tier: application
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  # Ingress rules - what can reach the application
+  ingress:
+  # Allow ingress from load balancer/ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8443
+
+  # Allow ingress from monitoring namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    - podSelector:
+        matchLabels:
+          app: prometheus
+    ports:
+    - protocol: TCP
+      port: 9090  # Metrics endpoint
+
+  # Allow ingress from same namespace (microservices communication)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: production
+    - podSelector:
+        matchLabels:
+          tier: application
+    ports:
+    - protocol: TCP
+      port: 8080
+
+  # Egress rules - what the application can reach
+  egress:
+  # Allow egress to database (PostgreSQL)
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgresql
+          tier: database
+    ports:
+    - protocol: TCP
+      port: 5432
+
+  # Allow egress to Redis cache
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+          tier: cache
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  # Allow egress to external APIs (controlled by destination)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443  # HTTPS only
+    - protocol: TCP
+      port: 53   # DNS
+    - protocol: UDP
+      port: 53   # DNS
+
+  # Allow egress to internal services
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: production
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8443
+
+---
+# Network Policy for Database Access
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: realtime-feeds-database-policy
+  namespace: production
+  labels:
+    app: realtime-feeds
+    tier: database
+spec:
+  podSelector:
+    matchLabels:
+      app: postgresql
+      tier: database
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  # Ingress rules - only application pods can reach database
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: realtime-feeds
+          tier: application
+    ports:
+    - protocol: TCP
+      port: 5432
+
+  # Allow monitoring access
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    - podSelector:
+        matchLabels:
+          app: postgres-exporter
+    ports:
+    - protocol: TCP
+      port: 9187  # Postgres exporter metrics
+
+  # Egress rules - database minimal external access
+  egress:
+  # DNS resolution only
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+
+  # Allow backup to external storage (specific endpoints)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: backup
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Network Policy for Redis Cache Access
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: realtime-feeds-cache-policy
+  namespace: production
+  labels:
+    app: realtime-feeds
+    tier: cache
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+      tier: cache
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  # Ingress rules - only application pods can reach cache
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: realtime-feeds
+          tier: application
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  # Allow monitoring access
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    - podSelector:
+        matchLabels:
+          app: redis-exporter
+    ports:
+    - protocol: TCP
+      port: 9121  # Redis exporter metrics
+
+  # Egress rules - cache minimal external access
+  egress:
+  # DNS resolution only
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+
+---
+# Network Policy for Monitoring Access
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: realtime-feeds-monitoring-policy
+  namespace: production
+  labels:
+    app: realtime-feeds
+    tier: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      tier: monitoring
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  # Ingress rules
+  ingress:
+  # Allow access from monitoring namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090
+    - protocol: TCP
+      port: 3000  # Grafana
+
+  # Egress rules
+  egress:
+  # Allow access to all application metrics endpoints
+  - to:
+    - podSelector:
+        matchLabels:
+          app: realtime-feeds
+    ports:
+    - protocol: TCP
+      port: 9090
+
+  # Allow access to database metrics
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgresql
+    ports:
+    - protocol: TCP
+      port: 9187
+
+  # Allow access to cache metrics
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 9121
+
+  # DNS resolution
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+
+---
+# Network Policy for Development Environment (less restrictive)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: realtime-feeds-dev-policy
+  namespace: development
+  labels:
+    app: realtime-feeds
+    tier: security
+    environment: development
+spec:
+  podSelector:
+    matchLabels:
+      app: realtime-feeds
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  # More permissive ingress for development
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: development
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 3000  # Development server
+    - protocol: TCP
+      port: 9090  # Metrics
+
+  # More permissive egress for development
+  egress:
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 5432  # Database
+    - protocol: TCP
+      port: 6379  # Redis
+
+---
+# Network Policy for Staging Environment (moderate restrictions)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: realtime-feeds-staging-policy
+  namespace: staging
+  labels:
+    app: realtime-feeds
+    tier: security
+    environment: staging
+spec:
+  podSelector:
+    matchLabels:
+      app: realtime-feeds
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  # Staging ingress rules
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    - namespaceSelector:
+        matchLabels:
+          name: staging
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090
+
+  # Staging egress rules (similar to production but with testing access)
+  egress:
+  # Database access
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgresql
+    ports:
+    - protocol: TCP
+      port: 5432
+
+  # Cache access
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+
+  # External HTTPS and DNS
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+
+  # Test endpoints access
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+# Calico GlobalNetworkPolicy for Advanced Security (if using Calico CNI)
+apiVersion: projectcalico.org/v3
+kind: GlobalNetworkPolicy
+metadata:
+  name: realtime-feeds-global-security
+spec:
+  # Apply to realtime-feeds pods across all namespaces
+  selector: app == "realtime-feeds"
+  
+  # Deny all by default
+  types:
+  - Ingress
+  - Egress
+  
+  # Global egress rules
+  egress:
+  # Block access to metadata services
+  - action: Deny
+    destination:
+      nets:
+      - 169.254.169.254/32  # AWS metadata
+      - 169.254.169.254/32  # Azure metadata
+      - 169.254.169.254/32  # GCP metadata
+  
+  # Block access to private networks (except approved ranges)
+  - action: Deny
+    destination:
+      nets:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+    notPorts:
+    - 5432   # PostgreSQL
+    - 6379   # Redis
+    - 8080   # Internal services
+    - 9090   # Monitoring
+  
+  # Allow specific external services
+  - action: Allow
+    destination:
+      nets:
+      - 0.0.0.0/0
+    ports:
+    - 443    # HTTPS
+    - 53     # DNS
+  
+  # Global ingress rules
+  ingress:
+  # Block direct external access (must go through load balancer)
+  - action: Deny
+    source:
+      nets:
+      - 0.0.0.0/0
+    notSelector: app == "nginx-ingress"
+
+---
+# Istio Security Policies (if using Istio service mesh)
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: realtime-feeds-mtls
+  namespace: production
+spec:
+  selector:
+    matchLabels:
+      app: realtime-feeds
+  mtls:
+    mode: STRICT  # Require mTLS for all communication
+
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: realtime-feeds-authz
+  namespace: production
+spec:
+  selector:
+    matchLabels:
+      app: realtime-feeds
+  rules:
+  # Allow ingress controller access
+  - from:
+    - source:
+        principals: ["cluster.local/ns/ingress-nginx/sa/nginx-ingress"]
+    to:
+    - operation:
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        paths: ["/*"]
+  
+  # Allow monitoring access
+  - from:
+    - source:
+        principals: ["cluster.local/ns/monitoring/sa/prometheus"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/metrics"]
+  
+  # Allow internal service communication
+  - from:
+    - source:
+        namespaces: ["production"]
+    to:
+    - operation:
+        methods: ["GET", "POST"]
+        paths: ["/api/*"]
+
+---
+# Network Security Group Rules (Azure) or Security Group Rules (AWS)
+# These would be applied at the cloud provider level
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: realtime-feeds-firewall-rules
+  namespace: production
+data:
+  # AWS Security Group Rules (JSON format for automation)
+  aws-security-groups.json: |
+    {
+      "SecurityGroups": [
+        {
+          "GroupName": "realtime-feeds-app-sg",
+          "Description": "Security group for Real-time Data Feeds application",
+          "IngressRules": [
+            {
+              "IpProtocol": "tcp",
+              "FromPort": 8080,
+              "ToPort": 8080,
+              "SourceSecurityGroupId": "sg-loadbalancer",
+              "Description": "Allow traffic from load balancer"
+            },
+            {
+              "IpProtocol": "tcp",
+              "FromPort": 9090,
+              "ToPort": 9090,
+              "SourceSecurityGroupId": "sg-monitoring",
+              "Description": "Allow metrics collection"
+            }
+          ],
+          "EgressRules": [
+            {
+              "IpProtocol": "tcp",
+              "FromPort": 5432,
+              "ToPort": 5432,
+              "DestinationSecurityGroupId": "sg-database",
+              "Description": "Allow database access"
+            },
+            {
+              "IpProtocol": "tcp",
+              "FromPort": 6379,
+              "ToPort": 6379,
+              "DestinationSecurityGroupId": "sg-cache",
+              "Description": "Allow cache access"
+            },
+            {
+              "IpProtocol": "tcp",
+              "FromPort": 443,
+              "ToPort": 443,
+              "CidrBlocks": ["0.0.0.0/0"],
+              "Description": "Allow HTTPS outbound"
+            },
+            {
+              "IpProtocol": "tcp",
+              "FromPort": 53,
+              "ToPort": 53,
+              "CidrBlocks": ["0.0.0.0/0"],
+              "Description": "Allow DNS TCP"
+            },
+            {
+              "IpProtocol": "udp",
+              "FromPort": 53,
+              "ToPort": 53,
+              "CidrBlocks": ["0.0.0.0/0"],
+              "Description": "Allow DNS UDP"
+            }
+          ]
+        }
+      ]
+    }
+  
+  # Azure Network Security Group Rules
+  azure-nsg-rules.json: |
+    {
+      "securityRules": [
+        {
+          "name": "AllowLoadBalancerInbound",
+          "priority": 100,
+          "direction": "Inbound",
+          "access": "Allow",
+          "protocol": "Tcp",
+          "sourcePortRange": "*",
+          "destinationPortRange": "8080",
+          "sourceAddressPrefix": "AzureLoadBalancer",
+          "destinationAddressPrefix": "*"
+        },
+        {
+          "name": "AllowMonitoringInbound",
+          "priority": 110,
+          "direction": "Inbound",
+          "access": "Allow",
+          "protocol": "Tcp",
+          "sourcePortRange": "*",
+          "destinationPortRange": "9090",
+          "sourceAddressPrefix": "VirtualNetwork",
+          "destinationAddressPrefix": "*"
+        },
+        {
+          "name": "AllowHTTPSOutbound",
+          "priority": 100,
+          "direction": "Outbound",
+          "access": "Allow",
+          "protocol": "Tcp",
+          "sourcePortRange": "*",
+          "destinationPortRange": "443",
+          "sourceAddressPrefix": "*",
+          "destinationAddressPrefix": "Internet"
+        },
+        {
+          "name": "AllowDatabaseOutbound",
+          "priority": 110,
+          "direction": "Outbound",
+          "access": "Allow",
+          "protocol": "Tcp",
+          "sourcePortRange": "*",
+          "destinationPortRange": "5432",
+          "sourceAddressPrefix": "*",
+          "destinationAddressPrefix": "VirtualNetwork"
+        },
+        {
+          "name": "DenyAllOtherOutbound",
+          "priority": 4000,
+          "direction": "Outbound",
+          "access": "Deny",
+          "protocol": "*",
+          "sourcePortRange": "*",
+          "destinationPortRange": "*",
+          "sourceAddressPrefix": "*",
+          "destinationAddressPrefix": "*"
+        }
+      ]
+    }
+
+---
+# Cloud Firewall Rules Template (GCP)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: realtime-feeds-gcp-firewall
+  namespace: production
+data:
+  firewall-rules.yaml: |
+    # Allow ingress from load balancer
+    - name: realtime-feeds-allow-lb
+      direction: INGRESS
+      priority: 1000
+      sourceRanges:
+        - 130.211.0.0/22    # Google Cloud Load Balancer ranges
+        - 35.191.0.0/16
+      allowed:
+        - IPProtocol: tcp
+          ports: ['8080']
+      targetTags: ['realtime-feeds']
+    
+    # Allow health checks
+    - name: realtime-feeds-allow-health-checks
+      direction: INGRESS
+      priority: 1000
+      sourceRanges:
+        - 130.211.0.0/22
+        - 35.191.0.0/16
+        - 209.85.152.0/22
+        - 209.85.204.0/22
+      allowed:
+        - IPProtocol: tcp
+          ports: ['8080']
+      targetTags: ['realtime-feeds']
+    
+    # Deny all other ingress
+    - name: realtime-feeds-deny-all-ingress
+      direction: INGRESS
+      priority: 65534
+      sourceRanges: ['0.0.0.0/0']
+      denied:
+        - IPProtocol: all
+      targetTags: ['realtime-feeds']

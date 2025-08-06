@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dex-platform
+  labels:
+    name: dex-platform
+    environment: production
+    component: authentication
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dex-monitoring
+  labels:
+    name: dex-monitoring
+    environment: production
+    component: monitoring

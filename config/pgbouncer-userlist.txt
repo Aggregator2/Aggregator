@@ -1,0 +1,9 @@
+# PgBouncer user list
+# Format: "username" "password"
+# Passwords should be MD5 hashed: md5(password + username)
+
+"app_user" "md5abcdef1234567890abcdef1234567890"
+"analytics_user" "md5fedcba0987654321fedcba0987654321"
+"admin" "md5123456789abcdef0123456789abcdef0"
+"pgbouncer" "md5987654321fedcba0987654321fedcba0"
+"stats" "md5abcdefabcdefabcdefabcdefabcdefab"

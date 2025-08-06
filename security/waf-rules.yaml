@@ -1,0 +1,651 @@
+---
+# AWS WAF Rules for Real-time Data Feeds Protection
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: realtime-feeds-waf-rules
+  namespace: production
+  labels:
+    app: realtime-feeds
+    component: waf
+data:
+  aws-waf-rules.json: |
+    {
+      "WebACL": {
+        "Name": "RealtimeFeedsWAF",
+        "Description": "WAF rules for Real-time Data Feeds application",
+        "Scope": "CLOUDFRONT",
+        "DefaultAction": {
+          "Allow": {}
+        },
+        "Rules": [
+          {
+            "Name": "AWSManagedRulesCommonRuleSet",
+            "Priority": 1,
+            "Statement": {
+              "ManagedRuleGroupStatement": {
+                "VendorName": "AWS",
+                "Name": "AWSManagedRulesCommonRuleSet",
+                "ExcludedRules": []
+              }
+            },
+            "Action": {
+              "Block": {}
+            },
+            "VisibilityConfig": {
+              "SampledRequestsEnabled": true,
+              "CloudWatchMetricsEnabled": true,
+              "MetricName": "CommonRuleSetMetric"
+            }
+          },
+          {
+            "Name": "AWSManagedRulesKnownBadInputsRuleSet",
+            "Priority": 2,
+            "Statement": {
+              "ManagedRuleGroupStatement": {
+                "VendorName": "AWS",
+                "Name": "AWSManagedRulesKnownBadInputsRuleSet"
+              }
+            },
+            "Action": {
+              "Block": {}
+            },
+            "VisibilityConfig": {
+              "SampledRequestsEnabled": true,
+              "CloudWatchMetricsEnabled": true,
+              "MetricName": "KnownBadInputsMetric"
+            }
+          },
+          {
+            "Name": "AWSManagedRulesLinuxRuleSet",
+            "Priority": 3,
+            "Statement": {
+              "ManagedRuleGroupStatement": {
+                "VendorName": "AWS",
+                "Name": "AWSManagedRulesLinuxRuleSet"
+              }
+            },
+            "Action": {
+              "Block": {}
+            },
+            "VisibilityConfig": {
+              "SampledRequestsEnabled": true,
+              "CloudWatchMetricsEnabled": true,
+              "MetricName": "LinuxRuleSetMetric"
+            }
+          },
+          {
+            "Name": "SQLInjectionProtection",
+            "Priority": 10,
+            "Statement": {
+              "SqliMatchStatement": {
+                "FieldToMatch": {
+                  "AllQueryArguments": {}
+                },
+                "TextTransformations": [
+                  {
+                    "Priority": 1,
+                    "Type": "URL_DECODE"
+                  },
+                  {
+                    "Priority": 2,
+                    "Type": "HTML_ENTITY_DECODE"
+                  }
+                ]
+              }
+            },
+            "Action": {
+              "Block": {}
+            },
+            "VisibilityConfig": {
+              "SampledRequestsEnabled": true,
+              "CloudWatchMetricsEnabled": true,
+              "MetricName": "SQLInjectionMetric"
+            }
+          },
+          {
+            "Name": "XSSProtection",
+            "Priority": 11,
+            "Statement": {
+              "XssMatchStatement": {
+                "FieldToMatch": {
+                  "AllQueryArguments": {}
+                },
+                "TextTransformations": [
+                  {
+                    "Priority": 1,
+                    "Type": "URL_DECODE"
+                  },
+                  {
+                    "Priority": 2,
+                    "Type": "HTML_ENTITY_DECODE"
+                  }
+                ]
+              }
+            },
+            "Action": {
+              "Block": {}
+            },
+            "VisibilityConfig": {
+              "SampledRequestsEnabled": true,
+              "CloudWatchMetricsEnabled": true,
+              "MetricName": "XSSProtectionMetric"
+            }
+          },
+          {
+            "Name": "RateLimitRule",
+            "Priority": 20,
+            "Statement": {
+              "RateBasedStatement": {
+                "Limit": 2000,
+                "AggregateKeyType": "IP",
+                "ScopeDownStatement": {
+                  "NotStatement": {
+                    "Statement": {
+                      "IPSetReferenceStatement": {
+                        "ARN": "arn:aws:wafv2:region:account:global/ipset/realtime-feeds-whitelist/id"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "Action": {
+              "Block": {}
+            },
+            "VisibilityConfig": {
+              "SampledRequestsEnabled": true,
+              "CloudWatchMetricsEnabled": true,
+              "MetricName": "RateLimitMetric"
+            }
+          },
+          {
+            "Name": "WebSocketProtection",
+            "Priority": 30,
+            "Statement": {
+              "AndStatement": {
+                "Statements": [
+                  {
+                    "ByteMatchStatement": {
+                      "SearchString": "websocket",
+                      "FieldToMatch": {
+                        "SingleHeader": {
+                          "Name": "upgrade"
+                        }
+                      },
+                      "TextTransformations": [
+                        {
+                          "Priority": 1,
+                          "Type": "LOWERCASE"
+                        }
+                      ],
+                      "PositionalConstraint": "EXACTLY"
+                    }
+                  },
+                  {
+                    "NotStatement": {
+                      "Statement": {
+                        "IPSetReferenceStatement": {
+                          "ARN": "arn:aws:wafv2:region:account:global/ipset/realtime-feeds-websocket-whitelist/id"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "Action": {
+              "Allow": {}
+            },
+            "VisibilityConfig": {
+              "SampledRequestsEnabled": true,
+              "CloudWatchMetricsEnabled": true,
+              "MetricName": "WebSocketProtectionMetric"
+            }
+          },
+          {
+            "Name": "GeoBlockingRule",
+            "Priority": 40,
+            "Statement": {
+              "NotStatement": {
+                "Statement": {
+                  "GeoMatchStatement": {
+                    "CountryCodes": ["US", "CA", "GB", "DE", "FR", "JP", "AU", "SG"]
+                  }
+                }
+              }
+            },
+            "Action": {
+              "Block": {}
+            },
+            "VisibilityConfig": {
+              "SampledRequestsEnabled": true,
+              "CloudWatchMetricsEnabled": true,
+              "MetricName": "GeoBlockingMetric"
+            }
+          },
+          {
+            "Name": "SizeRestrictionRule",
+            "Priority": 50,
+            "Statement": {
+              "SizeConstraintStatement": {
+                "FieldToMatch": {
+                  "Body": {}
+                },
+                "ComparisonOperator": "GT",
+                "Size": 8192,
+                "TextTransformations": [
+                  {
+                    "Priority": 1,
+                    "Type": "NONE"
+                  }
+                ]
+              }
+            },
+            "Action": {
+              "Block": {}
+            },
+            "VisibilityConfig": {
+              "SampledRequestsEnabled": true,
+              "CloudWatchMetricsEnabled": true,
+              "MetricName": "SizeRestrictionMetric"
+            }
+          }
+        ],
+        "VisibilityConfig": {
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true,
+          "MetricName": "RealtimeFeedsWAFMetric"
+        }
+      }
+    }
+
+  cloudflare-waf-rules.json: |
+    {
+      "zone_id": "your-zone-id",
+      "rules": [
+        {
+          "description": "Block SQL Injection Attempts",
+          "expression": "(http.request.uri.query contains \"union\" and http.request.uri.query contains \"select\") or (http.request.uri.query contains \"drop\" and http.request.uri.query contains \"table\") or (http.request.body.truncated contains \"union\" and http.request.body.truncated contains \"select\")",
+          "action": "block"
+        },
+        {
+          "description": "Block XSS Attempts",
+          "expression": "(http.request.uri.query contains \"<script\") or (http.request.uri.query contains \"javascript:\") or (http.request.body.truncated contains \"<script\") or (http.request.body.truncated contains \"onerror=\")",
+          "action": "block"
+        },
+        {
+          "description": "Rate Limiting for API Endpoints",
+          "expression": "(http.request.uri.path matches \"^/api/.*\")",
+          "action": "challenge",
+          "ratelimit": {
+            "characteristics": ["ip.src"],
+            "period": 60,
+            "requests_per_period": 100
+          }
+        },
+        {
+          "description": "Rate Limiting for WebSocket Connections",
+          "expression": "(http.request.headers[\"upgrade\"][0] eq \"websocket\")",
+          "action": "challenge",
+          "ratelimit": {
+            "characteristics": ["ip.src"],
+            "period": 300,
+            "requests_per_period": 10
+          }
+        },
+        {
+          "description": "Block Known Bad User Agents",
+          "expression": "(http.user_agent contains \"sqlmap\") or (http.user_agent contains \"nikto\") or (http.user_agent contains \"nmap\") or (http.user_agent contains \"masscan\")",
+          "action": "block"
+        },
+        {
+          "description": "Geo-blocking High Risk Countries",
+          "expression": "(ip.geoip.country in {\"CN\" \"RU\" \"KP\" \"IR\"})",
+          "action": "challenge"
+        },
+        {
+          "description": "Block Direct IP Access",
+          "expression": "(http.host eq \"your-server-ip\")",
+          "action": "block"
+        },
+        {
+          "description": "Require Valid Referer for Admin Endpoints",
+          "expression": "(http.request.uri.path matches \"^/admin/.*\" and not http.referer matches \"^https://yourdomain.com/.*\")",
+          "action": "block"
+        }
+      ]
+    }
+
+  nginx-waf-rules.conf: |
+    # ModSecurity WAF Rules for NGINX
+    
+    # Enable ModSecurity
+    modsecurity on;
+    modsecurity_rules_file /etc/nginx/modsec/main.conf;
+    
+    # Custom rules for Real-time Data Feeds
+    location / {
+        # Rate limiting
+        limit_req zone=api burst=20 nodelay;
+        limit_req zone=websocket burst=5 nodelay;
+        
+        # Security headers
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' wss: https:; font-src 'self' data:; object-src 'none'; media-src 'self'; frame-src 'none'; base-uri 'self'; form-action 'self';" always;
+        
+        # Block suspicious requests
+        if ($request_method !~ ^(GET|POST|PUT|DELETE|OPTIONS)$) {
+            return 405;
+        }
+        
+        # Block requests with suspicious user agents
+        if ($http_user_agent ~* (sqlmap|nikto|nmap|masscan|burp|nessus|openvas)) {
+            return 403;
+        }
+        
+        # Block requests with suspicious headers
+        if ($http_user_agent = "") {
+            return 403;
+        }
+        
+        # Proxy to application
+        proxy_pass http://realtime-feeds-backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400;
+    }
+    
+    # Rate limiting zones
+    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=websocket:10m rate=1r/s;
+    
+    # Geo-blocking (example for high-risk regions)
+    geo $blocked_country {
+        default 0;
+        CN 1;  # China
+        RU 1;  # Russia
+        KP 1;  # North Korea
+        IR 1;  # Iran
+    }
+    
+    if ($blocked_country) {
+        return 403;
+    }
+
+  modsecurity-rules.conf: |
+    # ModSecurity Core Rule Set Configuration
+    Include /usr/share/modsecurity-crs/crs-setup.conf
+    Include /usr/share/modsecurity-crs/rules/*.conf
+    
+    # Custom rules for Real-time Data Feeds
+    SecRule REQUEST_URI "@contains /api/" \
+        "id:1001,\
+        phase:1,\
+        pass,\
+        nolog,\
+        setvar:'tx.allowed_methods=GET POST PUT DELETE OPTIONS'"
+    
+    # Block SQL injection attempts
+    SecRule ARGS "@detectSQLi" \
+        "id:1002,\
+        phase:2,\
+        block,\
+        msg:'SQL Injection Attack Detected',\
+        logdata:'Matched Data: %{MATCHED_VAR} found within %{MATCHED_VAR_NAME}',\
+        tag:'application-multi',\
+        tag:'language-multi',\
+        tag:'platform-multi',\
+        tag:'attack-sqli'"
+    
+    # Block XSS attempts
+    SecRule ARGS "@detectXSS" \
+        "id:1003,\
+        phase:2,\
+        block,\
+        msg:'XSS Attack Detected',\
+        logdata:'Matched Data: %{MATCHED_VAR} found within %{MATCHED_VAR_NAME}',\
+        tag:'application-multi',\
+        tag:'language-multi',\
+        tag:'platform-multi',\
+        tag:'attack-xss'"
+    
+    # Rate limiting for WebSocket connections
+    SecRule REQUEST_HEADERS:Upgrade "@streq websocket" \
+        "id:1004,\
+        phase:1,\
+        pass,\
+        nolog,\
+        setvar:'ip.websocket_connections=+1',\
+        expirevar:'ip.websocket_connections=300'"
+    
+    SecRule IP:WEBSOCKET_CONNECTIONS "@gt 5" \
+        "id:1005,\
+        phase:1,\
+        deny,\
+        status:429,\
+        msg:'Too many WebSocket connections from IP',\
+        tag:'application-multi',\
+        tag:'language-multi',\
+        tag:'platform-multi',\
+        tag:'attack-dos'"
+    
+    # Block file upload attempts to non-upload endpoints
+    SecRule REQUEST_HEADERS:Content-Type "@beginsWith multipart/form-data" \
+        "id:1006,\
+        phase:1,\
+        chain,\
+        block,\
+        msg:'File upload attempt to non-upload endpoint'"
+    SecRule REQUEST_URI "!@beginsWith /api/upload"
+    
+    # Validate JSON payloads
+    SecRule REQUEST_HEADERS:Content-Type "@beginsWith application/json" \
+        "id:1007,\
+        phase:2,\
+        chain,\
+        block,\
+        msg:'Invalid JSON payload'"
+    SecRule REQUEST_BODY "@verifyCC 0"
+
+---
+# Azure Application Gateway WAF Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: azure-waf-config
+  namespace: production
+data:
+  waf-policy.json: |
+    {
+      "properties": {
+        "policySettings": {
+          "requestBodyCheck": true,
+          "maxRequestBodySizeInKb": 128,
+          "fileUploadLimitInMb": 100,
+          "state": "Enabled",
+          "mode": "Prevention"
+        },
+        "managedRules": {
+          "managedRuleSets": [
+            {
+              "ruleSetType": "OWASP",
+              "ruleSetVersion": "3.2",
+              "ruleGroupOverrides": [
+                {
+                  "ruleGroupName": "REQUEST-920-PROTOCOL-ENFORCEMENT",
+                  "rules": [
+                    {
+                      "ruleId": "920300",
+                      "state": "Enabled"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "ruleSetType": "Microsoft_BotManagerRuleSet",
+              "ruleSetVersion": "0.1"
+            }
+          ],
+          "exclusions": [
+            {
+              "matchVariable": "RequestHeaderNames",
+              "selectorMatchOperator": "Equals",
+              "selector": "User-Agent"
+            }
+          ]
+        },
+        "customRules": [
+          {
+            "name": "RateLimitRule",
+            "priority": 1,
+            "ruleType": "RateLimitRule",
+            "action": "Block",
+            "rateLimitDuration": "OneMin",
+            "rateLimitThreshold": 100,
+            "matchConditions": [
+              {
+                "matchVariables": [
+                  {
+                    "variableName": "RemoteAddr"
+                  }
+                ],
+                "operator": "IPMatch",
+                "matchValues": [
+                  "0.0.0.0/0"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "GeoBlockRule",
+            "priority": 2,
+            "ruleType": "MatchRule",
+            "action": "Block",
+            "matchConditions": [
+              {
+                "matchVariables": [
+                  {
+                    "variableName": "RemoteAddr"
+                  }
+                ],
+                "operator": "GeoMatch",
+                "matchValues": [
+                  "CN",
+                  "RU",
+                  "KP",
+                  "IR"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "WebSocketRateLimit",
+            "priority": 3,
+            "ruleType": "RateLimitRule",
+            "action": "Block",
+            "rateLimitDuration": "FiveMins",
+            "rateLimitThreshold": 10,
+            "matchConditions": [
+              {
+                "matchVariables": [
+                  {
+                    "variableName": "RequestHeaders",
+                    "selector": "Upgrade"
+                  }
+                ],
+                "operator": "Equal",
+                "matchValues": [
+                  "websocket"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+
+---
+# Google Cloud Armor Security Policy
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gcp-cloud-armor-config
+  namespace: production
+data:
+  security-policy.yaml: |
+    name: realtime-feeds-security-policy
+    description: Cloud Armor security policy for Real-time Data Feeds
+    rules:
+      - priority: 1000
+        action: deny-403
+        match:
+          expr: |
+            origin.region_code == "CN" || 
+            origin.region_code == "RU" || 
+            origin.region_code == "KP" || 
+            origin.region_code == "IR"
+        description: "Block traffic from high-risk countries"
+      
+      - priority: 2000
+        action: rate-based-ban
+        match:
+          expr: true
+        rateLimitOptions:
+          conformAction: allow
+          exceedAction: deny-429
+          enforceOnKey: IP
+          rateLimitThreshold:
+            count: 100
+            intervalSec: 60
+        description: "Rate limit: 100 requests per minute per IP"
+      
+      - priority: 3000
+        action: deny-403
+        match:
+          expr: |
+            has(request.headers['user-agent']) && 
+            (request.headers['user-agent'].lower().contains('sqlmap') ||
+             request.headers['user-agent'].lower().contains('nikto') ||
+             request.headers['user-agent'].lower().contains('nmap'))
+        description: "Block malicious user agents"
+      
+      - priority: 4000
+        action: deny-403
+        match:
+          expr: |
+            request.path.matches('/api/.*') && 
+            !request.method.matches('GET|POST|PUT|DELETE|OPTIONS')
+        description: "Block non-standard HTTP methods on API endpoints"
+      
+      - priority: 5000
+        action: rate-based-ban
+        match:
+          expr: |
+            has(request.headers['upgrade']) && 
+            request.headers['upgrade'].lower() == 'websocket'
+        rateLimitOptions:
+          conformAction: allow
+          exceedAction: deny-429
+          enforceOnKey: IP
+          rateLimitThreshold:
+            count: 10
+            intervalSec: 300
+        description: "WebSocket rate limit: 10 connections per 5 minutes per IP"
+      
+      - priority: 9999
+        action: allow
+        match:
+          expr: true
+        description: "Default allow rule"

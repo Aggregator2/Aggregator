@@ -1,0 +1,376 @@
+{
+  "order": 0,
+  "version": 1,
+  "index_patterns": ["swappiq-*"],
+  "settings": {
+    "index": {
+      "lifecycle": {
+        "name": "swappiq-policy",
+        "rollover_alias": "swappiq"
+      },
+      "codec": "best_compression",
+      "routing": {
+        "allocation": {
+          "require": {
+            "data_tier": "data_hot"
+          }
+        }
+      },
+      "refresh_interval": "5s",
+      "number_of_shards": 3,
+      "auto_expand_replicas": "0-1",
+      "number_of_replicas": 1,
+      "max_result_window": 50000,
+      "analysis": {
+        "analyzer": {
+          "swappiq_analyzer": {
+            "type": "custom",
+            "tokenizer": "keyword",
+            "filter": ["lowercase", "trim"]
+          }
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "true",
+    "dynamic_templates": [
+      {
+        "message_field": {
+          "path_match": "message",
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "text",
+            "analyzer": "standard",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          }
+        }
+      },
+      {
+        "string_fields": {
+          "match": "*",
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          }
+        }
+      },
+      {
+        "float_fields": {
+          "match": "*",
+          "match_mapping_type": "double",
+          "mapping": {
+            "type": "float"
+          }
+        }
+      },
+      {
+        "long_fields": {
+          "match": "*",
+          "match_mapping_type": "long",
+          "mapping": {
+            "type": "long"
+          }
+        }
+      }
+    ],
+    "properties": {
+      "@timestamp": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "@version": {
+        "type": "keyword"
+      },
+      "timestamp": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "level": {
+        "type": "keyword"
+      },
+      "message": {
+        "type": "text",
+        "analyzer": "standard",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 8192
+          }
+        }
+      },
+      "service": {
+        "type": "keyword"
+      },
+      "environment": {
+        "type": "keyword"
+      },
+      "hostname": {
+        "type": "keyword"
+      },
+      "type": {
+        "type": "keyword"
+      },
+      "tags": {
+        "type": "keyword"
+      },
+      
+      "request_id": {
+        "type": "keyword"
+      },
+      "user_id": {
+        "type": "keyword"
+      },
+      "client_ip": {
+        "type": "ip"
+      },
+      "http_method": {
+        "type": "keyword"
+      },
+      "endpoint": {
+        "type": "keyword"
+      },
+      "status_code": {
+        "type": "integer"
+      },
+      "status_category": {
+        "type": "keyword"
+      },
+      "duration_ms": {
+        "type": "float"
+      },
+      "response_time_category": {
+        "type": "keyword"
+      },
+      "content_length": {
+        "type": "long"
+      },
+      
+      "trade_id": {
+        "type": "keyword"
+      },
+      "order_id": {
+        "type": "keyword"
+      },
+      "trading_pair": {
+        "type": "keyword"
+      },
+      "side": {
+        "type": "keyword"
+      },
+      "order_type": {
+        "type": "keyword"
+      },
+      "order_action": {
+        "type": "keyword"
+      },
+      "quantity": {
+        "type": "float"
+      },
+      "price": {
+        "type": "float"
+      },
+      "trade_value": {
+        "type": "float"
+      },
+      "trade_volume_usd": {
+        "type": "float"
+      },
+      "maker_id": {
+        "type": "keyword"
+      },
+      "taker_id": {
+        "type": "keyword"
+      },
+      
+      "liquidation_size": {
+        "type": "float"
+      },
+      "liquidation_loss": {
+        "type": "float"
+      },
+      
+      "settlement_status": {
+        "type": "keyword"
+      },
+      "tx_hash": {
+        "type": "keyword"
+      },
+      "gas_used": {
+        "type": "long"
+      },
+      "gas_fee": {
+        "type": "float"
+      },
+      "block_number": {
+        "type": "long"
+      },
+      "confirmations": {
+        "type": "integer"
+      },
+      "block_status": {
+        "type": "keyword"
+      },
+      
+      "ws_event": {
+        "type": "keyword"
+      },
+      "connection_count": {
+        "type": "integer"
+      },
+      "messages_sent": {
+        "type": "long"
+      },
+      "queue_size": {
+        "type": "integer"
+      },
+      "broadcast_latency": {
+        "type": "float"
+      },
+      
+      "auth_event": {
+        "type": "keyword"
+      },
+      "auth_method": {
+        "type": "keyword"
+      },
+      "auth_result": {
+        "type": "keyword"
+      },
+      "activity_type": {
+        "type": "keyword"
+      },
+      "severity": {
+        "type": "keyword"
+      },
+      "request_rate": {
+        "type": "float"
+      },
+      
+      "error_type": {
+        "type": "keyword"
+      },
+      "stack_trace": {
+        "type": "text",
+        "analyzer": "standard",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 8192
+          }
+        }
+      },
+      
+      "geoip": {
+        "properties": {
+          "location": {
+            "type": "geo_point"
+          },
+          "country_name": {
+            "type": "keyword"
+          },
+          "country_code2": {
+            "type": "keyword"
+          },
+          "region_name": {
+            "type": "keyword"
+          },
+          "city_name": {
+            "type": "keyword"
+          },
+          "continent_code": {
+            "type": "keyword"
+          },
+          "timezone": {
+            "type": "keyword"
+          }
+        }
+      },
+      
+      "ua": {
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "version": {
+            "type": "keyword"
+          },
+          "os": {
+            "type": "keyword"
+          },
+          "os_version": {
+            "type": "keyword"
+          },
+          "device": {
+            "type": "keyword"
+          }
+        }
+      },
+      
+      "memory_usage": {
+        "type": "long"
+      },
+      "cpu_usage": {
+        "type": "float"
+      },
+      "response_time": {
+        "type": "float"
+      },
+      
+      "fields": {
+        "properties": {
+          "service": {
+            "type": "keyword"
+          },
+          "environment": {
+            "type": "keyword"
+          },
+          "version": {
+            "type": "keyword"
+          }
+        }
+      },
+      
+      "host": {
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "ip": {
+            "type": "ip"
+          },
+          "architecture": {
+            "type": "keyword"
+          },
+          "os": {
+            "properties": {
+              "platform": {
+                "type": "keyword"
+              },
+              "version": {
+                "type": "keyword"
+              },
+              "family": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "aliases": {
+    "swappiq": {}
+  }
+}

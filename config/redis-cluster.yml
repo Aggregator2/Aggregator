@@ -1,0 +1,143 @@
+# Redis Cluster Configuration for High-Frequency Trading Order Book
+
+# Redis Cluster Mode
+redis:
+  cluster_mode: true
+  
+  # Cluster nodes (minimum 6 for 3 masters + 3 replicas)
+  nodes:
+    - host: ${REDIS_CLUSTER_NODE1_HOST:-localhost}
+      port: ${REDIS_CLUSTER_NODE1_PORT:-7000}
+    - host: ${REDIS_CLUSTER_NODE2_HOST:-localhost}
+      port: ${REDIS_CLUSTER_NODE2_PORT:-7001}
+    - host: ${REDIS_CLUSTER_NODE3_HOST:-localhost}
+      port: ${REDIS_CLUSTER_NODE3_PORT:-7002}
+    - host: ${REDIS_CLUSTER_NODE4_HOST:-localhost}
+      port: ${REDIS_CLUSTER_NODE4_PORT:-7003}
+    - host: ${REDIS_CLUSTER_NODE5_HOST:-localhost}
+      port: ${REDIS_CLUSTER_NODE5_PORT:-7004}
+    - host: ${REDIS_CLUSTER_NODE6_HOST:-localhost}
+      port: ${REDIS_CLUSTER_NODE6_PORT:-7005}
+  
+  # Redis connection options
+  options:
+    password: ${REDIS_CLUSTER_PASSWORD}
+    enableReadyCheck: true
+    maxRetriesPerRequest: 3
+    enableOfflineQueue: true
+    scaleReads: slave  # Read from replicas for better performance
+    
+  # Connection pool settings
+  pool:
+    minConnections: 10
+    maxConnections: 50
+    connectionTimeout: 3000
+    idleTimeout: 30000
+    healthCheckInterval: 5000
+
+# Performance tuning
+performance:
+  # Order book settings
+  orderbook:
+    batchSize: 100          # Batch size for bulk operations
+    pipelineSize: 1000      # Redis pipeline size
+    persistenceInterval: 1000  # ms between persistence batches
+    
+  # Cache warming
+  cache_warming:
+    enabled: true
+    batchSize: 100
+    parallelLoaders: 5
+    
+  # Market data updates
+  market_data:
+    updateInterval: 1000    # ms between market data updates
+    aggregationWindow: 5000 # ms for aggregating trades
+
+# High availability settings
+high_availability:
+  # Graceful degradation
+  fallback:
+    enabled: true
+    maxFailures: 3
+    recoveryDelay: 30000    # ms before attempting recovery
+    
+  # Health monitoring
+  monitoring:
+    enabled: true
+    interval: 10000         # ms between health checks
+    timeout: 5000           # ms timeout for health checks
+
+# Persistence settings
+persistence:
+  # PostgreSQL sync
+  postgresql_sync:
+    enabled: true
+    interval: 300000        # 5 minutes
+    batchSize: 1000
+    
+  # Trade persistence queue
+  trade_queue:
+    maxSize: 10000
+    flushInterval: 1000     # ms
+    retryAttempts: 3
+
+# Docker Compose example for Redis Cluster
+docker_compose_example: |
+  version: '3.8'
+  services:
+    redis-node-1:
+      image: redis:7-alpine
+      command: redis-server --port 7000 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
+      ports:
+        - "7000:7000"
+      volumes:
+        - redis-node-1-data:/data
+        
+    redis-node-2:
+      image: redis:7-alpine
+      command: redis-server --port 7001 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
+      ports:
+        - "7001:7001"
+      volumes:
+        - redis-node-2-data:/data
+        
+    redis-node-3:
+      image: redis:7-alpine
+      command: redis-server --port 7002 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
+      ports:
+        - "7002:7002"
+      volumes:
+        - redis-node-3-data:/data
+        
+    redis-node-4:
+      image: redis:7-alpine
+      command: redis-server --port 7003 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
+      ports:
+        - "7003:7003"
+      volumes:
+        - redis-node-4-data:/data
+        
+    redis-node-5:
+      image: redis:7-alpine
+      command: redis-server --port 7004 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
+      ports:
+        - "7004:7004"
+      volumes:
+        - redis-node-5-data:/data
+        
+    redis-node-6:
+      image: redis:7-alpine
+      command: redis-server --port 7005 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
+      ports:
+        - "7005:7005"
+      volumes:
+        - redis-node-6-data:/data
+        
+  volumes:
+    redis-node-1-data:
+    redis-node-2-data:
+    redis-node-3-data:
+    redis-node-4-data:
+    redis-node-5-data:
+    redis-node-6-data:

@@ -1,0 +1,106 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: dex-platform-auth
+  namespace: dex-platform
+
+# Base resources
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - secrets.yaml
+  - authentication-service.yaml
+  - session-manager-service.yaml
+  - wallet-auth-service.yaml
+  - rbac-service.yaml
+  - ingress.yaml
+  - monitoring.yaml
+  - network-policies.yaml
+  - pod-security-policies.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: dex-platform
+  app.kubernetes.io/instance: production
+  app.kubernetes.io/version: "1.0.0"
+  app.kubernetes.io/component: authentication
+  app.kubernetes.io/part-of: dex-platform
+  app.kubernetes.io/managed-by: kustomize
+
+# Common annotations
+commonAnnotations:
+  config.kubernetes.io/origin: |
+    path: infrastructure/kubernetes
+    repo: dex-platform
+  deployment.kubernetes.io/revision: "1"
+
+# Resource naming
+namePrefix: ""
+nameSuffix: ""
+
+# Image transformations
+images:
+  - name: dex-platform/authentication-service
+    newTag: "v1.0.0"
+  - name: dex-platform/session-manager-service
+    newTag: "v1.0.0"
+  - name: dex-platform/wallet-auth-service
+    newTag: "v1.0.0"
+  - name: dex-platform/rbac-service
+    newTag: "v1.0.0"
+
+# Replica transformations for different environments
+replicas:
+  - name: authentication-service
+    count: 3
+  - name: session-manager-service
+    count: 3
+  - name: wallet-auth-service
+    count: 2
+  - name: rbac-service
+    count: 3
+
+# Patches for environment-specific configurations
+patches:
+  - target:
+      kind: Deployment
+      name: authentication-service
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "250m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "512Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "500m"
+
+# ConfigMap generators
+configMapGenerator:
+  - name: auth-environment-config
+    literals:
+      - ENVIRONMENT=production
+      - CLUSTER_NAME=dex-platform-primary
+      - REGION=us-east-1
+      - LOG_FORMAT=json
+      - METRICS_ENABLED=true
+
+# Secret generators (for non-sensitive defaults)
+secretGenerator:
+  - name: auth-default-config
+    literals:
+      - DEFAULT_SESSION_TTL=3600000
+      - DEFAULT_JWT_TTL=3600
+
+# Generators options
+generatorOptions:
+  disableNameSuffixHash: false
+  labels:
+    generated-by: kustomize
+  annotations:
+    generated-at: "2024-01-01T00:00:00Z"

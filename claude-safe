@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Safe Claude CLI wrapper that prevents shell parsing errors
+
+export CLAUDE_SAFE_MODE=true
+export CLAUDE_DISABLE_SHELL_PARSING=true
+
+# Source the safe environment
+if [ -f .env.claude ]; then
+    source .env.claude
+fi
+
+# Run Claude with safe arguments, avoiding problematic file patterns
+exec claude-code "$@" --config claude.config.json --ignore-patterns "*.js,*.jsx,*.ts,*.tsx,components/**,src/**"

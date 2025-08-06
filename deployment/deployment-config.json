@@ -1,0 +1,165 @@
+{
+  "networks": {
+    "mainnet": {
+      "chainId": 1,
+      "rpcUrl": "${MAINNET_RPC_URL}",
+      "blockExplorer": "https://etherscan.io",
+      "contracts": {
+        "WETH": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        "UniswapV2Router": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+        "UniswapV2Factory": "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
+      },
+      "gasSettings": {
+        "maxFeePerGas": "50000000000",
+        "maxPriorityFeePerGas": "2000000000"
+      },
+      "confirmations": 5
+    },
+    "arbitrum": {
+      "chainId": 42161,
+      "rpcUrl": "${ARBITRUM_RPC_URL}",
+      "blockExplorer": "https://arbiscan.io",
+      "contracts": {
+        "WETH": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+        "UniswapV2Router": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+        "UniswapV2Factory": "0xf1D7CC64Fb4452F05c498126312eBE29f30Fbcf9"
+      },
+      "gasSettings": {
+        "gasLimit": "10000000"
+      },
+      "confirmations": 3
+    },
+    "polygon": {
+      "chainId": 137,
+      "rpcUrl": "${POLYGON_RPC_URL}",
+      "blockExplorer": "https://polygonscan.com",
+      "contracts": {
+        "WMATIC": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+        "UniswapV2Router": "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff",
+        "UniswapV2Factory": "0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32"
+      },
+      "gasSettings": {
+        "maxFeePerGas": "100000000000",
+        "maxPriorityFeePerGas": "30000000000"
+      },
+      "confirmations": 3
+    },
+    "optimism": {
+      "chainId": 10,
+      "rpcUrl": "${OPTIMISM_RPC_URL}",
+      "blockExplorer": "https://optimistic.etherscan.io",
+      "contracts": {
+        "WETH": "0x4200000000000000000000000000000000000006",
+        "UniswapV2Router": "0x9c12939390052919aF3155f41Bf4160Fd3666A6f",
+        "UniswapV2Factory": "0x0c3c1c532F1e39EdF36BE9Fe0bE1410313E074Bf"
+      },
+      "gasSettings": {
+        "gasLimit": "15000000"
+      },
+      "confirmations": 1
+    },
+    "goerli": {
+      "chainId": 5,
+      "rpcUrl": "${GOERLI_RPC_URL}",
+      "blockExplorer": "https://goerli.etherscan.io",
+      "contracts": {
+        "WETH": "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6",
+        "UniswapV2Router": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+        "UniswapV2Factory": "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
+      },
+      "gasSettings": {
+        "gasPrice": "20000000000"
+      },
+      "confirmations": 2
+    },
+    "sepolia": {
+      "chainId": 11155111,
+      "rpcUrl": "${SEPOLIA_RPC_URL}",
+      "blockExplorer": "https://sepolia.etherscan.io",
+      "contracts": {
+        "WETH": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+        "UniswapV2Router": "0xC532a74256D3Db42D0Bf7a0400fEFDbad7694008",
+        "UniswapV2Factory": "0x7E0987E5b3a30e3f2828572Bb659A548460a3003"
+      },
+      "gasSettings": {
+        "gasPrice": "20000000000"
+      },
+      "confirmations": 2
+    },
+    "arbitrumGoerli": {
+      "chainId": 421613,
+      "rpcUrl": "${ARBITRUM_GOERLI_RPC_URL}",
+      "blockExplorer": "https://goerli.arbiscan.io",
+      "contracts": {
+        "WETH": "0xe39Ab88f8A4777030A534146A9Ca3B52bd5D43A3",
+        "UniswapV2Router": "0x632879cDbA88340Cc48C89E8c477aEED036DF3B1",
+        "UniswapV2Factory": "0x632879cDbA88340Cc48C89E8c477aEED036DF3B1"
+      },
+      "gasSettings": {
+        "gasLimit": "10000000"
+      },
+      "confirmations": 2
+    },
+    "polygonMumbai": {
+      "chainId": 80001,
+      "rpcUrl": "${POLYGON_MUMBAI_RPC_URL}",
+      "blockExplorer": "https://mumbai.polygonscan.com",
+      "contracts": {
+        "WMATIC": "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889",
+        "UniswapV2Router": "0x8954AfA98594b838bda56FE4C12a09D7739D179b",
+        "UniswapV2Factory": "0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32"
+      },
+      "gasSettings": {
+        "gasPrice": "20000000000"
+      },
+      "confirmations": 2
+    }
+  },
+  "deployment": {
+    "roles": {
+      "DEFAULT_ADMIN_ROLE": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "PAUSER_ROLE": "0x65d7a28e3265b37a6474929f336521b332c1681b933f6cb9f3376673440d862a",
+      "OPERATOR_ROLE": "0x97667070c54ef182b0f5858b034beac1b6f3089aa2d3188bb1e8929f4fa9b929",
+      "ARBITER_ROLE": "0x70480ee89cb38eff00b7d23da25713d52ce19c6ed428691d22c58b2f615e3d67",
+      "FEE_COLLECTOR_ROLE": "0x8a0ae9de6c0f89b1bc7fa37045c96fe6df7c8c0b4c82c37eb0bf563bb97a97e8"
+    },
+    "parameters": {
+      "escrow": {
+        "feePercentage": 25,
+        "minLockDuration": 300,
+        "maxLockDuration": 2592000,
+        "emergencyWithdrawDelay": 259200
+      },
+      "stateChannel": {
+        "challengePeriod": 86400,
+        "extensionPeriod": 3600,
+        "minChannelDeposit": "1000000000000000",
+        "maxChannelDuration": 2592000
+      },
+      "settlement": {
+        "batchSize": 100,
+        "settlementDelay": 3600,
+        "minSettlementAmount": "100000000000000000",
+        "merkleTreeDepth": 32
+      },
+      "security": {
+        "circuitBreaker": {
+          "withdrawalLimit": "10000000000000000000000",
+          "withdrawalPeriod": 86400,
+          "cooldownPeriod": 3600
+        },
+        "mevProtection": {
+          "minDelay": 1,
+          "maxDelay": 10,
+          "priorityFeeThreshold": "1000000000"
+        }
+      }
+    },
+    "initialization": {
+      "treasury": "${TREASURY_ADDRESS}",
+      "feeRecipient": "${FEE_RECIPIENT_ADDRESS}",
+      "emergencyAdmin": "${EMERGENCY_ADMIN_ADDRESS}",
+      "priceOracle": "${PRICE_ORACLE_ADDRESS}"
+    }
+  }
+}

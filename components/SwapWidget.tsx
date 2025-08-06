@@ -42,6 +42,7 @@ import {
 } from "../src/config/tokenRegistry";
 import { SpecialTokenService } from "../src/services/specialTokenService";
 import type { Order, Quote, Token } from "../types/wallet";
+import { generateTestJWT, storeAuthToken, getAuthToken, clearAuthToken } from "../utils/auth";
 
 // Token list with symbol, name, and address
 const DEFAULT_TOKENS: Token[] = [
@@ -303,6 +304,11 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         attemptReconnection().then((result) => {
           if (result.success && result.address) {
             setWalletAddress(result.address);
+            
+            // Generate and store JWT token for authentication
+            const token = generateTestJWT(result.address);
+            storeAuthToken(token);
+            
             onConnect?.();
           }
         }).catch((error) => {
@@ -421,6 +427,11 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
 
       if (result.success && result.address) {
         setWalletAddress(result.address);
+        
+        // Generate and store JWT token for authentication
+        const token = generateTestJWT(result.address);
+        storeAuthToken(token);
+        
         onConnect?.();
       } else {
         const errorMsg = result.error || "Failed to connect wallet";
@@ -442,10 +453,12 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     try {
       await disconnectWalletUtil();
       setWalletAddress(null);
+      clearAuthToken(); // Clear JWT token on disconnect
     } catch (error) {
       // Fallback: clear local state anyway
       setWalletAddress(null);
       clearWalletConnection();
+      clearAuthToken(); // Clear JWT token on disconnect
     }
   }, []);
 
@@ -927,9 +940,17 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         ? "/api/submitOrder-validated" 
         : "/api/submitOrder";
         
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error("Authentication required. Please reconnect your wallet.");
+      }
+
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(signedOrder),
       });
 
@@ -1135,7 +1156,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   ) => {
     const checkInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/orderStatus/${orderId}`);
+        const response = await fetch(`/api/orders/${orderId}`);
         if (!response.ok) return;
 
         const orderStatus = await response.json();

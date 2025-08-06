@@ -1,0 +1,269 @@
+{
+  "baseline": {
+    "timestamp": "2025-07-12T00:00:00.000Z",
+    "version": "1.0.0",
+    "environment": "production-baseline",
+    "test_duration": 900,
+    "load_profile": {
+      "max_users": 100,
+      "ramp_up_time": 120,
+      "sustained_load_time": 300,
+      "peak_load_time": 180
+    }
+  },
+  
+  "performance_metrics": {
+    "response_times": {
+      "mean": 185.2,
+      "median": 142.8,
+      "p95": 410.5,
+      "p99": 850.2,
+      "max": 1250.8,
+      "min": 12.3
+    },
+    
+    "throughput": {
+      "requests_per_second": 52.3,
+      "bytes_per_second": 2847392,
+      "requests_total": 47070
+    },
+    
+    "error_rates": {
+      "total_errors": 142,
+      "error_rate_percent": 0.30,
+      "http_errors": {
+        "4xx": 89,
+        "5xx": 53
+      },
+      "timeout_errors": 0,
+      "connection_errors": 0
+    },
+    
+    "resource_utilization": {
+      "cpu_average_percent": 45.2,
+      "cpu_peak_percent": 78.5,
+      "memory_average_mb": 512.8,
+      "memory_peak_mb": 687.2,
+      "disk_io_reads_per_sec": 125.3,
+      "disk_io_writes_per_sec": 89.7,
+      "network_bytes_in_per_sec": 1250000,
+      "network_bytes_out_per_sec": 2850000
+    }
+  },
+  
+  "endpoint_performance": {
+    "/health": {
+      "requests": 2354,
+      "mean_response_time": 8.2,
+      "p95_response_time": 15.8,
+      "error_rate": 0.0,
+      "throughput": 2.6
+    },
+    
+    "/api/v1/orders": {
+      "requests": 18850,
+      "mean_response_time": 245.7,
+      "p95_response_time": 520.3,
+      "error_rate": 0.35,
+      "throughput": 20.9
+    },
+    
+    "/api/v1/auth/login": {
+      "requests": 4720,
+      "mean_response_time": 180.4,
+      "p95_response_time": 385.6,
+      "error_rate": 12.8,
+      "throughput": 5.2
+    },
+    
+    "/graphql": {
+      "requests": 14160,
+      "mean_response_time": 195.8,
+      "p95_response_time": 445.2,
+      "error_rate": 0.15,
+      "throughput": 15.7
+    },
+    
+    "/ws": {
+      "connections": 7080,
+      "mean_connection_time": 52.3,
+      "connection_success_rate": 99.2,
+      "message_throughput": 850.5
+    },
+    
+    "/api/v1/analytics/dashboard": {
+      "requests": 2950,
+      "mean_response_time": 125.8,
+      "p95_response_time": 285.4,
+      "error_rate": 0.05,
+      "throughput": 3.3
+    }
+  },
+  
+  "database_performance": {
+    "connection_pool": {
+      "active_connections": 15.2,
+      "idle_connections": 4.8,
+      "wait_count": 0,
+      "wait_time_avg": 0
+    },
+    
+    "query_performance": {
+      "avg_query_time": 12.5,
+      "slow_queries": 23,
+      "deadlocks": 0,
+      "lock_waits": 2
+    },
+    
+    "cache_performance": {
+      "redis_hit_rate": 94.2,
+      "redis_memory_usage": 125.8,
+      "redis_operations_per_sec": 1250.5
+    }
+  },
+  
+  "infrastructure_metrics": {
+    "load_balancer": {
+      "requests_per_second": 52.3,
+      "response_time_ms": 2.1,
+      "error_rate": 0.0,
+      "active_targets": 3
+    },
+    
+    "kubernetes": {
+      "pod_cpu_usage": 45.2,
+      "pod_memory_usage": 512.8,
+      "pod_restarts": 0,
+      "hpa_current_replicas": 3,
+      "hpa_desired_replicas": 3
+    },
+    
+    "external_services": {
+      "blockchain_rpc": {
+        "avg_response_time": 450.8,
+        "success_rate": 99.1,
+        "requests_per_minute": 125.3
+      },
+      
+      "third_party_apis": {
+        "avg_response_time": 185.2,
+        "success_rate": 98.9,
+        "requests_per_minute": 45.8
+      }
+    }
+  },
+  
+  "business_metrics": {
+    "orders": {
+      "orders_per_second": 2.1,
+      "successful_orders": 95.2,
+      "failed_orders": 4.8,
+      "avg_order_value": 1250.85
+    },
+    
+    "users": {
+      "active_users": 850,
+      "new_registrations": 12,
+      "authentication_success_rate": 87.2
+    },
+    
+    "revenue": {
+      "volume_usd": 1250000,
+      "fees_collected": 1250.50,
+      "gas_costs": 850.25
+    }
+  },
+  
+  "quality_gates": {
+    "performance": {
+      "p95_response_time_threshold": 500,
+      "error_rate_threshold": 1.0,
+      "throughput_minimum": 40.0,
+      "status": "PASS"
+    },
+    
+    "reliability": {
+      "uptime_percentage": 99.95,
+      "mttr_minutes": 2.5,
+      "mtbf_hours": 720,
+      "status": "PASS"
+    },
+    
+    "scalability": {
+      "concurrent_users_supported": 1000,
+      "peak_load_handled": true,
+      "auto_scaling_triggered": true,
+      "status": "PASS"
+    }
+  },
+  
+  "regression_thresholds": {
+    "response_time": {
+      "p95_degradation_threshold": 10,
+      "median_degradation_threshold": 15,
+      "mean_degradation_threshold": 20
+    },
+    
+    "throughput": {
+      "degradation_threshold": 10,
+      "minimum_acceptable": 35.0
+    },
+    
+    "error_rate": {
+      "increase_threshold": 50,
+      "maximum_acceptable": 2.0
+    },
+    
+    "resource_usage": {
+      "cpu_increase_threshold": 25,
+      "memory_increase_threshold": 30
+    }
+  },
+  
+  "test_configuration": {
+    "artillery_version": "2.0.0",
+    "test_scenarios": [
+      "health_check",
+      "api_gateway_load",
+      "graphql_load",
+      "websocket_load",
+      "analytics_load"
+    ],
+    
+    "infrastructure": {
+      "kubernetes_version": "1.28",
+      "node_count": 3,
+      "instance_type": "t3.large",
+      "database": "PostgreSQL 15",
+      "cache": "Redis 7"
+    },
+    
+    "application": {
+      "node_version": "18.17.0",
+      "memory_limit": "1Gi",
+      "cpu_limit": "500m",
+      "replicas": 3
+    }
+  },
+  
+  "recommendations": [
+    {
+      "category": "performance",
+      "priority": "medium",
+      "description": "Consider implementing request batching for GraphQL queries to reduce overhead",
+      "estimated_improvement": "5-10% response time reduction"
+    },
+    {
+      "category": "scalability",
+      "priority": "low",
+      "description": "Monitor connection pool usage during peak loads",
+      "estimated_improvement": "Better resource utilization"
+    },
+    {
+      "category": "reliability",
+      "priority": "high",
+      "description": "Implement circuit breakers for external service calls",
+      "estimated_improvement": "Improved fault tolerance"
+    }
+  ]
+}

@@ -1,0 +1,379 @@
+# SwappiQ Protocol Alerting Rules
+# Author: SwappiQ Protocol
+# Description: Comprehensive alerting rules for production monitoring
+
+groups:
+  # Critical System Alerts
+  - name: swappiq.critical
+    interval: 30s
+    rules:
+      # API Health Alerts
+      - alert: APIServiceDown
+        expr: up{job=~"swappiq-api|swappiq-websocket"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+          runbook: https://runbooks.swappiq.com/api-service-down
+        annotations:
+          summary: "SwappiQ API service is down"
+          description: "API service {{ $labels.instance }} has been down for more than 1 minute"
+          impact: "Users cannot access trading functionality"
+          action: "Check service logs and restart if necessary"
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(swappiq_http_requests_total{status=~"5.."}[5m]) /
+            rate(swappiq_http_requests_total[5m])
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.service }}"
+          impact: "Service degradation affecting user experience"
+
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            rate(swappiq_http_request_duration_seconds_bucket[5m])
+          ) > 2
+        for: 3m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s for {{ $labels.service }}"
+
+      # Trading Engine Alerts
+      - alert: MatchingEngineDown
+        expr: up{job="matching-engine"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: trading
+          runbook: https://runbooks.swappiq.com/matching-engine-down
+        annotations:
+          summary: "Matching engine is down"
+          description: "Matching engine {{ $labels.instance }} is unavailable"
+          impact: "Order matching is suspended, trades cannot be executed"
+          action: "Immediate investigation required - check logs and failover procedures"
+
+      - alert: OrderProcessingDelay
+        expr: swappiq_order_processing_delay_seconds > 10
+        for: 1m
+        labels:
+          severity: warning
+          team: trading
+        annotations:
+          summary: "Order processing delay detected"
+          description: "Orders are taking {{ $value }}s to process on {{ $labels.instance }}"
+          impact: "Delayed order execution affecting trading performance"
+
+      - alert: TradeVolumeAnomaly
+        expr: |
+          abs(
+            rate(swappiq_trades_total[1h]) - 
+            rate(swappiq_trades_total[1h] offset 24h)
+          ) / rate(swappiq_trades_total[1h] offset 24h) > 0.5
+        for: 15m
+        labels:
+          severity: warning
+          team: trading
+        annotations:
+          summary: "Unusual trade volume detected"
+          description: "Trade volume has changed by {{ $value | humanizePercentage }} compared to 24h ago"
+
+      # Settlement Alerts
+      - alert: SettlementFailure
+        expr: rate(swappiq_settlement_failures_total[5m]) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          team: settlement
+        annotations:
+          summary: "Settlement failures detected"
+          description: "Settlement failure rate: {{ $value }}/min"
+          impact: "Trades may not be properly settled, financial risk"
+
+      - alert: PendingSettlements
+        expr: swappiq_pending_settlements > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: settlement
+        annotations:
+          summary: "High number of pending settlements"
+          description: "{{ $value }} settlements are pending"
+
+      # Balance Service Alerts
+      - alert: BalanceServiceLag
+        expr: swappiq_balance_update_lag_seconds > 30
+        for: 2m
+        labels:
+          severity: warning
+          team: balance
+        annotations:
+          summary: "Balance service lag detected"
+          description: "Balance updates are lagging by {{ $value }}s"
+
+      - alert: BalanceDiscrepancy
+        expr: swappiq_balance_discrepancy_detected > 0
+        for: 0s
+        labels:
+          severity: critical
+          team: balance
+          runbook: https://runbooks.swappiq.com/balance-discrepancy
+        annotations:
+          summary: "Balance discrepancy detected"
+          description: "{{ $value }} balance discrepancies found"
+          impact: "Potential financial inconsistency"
+          action: "Immediate investigation and reconciliation required"
+
+  # Performance Alerts
+  - name: swappiq.performance
+    interval: 60s
+    rules:
+      # Resource Usage
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: DiskSpaceLow
+        expr: |
+          (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # Database Performance
+      - alert: DatabaseConnectionsHigh
+        expr: |
+          pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "High database connections"
+          description: "Database connections at {{ $value | humanizePercentage }} of max"
+
+      - alert: DatabaseSlowQueries
+        expr: |
+          rate(pg_stat_statements_mean_time_ms[5m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Average query time is {{ $value }}ms"
+
+      # Cache Performance
+      - alert: RedisCacheHitRateLow
+        expr: |
+          rate(redis_keyspace_hits_total[5m]) / 
+          (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m])) < 0.9
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Low Redis cache hit rate"
+          description: "Cache hit rate is {{ $value | humanizePercentage }}"
+
+  # Business KPI Alerts
+  - name: swappiq.business
+    interval: 300s
+    rules:
+      # Trading Volume
+      - alert: LowTradingVolume
+        expr: |
+          rate(swappiq_trade_volume_usd[1h]) < 1000000  # Less than $1M/hour
+        for: 30m
+        labels:
+          severity: warning
+          team: business
+        annotations:
+          summary: "Low trading volume"
+          description: "Hourly trading volume is ${{ $value | humanize }}"
+
+      - alert: NoTradingActivity
+        expr: |
+          rate(swappiq_trades_total[10m]) == 0
+        for: 10m
+        labels:
+          severity: critical
+          team: trading
+        annotations:
+          summary: "No trading activity"
+          description: "No trades executed in the last 10 minutes"
+          impact: "Complete trading halt"
+
+      # User Activity
+      - alert: LowActiveUsers
+        expr: swappiq_active_users_1h < 100
+        for: 30m
+        labels:
+          severity: warning
+          team: product
+        annotations:
+          summary: "Low active user count"
+          description: "Only {{ $value }} active users in the last hour"
+
+      - alert: HighUserChurn
+        expr: |
+          (swappiq_users_churned_24h / swappiq_users_active_24h) > 0.1
+        for: 1h
+        labels:
+          severity: warning
+          team: product
+        annotations:
+          summary: "High user churn rate"
+          description: "User churn rate is {{ $value | humanizePercentage }}"
+
+      # Revenue Metrics
+      - alert: LowFeeRevenue
+        expr: |
+          rate(swappiq_fee_revenue_usd[1h]) < 10000  # Less than $10K/hour
+        for: 1h
+        labels:
+          severity: warning
+          team: business
+        annotations:
+          summary: "Low fee revenue"
+          description: "Hourly fee revenue is ${{ $value | humanize }}"
+
+  # Security Alerts
+  - name: swappiq.security
+    interval: 60s
+    rules:
+      - alert: HighFailedAuthAttempts
+        expr: |
+          rate(swappiq_auth_failures_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "High authentication failure rate"
+          description: "{{ $value }} auth failures/min from {{ $labels.source_ip }}"
+
+      - alert: SuspiciousAPIActivity
+        expr: |
+          rate(swappiq_api_requests_total{user_id="unknown"}[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Suspicious API activity"
+          description: "High rate of unauthenticated API requests: {{ $value }}/min"
+
+      - alert: UnusualOrderPattern
+        expr: |
+          rate(swappiq_orders_total{type="market"}[1m]) > 100
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Unusual order pattern detected"
+          description: "High rate of market orders: {{ $value }}/min"
+
+  # Infrastructure Alerts
+  - name: swappiq.infrastructure
+    interval: 60s
+    rules:
+      - alert: LoadBalancerDown
+        expr: |
+          probe_success{job="blackbox"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Load balancer health check failed"
+          description: "{{ $labels.instance }} is not responding"
+
+      - alert: CertificateExpiringSoon
+        expr: |
+          (probe_ssl_earliest_cert_expiry - time()) / 86400 < 30
+        for: 0s
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "Certificate for {{ $labels.instance }} expires in {{ $value }} days"
+
+      - alert: NetworkLatencyHigh
+        expr: |
+          histogram_quantile(0.95, rate(swappiq_network_latency_seconds_bucket[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High network latency"
+          description: "95th percentile network latency is {{ $value }}s"
+
+  # WebSocket Alerts
+  - name: swappiq.websocket
+    interval: 30s
+    rules:
+      - alert: WebSocketConnectionsHigh
+        expr: swappiq_websocket_connections > 10000
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High WebSocket connection count"
+          description: "{{ $value }} active WebSocket connections"
+
+      - alert: WebSocketMessageQueueBacklog
+        expr: swappiq_websocket_message_queue_size > 1000
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "WebSocket message queue backlog"
+          description: "{{ $value }} messages queued for delivery"
+
+      - alert: WebSocketBroadcastLatency
+        expr: swappiq_websocket_broadcast_latency_seconds > 1
+        for: 3m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High WebSocket broadcast latency"
+          description: "Message broadcast latency is {{ $value }}s"

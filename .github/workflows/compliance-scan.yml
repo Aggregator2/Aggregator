@@ -1,0 +1,535 @@
+name: Compliance Security Scanning
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly compliance scans on Mondays at 4 AM UTC
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      compliance_framework:
+        description: 'Compliance framework to scan against'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - pci-dss
+          - soc2
+          - gdpr
+          - nist
+          - iso27001
+          - hipaa
+      environment:
+        description: 'Environment to scan'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - development
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  # PCI DSS Compliance Scanning
+  pci-dss-compliance:
+    name: PCI DSS Compliance Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.compliance_framework == 'pci-dss' || github.event.inputs.compliance_framework == 'all' || github.event_name == 'schedule'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install compliance scanning tools
+        run: |
+          pip install \
+            bandit[toml] \
+            safety \
+            semgrep \
+            checkov \
+            detect-secrets \
+            compliance-checker-pci
+
+      - name: Run PCI DSS requirement checks
+        run: |
+          echo "Running PCI DSS compliance checks..."
+          
+          # PCI DSS Requirement 6.5 - Secure coding practices
+          bandit -r lib/ pages/ components/ -f json -o pci-bandit-report.json
+          
+          # PCI DSS Requirement 2 - Strong cryptography
+          python3 scripts/compliance/check-encryption-standards.py \
+            --framework pci-dss \
+            --output pci-crypto-report.json
+          
+          # PCI DSS Requirement 8 - Access controls
+          python3 scripts/compliance/check-access-controls.py \
+            --framework pci-dss \
+            --environment ${{ github.event.inputs.environment || 'production' }}
+          
+          # PCI DSS Requirement 11 - Security testing
+          checkov -d . --framework terraform --check CKV_PCI_* --output json > pci-checkov-report.json
+
+      - name: Generate PCI DSS compliance report
+        run: |
+          python3 scripts/compliance/generate-pci-report.py \
+            --bandit-report pci-bandit-report.json \
+            --checkov-report pci-checkov-report.json \
+            --crypto-report pci-crypto-report.json \
+            --output pci-dss-compliance-report.html
+
+      - name: Upload PCI DSS compliance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pci-dss-compliance-reports
+          path: |
+            pci-*.json
+            pci-dss-compliance-report.html
+
+  # SOC 2 Compliance Scanning
+  soc2-compliance:
+    name: SOC 2 Type II Compliance Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.compliance_framework == 'soc2' || github.event.inputs.compliance_framework == 'all' || github.event_name == 'schedule'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install SOC 2 compliance tools
+        run: |
+          npm install -g @aws/soc2-scanner eslint-plugin-security
+          pip install \
+            soc2-compliance-checker \
+            cloud-security-scanner \
+            terraform-compliance
+
+      - name: SOC 2 Trust Service Criteria checks
+        run: |
+          echo "Running SOC 2 compliance checks..."
+          
+          # Security Criteria (CC6.1, CC6.2, CC6.3)
+          python3 scripts/compliance/soc2-security-controls.py \
+            --check-encryption \
+            --check-access-controls \
+            --check-vulnerability-management \
+            --output soc2-security-report.json
+          
+          # Availability Criteria (A1.1, A1.2, A1.3)
+          python3 scripts/compliance/soc2-availability-controls.py \
+            --check-backup-procedures \
+            --check-disaster-recovery \
+            --check-monitoring \
+            --output soc2-availability-report.json
+          
+          # Processing Integrity Criteria (PI1.1, PI1.2)
+          python3 scripts/compliance/soc2-integrity-controls.py \
+            --check-data-validation \
+            --check-error-handling \
+            --output soc2-integrity-report.json
+          
+          # Confidentiality Criteria (C1.1, C1.2)
+          python3 scripts/compliance/soc2-confidentiality-controls.py \
+            --check-data-classification \
+            --check-encryption-at-rest \
+            --check-encryption-in-transit \
+            --output soc2-confidentiality-report.json
+
+      - name: Generate SOC 2 compliance report
+        run: |
+          python3 scripts/compliance/generate-soc2-report.py \
+            --security-report soc2-security-report.json \
+            --availability-report soc2-availability-report.json \
+            --integrity-report soc2-integrity-report.json \
+            --confidentiality-report soc2-confidentiality-report.json \
+            --output soc2-compliance-report.html
+
+      - name: Upload SOC 2 compliance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: soc2-compliance-reports
+          path: |
+            soc2-*.json
+            soc2-compliance-report.html
+
+  # GDPR Compliance Scanning
+  gdpr-compliance:
+    name: GDPR Privacy Compliance Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.compliance_framework == 'gdpr' || github.event.inputs.compliance_framework == 'all' || github.event_name == 'schedule'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install GDPR compliance tools
+        run: |
+          pip install \
+            gdpr-compliance-checker \
+            privacy-scanner \
+            data-protection-analyzer \
+            pii-detector
+
+      - name: GDPR Article compliance checks
+        run: |
+          echo "Running GDPR compliance checks..."
+          
+          # Article 25 - Data Protection by Design
+          python3 scripts/compliance/gdpr-privacy-by-design.py \
+            --check-data-minimization \
+            --check-purpose-limitation \
+            --check-pseudonymization \
+            --output gdpr-privacy-design-report.json
+          
+          # Article 32 - Security of Processing
+          python3 scripts/compliance/gdpr-security-processing.py \
+            --check-encryption \
+            --check-access-controls \
+            --check-backup-procedures \
+            --output gdpr-security-report.json
+          
+          # Article 17 - Right to Erasure
+          python3 scripts/compliance/gdpr-data-erasure.py \
+            --check-deletion-procedures \
+            --check-data-retention \
+            --output gdpr-erasure-report.json
+          
+          # Article 35 - Data Protection Impact Assessment
+          python3 scripts/compliance/gdpr-dpia.py \
+            --check-risk-assessment \
+            --check-privacy-impact \
+            --output gdpr-dpia-report.json
+
+      - name: PII and sensitive data detection
+        run: |
+          python3 scripts/compliance/detect-pii.py \
+            --scan-directory . \
+            --exclude node_modules,dist,build \
+            --output gdpr-pii-report.json
+
+      - name: Generate GDPR compliance report
+        run: |
+          python3 scripts/compliance/generate-gdpr-report.py \
+            --privacy-design-report gdpr-privacy-design-report.json \
+            --security-report gdpr-security-report.json \
+            --erasure-report gdpr-erasure-report.json \
+            --dpia-report gdpr-dpia-report.json \
+            --pii-report gdpr-pii-report.json \
+            --output gdpr-compliance-report.html
+
+      - name: Upload GDPR compliance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdpr-compliance-reports
+          path: |
+            gdpr-*.json
+            gdpr-compliance-report.html
+
+  # NIST Cybersecurity Framework Scanning
+  nist-compliance:
+    name: NIST Cybersecurity Framework Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.compliance_framework == 'nist' || github.event.inputs.compliance_framework == 'all' || github.event_name == 'schedule'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup compliance environment
+        run: |
+          pip install \
+            nist-cybersecurity-framework \
+            security-controls-assessment \
+            risk-management-framework
+
+      - name: NIST Framework Function assessment
+        run: |
+          echo "Running NIST Cybersecurity Framework assessment..."
+          
+          # Identify Function (ID)
+          python3 scripts/compliance/nist-identify.py \
+            --check-asset-management \
+            --check-business-environment \
+            --check-governance \
+            --output nist-identify-report.json
+          
+          # Protect Function (PR)
+          python3 scripts/compliance/nist-protect.py \
+            --check-access-control \
+            --check-awareness-training \
+            --check-data-security \
+            --check-protective-technology \
+            --output nist-protect-report.json
+          
+          # Detect Function (DE)
+          python3 scripts/compliance/nist-detect.py \
+            --check-anomaly-detection \
+            --check-continuous-monitoring \
+            --check-detection-processes \
+            --output nist-detect-report.json
+          
+          # Respond Function (RS)
+          python3 scripts/compliance/nist-respond.py \
+            --check-response-planning \
+            --check-communications \
+            --check-analysis \
+            --output nist-respond-report.json
+          
+          # Recover Function (RC)
+          python3 scripts/compliance/nist-recover.py \
+            --check-recovery-planning \
+            --check-improvements \
+            --check-communications \
+            --output nist-recover-report.json
+
+      - name: Generate NIST compliance report
+        run: |
+          python3 scripts/compliance/generate-nist-report.py \
+            --identify-report nist-identify-report.json \
+            --protect-report nist-protect-report.json \
+            --detect-report nist-detect-report.json \
+            --respond-report nist-respond-report.json \
+            --recover-report nist-recover-report.json \
+            --output nist-compliance-report.html
+
+      - name: Upload NIST compliance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nist-compliance-reports
+          path: |
+            nist-*.json
+            nist-compliance-report.html
+
+  # ISO 27001 Compliance Scanning
+  iso27001-compliance:
+    name: ISO 27001 Information Security Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.compliance_framework == 'iso27001' || github.event.inputs.compliance_framework == 'all' || github.event_name == 'schedule'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install ISO 27001 compliance tools
+        run: |
+          pip install \
+            iso27001-compliance-checker \
+            information-security-controls \
+            isms-assessment-tool
+
+      - name: ISO 27001 Annex A controls assessment
+        run: |
+          echo "Running ISO 27001 compliance checks..."
+          
+          # A.5 Information Security Policies
+          python3 scripts/compliance/iso27001-policies.py \
+            --check-security-policy \
+            --check-policy-review \
+            --output iso27001-policies-report.json
+          
+          # A.8 Asset Management
+          python3 scripts/compliance/iso27001-assets.py \
+            --check-asset-inventory \
+            --check-asset-classification \
+            --check-media-handling \
+            --output iso27001-assets-report.json
+          
+          # A.9 Access Control
+          python3 scripts/compliance/iso27001-access.py \
+            --check-access-policy \
+            --check-user-access-management \
+            --check-privileged-access \
+            --output iso27001-access-report.json
+          
+          # A.10 Cryptography
+          python3 scripts/compliance/iso27001-crypto.py \
+            --check-encryption-policy \
+            --check-key-management \
+            --output iso27001-crypto-report.json
+          
+          # A.12 Operations Security
+          python3 scripts/compliance/iso27001-operations.py \
+            --check-operational-procedures \
+            --check-malware-protection \
+            --check-backup \
+            --check-logging \
+            --output iso27001-operations-report.json
+
+      - name: Generate ISO 27001 compliance report
+        run: |
+          python3 scripts/compliance/generate-iso27001-report.py \
+            --policies-report iso27001-policies-report.json \
+            --assets-report iso27001-assets-report.json \
+            --access-report iso27001-access-report.json \
+            --crypto-report iso27001-crypto-report.json \
+            --operations-report iso27001-operations-report.json \
+            --output iso27001-compliance-report.html
+
+      - name: Upload ISO 27001 compliance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: iso27001-compliance-reports
+          path: |
+            iso27001-*.json
+            iso27001-compliance-report.html
+
+  # HIPAA Compliance Scanning (if applicable)
+  hipaa-compliance:
+    name: HIPAA Privacy and Security Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.compliance_framework == 'hipaa' || github.event.inputs.compliance_framework == 'all'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install HIPAA compliance tools
+        run: |
+          pip install \
+            hipaa-compliance-checker \
+            phi-scanner \
+            healthcare-security-analyzer
+
+      - name: HIPAA Security Rule compliance checks
+        run: |
+          echo "Running HIPAA compliance checks..."
+          
+          # Administrative Safeguards
+          python3 scripts/compliance/hipaa-administrative.py \
+            --check-security-officer \
+            --check-workforce-training \
+            --check-access-management \
+            --output hipaa-administrative-report.json
+          
+          # Physical Safeguards
+          python3 scripts/compliance/hipaa-physical.py \
+            --check-facility-controls \
+            --check-workstation-controls \
+            --check-media-controls \
+            --output hipaa-physical-report.json
+          
+          # Technical Safeguards
+          python3 scripts/compliance/hipaa-technical.py \
+            --check-access-control \
+            --check-audit-controls \
+            --check-integrity \
+            --check-transmission-security \
+            --output hipaa-technical-report.json
+
+      - name: PHI detection scan
+        run: |
+          python3 scripts/compliance/detect-phi.py \
+            --scan-directory . \
+            --exclude node_modules,dist,build \
+            --output hipaa-phi-report.json
+
+      - name: Generate HIPAA compliance report
+        run: |
+          python3 scripts/compliance/generate-hipaa-report.py \
+            --administrative-report hipaa-administrative-report.json \
+            --physical-report hipaa-physical-report.json \
+            --technical-report hipaa-technical-report.json \
+            --phi-report hipaa-phi-report.json \
+            --output hipaa-compliance-report.html
+
+      - name: Upload HIPAA compliance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hipaa-compliance-reports
+          path: |
+            hipaa-*.json
+            hipaa-compliance-report.html
+
+  # Consolidated compliance reporting
+  generate-compliance-dashboard:
+    name: Generate Compliance Dashboard
+    runs-on: ubuntu-latest
+    needs: [pci-dss-compliance, soc2-compliance, gdpr-compliance, nist-compliance, iso27001-compliance]
+    if: always() && (needs.pci-dss-compliance.result == 'success' || needs.soc2-compliance.result == 'success' || needs.gdpr-compliance.result == 'success' || needs.nist-compliance.result == 'success' || needs.iso27001-compliance.result == 'success')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all compliance reports
+        uses: actions/download-artifact@v4
+        with:
+          path: compliance-reports
+
+      - name: Generate consolidated compliance dashboard
+        run: |
+          python3 scripts/compliance/generate-dashboard.py \
+            --reports-directory compliance-reports \
+            --environment ${{ github.event.inputs.environment || 'production' }} \
+            --framework ${{ github.event.inputs.compliance_framework || 'all' }} \
+            --output compliance-dashboard.html
+
+      - name: Upload compliance dashboard
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-dashboard
+          path: compliance-dashboard.html
+
+      - name: Post compliance summary to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'compliance-dashboard.html';
+            
+            if (fs.existsSync(path)) {
+              const summary = '## 🛡️ Compliance Scan Results\n\n' +
+                            'A comprehensive compliance scan has been completed. ' +
+                            'Please review the detailed compliance dashboard in the artifacts.\n\n' +
+                            '### Frameworks Scanned:\n' +
+                            '- PCI DSS (Payment Card Industry)\n' +
+                            '- SOC 2 Type II (Service Organization Control)\n' +
+                            '- GDPR (General Data Protection Regulation)\n' +
+                            '- NIST Cybersecurity Framework\n' +
+                            '- ISO 27001 (Information Security Management)\n\n' +
+                            '**Note**: Review all compliance findings before merging.';
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+            }
+
+  # Compliance notification and alerting
+  compliance-notifications:
+    name: Send Compliance Notifications
+    runs-on: ubuntu-latest
+    needs: [generate-compliance-dashboard]
+    if: always() && (github.event_name == 'schedule' || github.event.inputs.compliance_framework)
+    steps:
+      - name: Send compliance alerts
+        run: |
+          echo "Compliance scan completed for Real-time Data Feeds system"
+          echo "Framework: ${{ github.event.inputs.compliance_framework || 'all' }}"
+          echo "Environment: ${{ github.event.inputs.environment || 'production' }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Results available in workflow artifacts"

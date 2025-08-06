@@ -1,0 +1,171 @@
+{
+  "version": "8.5.0",
+  "objects": [
+    {
+      "id": "swappiq-logs-overview",
+      "type": "dashboard",
+      "attributes": {
+        "title": "SwappiQ Logs Overview",
+        "description": "Comprehensive log analysis dashboard for SwappiQ Protocol",
+        "panelsJSON": "[{\"version\":\"8.5.0\",\"gridData\":{\"x\":0,\"y\":0,\"w\":24,\"h\":15,\"i\":\"1\"},\"panelIndex\":\"1\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_1\"},{\"version\":\"8.5.0\",\"gridData\":{\"x\":24,\"y\":0,\"w\":24,\"h\":15,\"i\":\"2\"},\"panelIndex\":\"2\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_2\"},{\"version\":\"8.5.0\",\"gridData\":{\"x\":0,\"y\":15,\"w\":24,\"h\":15,\"i\":\"3\"},\"panelIndex\":\"3\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_3\"},{\"version\":\"8.5.0\",\"gridData\":{\"x\":24,\"y\":15,\"w\":24,\"h\":15,\"i\":\"4\"},\"panelIndex\":\"4\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_4\"},{\"version\":\"8.5.0\",\"gridData\":{\"x\":0,\"y\":30,\"w\":48,\"h\":20,\"i\":\"5\"},\"panelIndex\":\"5\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_5\"},{\"version\":\"8.5.0\",\"gridData\":{\"x\":0,\"y\":50,\"w\":16,\"h\":15,\"i\":\"6\"},\"panelIndex\":\"6\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_6\"},{\"version\":\"8.5.0\",\"gridData\":{\"x\":16,\"y\":50,\"w\":16,\"h\":15,\"i\":\"7\"},\"panelIndex\":\"7\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_7\"},{\"version\":\"8.5.0\",\"gridData\":{\"x\":32,\"y\":50,\"w\":16,\"h\":15,\"i\":\"8\"},\"panelIndex\":\"8\",\"embeddableConfig\":{\"enhancements\":{}},\"panelRefName\":\"panel_8\"}]",
+        "timeRestore": false,
+        "timeTo": "now",
+        "timeFrom": "now-24h",
+        "refreshInterval": {
+          "pause": false,
+          "value": 30000
+        },
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[]}"
+        }
+      },
+      "references": [
+        {
+          "name": "panel_1",
+          "type": "visualization",
+          "id": "log-level-distribution"
+        },
+        {
+          "name": "panel_2",
+          "type": "visualization",
+          "id": "service-log-volume"
+        },
+        {
+          "name": "panel_3",
+          "type": "visualization",
+          "id": "error-rate-timeline"
+        },
+        {
+          "name": "panel_4",
+          "type": "visualization",
+          "id": "response-time-heatmap"
+        },
+        {
+          "name": "panel_5",
+          "type": "visualization",
+          "id": "recent-logs-table"
+        },
+        {
+          "name": "panel_6",
+          "type": "visualization",
+          "id": "top-errors"
+        },
+        {
+          "name": "panel_7",
+          "type": "visualization",
+          "id": "geographic-distribution"
+        },
+        {
+          "name": "panel_8",
+          "type": "visualization",
+          "id": "trading-metrics"
+        }
+      ]
+    },
+    {
+      "id": "log-level-distribution",
+      "type": "visualization",
+      "attributes": {
+        "title": "Log Level Distribution",
+        "visState": "{\"title\":\"Log Level Distribution\",\"type\":\"pie\",\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"level.keyword\",\"orderBy\":\"1\",\"order\":\"desc\",\"size\":10,\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "Distribution of log levels across all services",
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"swappiq-*\",\"query\":{\"match_all\":{}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "service-log-volume",
+      "type": "visualization",
+      "attributes": {
+        "title": "Log Volume by Service",
+        "visState": "{\"title\":\"Log Volume by Service\",\"type\":\"line\",\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"timeRange\":{\"from\":\"now-24h\",\"to\":\"now\"},\"useNormalizedEsInterval\":true,\"scaleMetricValues\":false,\"interval\":\"auto\",\"drop_partials\":false,\"min_doc_count\":1,\"extended_bounds\":{}}},{\"id\":\"3\",\"type\":\"terms\",\"schema\":\"group\",\"params\":{\"field\":\"service.keyword\",\"orderBy\":\"1\",\"order\":\"desc\",\"size\":10,\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "Log volume trends by service over time",
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"swappiq-*\",\"query\":{\"match_all\":{}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "error-rate-timeline",
+      "type": "visualization",
+      "attributes": {
+        "title": "Error Rate Timeline",
+        "visState": "{\"title\":\"Error Rate Timeline\",\"type\":\"line\",\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"timeRange\":{\"from\":\"now-24h\",\"to\":\"now\"},\"useNormalizedEsInterval\":true,\"scaleMetricValues\":false,\"interval\":\"auto\",\"drop_partials\":false,\"min_doc_count\":1,\"extended_bounds\":{}}},{\"id\":\"3\",\"type\":\"terms\",\"schema\":\"group\",\"params\":{\"field\":\"status_category.keyword\",\"orderBy\":\"1\",\"order\":\"desc\",\"size\":5,\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "HTTP error rate trends over time",
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"swappiq-*\",\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"status_code\"}}]}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "response-time-heatmap",
+      "type": "visualization",
+      "attributes": {
+        "title": "Response Time Heatmap",
+        "visState": "{\"title\":\"Response Time Heatmap\",\"type\":\"heatmap\",\"aggs\":[{\"id\":\"1\",\"type\":\"avg\",\"schema\":\"metric\",\"params\":{\"field\":\"duration_ms\",\"customLabel\":\"Avg Response Time (ms)\"}},{\"id\":\"2\",\"type\":\"date_histogram\",\"schema\":\"segment\",\"params\":{\"field\":\"@timestamp\",\"timeRange\":{\"from\":\"now-24h\",\"to\":\"now\"},\"useNormalizedEsInterval\":true,\"scaleMetricValues\":false,\"interval\":\"auto\",\"drop_partials\":false,\"min_doc_count\":1,\"extended_bounds\":{}}},{\"id\":\"3\",\"type\":\"terms\",\"schema\":\"group\",\"params\":{\"field\":\"endpoint.keyword\",\"orderBy\":\"1\",\"order\":\"desc\",\"size\":10,\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "Response time heatmap by endpoint",
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"swappiq-*\",\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"duration_ms\"}}]}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "recent-logs-table",
+      "type": "search",
+      "attributes": {
+        "title": "Recent Logs",
+        "description": "Most recent log entries with key fields",
+        "hits": 0,
+        "columns": ["@timestamp", "level", "service", "message", "request_id"],
+        "sort": [["@timestamp", "desc"]],
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"swappiq-*\",\"query\":{\"match_all\":{}},\"filter\":[],\"highlight\":{\"pre_tags\":[\"@kibana-highlighted-field@\"],\"post_tags\":[\"@/kibana-highlighted-field@\"],\"fields\":{\"*\":{}},\"fragment_size\":2147483647}}"
+        }
+      }
+    },
+    {
+      "id": "top-errors",
+      "type": "visualization",
+      "attributes": {
+        "title": "Top Errors",
+        "visState": "{\"title\":\"Top Errors\",\"type\":\"table\",\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"error_type.keyword\",\"orderBy\":\"1\",\"order\":\"desc\",\"size\":10,\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\"}},{\"id\":\"3\",\"type\":\"terms\",\"schema\":\"bucket\",\"params\":{\"field\":\"service.keyword\",\"orderBy\":\"1\",\"order\":\"desc\",\"size\":5,\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "Most frequent errors by type and service",
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"swappiq-*\",\"query\":{\"bool\":{\"must\":[{\"match\":{\"level\":\"ERROR\"}}]}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "geographic-distribution",
+      "type": "visualization",
+      "attributes": {
+        "title": "Geographic Distribution",
+        "visState": "{\"title\":\"Geographic Distribution\",\"type\":\"region_map\",\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\",\"params\":{}},{\"id\":\"2\",\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"geoip.country_code2.keyword\",\"orderBy\":\"1\",\"order\":\"desc\",\"size\":25,\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "Request distribution by country",
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"swappiq-*\",\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"geoip.country_code2\"}}]}},\"filter\":[]}"
+        }
+      }
+    },
+    {
+      "id": "trading-metrics",
+      "type": "visualization",
+      "attributes": {
+        "title": "Trading Activity Metrics",
+        "visState": "{\"title\":\"Trading Activity Metrics\",\"type\":\"metric\",\"aggs\":[{\"id\":\"1\",\"type\":\"sum\",\"schema\":\"metric\",\"params\":{\"field\":\"trade_volume_usd\",\"customLabel\":\"Total Volume (USD)\"}},{\"id\":\"2\",\"type\":\"cardinality\",\"schema\":\"metric\",\"params\":{\"field\":\"trade_id.keyword\",\"customLabel\":\"Total Trades\"}},{\"id\":\"3\",\"type\":\"avg\",\"schema\":\"metric\",\"params\":{\"field\":\"trade_value\",\"customLabel\":\"Avg Trade Size\"}}]}",
+        "uiStateJSON": "{}",
+        "description": "Key trading metrics from logs",
+        "kibanaSavedObjectMeta": {
+          "searchSourceJSON": "{\"index\":\"swappiq-*\",\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"trade_id\"}}]}},\"filter\":[]}"
+        }
+      }
+    }
+  ]
+}

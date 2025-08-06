@@ -1,0 +1,456 @@
+# Web Application Firewall (WAF) Configuration
+# AWS WAF v2 Rules for Real-time Data Feeds System
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'WAF Configuration for Real-time Data Feeds Security'
+
+Parameters:
+  ApplicationName:
+    Type: String
+    Default: realtime-feeds
+    Description: Name of the application
+  
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [development, staging, production]
+    Description: Environment name
+  
+  RateLimitThreshold:
+    Type: Number
+    Default: 2000
+    Description: Rate limit threshold per 5 minutes
+
+Resources:
+  # Web ACL for the Real-time Data Feeds Application
+  RealtimeDataFeedsWebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub '${ApplicationName}-${Environment}-waf'
+      Description: 'WAF for Real-time Data Feeds System'
+      Scope: REGIONAL
+      DefaultAction:
+        Allow: {}
+      
+      Rules:
+        # 1. AWS Managed Core Rule Set
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 1
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+              ExcludedRules:
+                - Name: SizeRestrictions_BODY
+                - Name: GenericRFI_BODY
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWSManagedRulesCommonRuleSetMetric
+
+        # 2. AWS Managed Known Bad Inputs Rule Set
+        - Name: AWSManagedRulesKnownBadInputsRuleSet
+          Priority: 2
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWSManagedRulesKnownBadInputsRuleSetMetric
+
+        # 3. AWS Managed SQL Injection Rule Set
+        - Name: AWSManagedRulesSQLiRuleSet
+          Priority: 3
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesSQLiRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWSManagedRulesSQLiRuleSetMetric
+
+        # 4. Rate Limiting Rule
+        - Name: RateLimitRule
+          Priority: 4
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 429
+                CustomResponseBodyKey: RateLimitResponse
+          Statement:
+            RateBasedStatement:
+              Limit: !Ref RateLimitThreshold
+              AggregateKeyType: IP
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: RateLimitRuleMetric
+
+        # 5. Geographic Blocking Rule
+        - Name: GeographicBlockingRule
+          Priority: 5
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 403
+                CustomResponseBodyKey: GeoBlockResponse
+          Statement:
+            GeoMatchStatement:
+              CountryCodes:
+                - CN  # China
+                - RU  # Russia
+                - KP  # North Korea
+                - IR  # Iran
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: GeographicBlockingRuleMetric
+
+        # 6. WebSocket Security Rule
+        - Name: WebSocketSecurityRule
+          Priority: 6
+          Action:
+            Allow: {}
+          Statement:
+            AndStatement:
+              Statements:
+                - ByteMatchStatement:
+                    SearchString: websocket
+                    FieldToMatch:
+                      SingleHeader:
+                        Name: upgrade
+                    TextTransformations:
+                      - Priority: 0
+                        Type: LOWERCASE
+                    PositionalConstraint: EXACTLY
+                - ByteMatchStatement:
+                    SearchString: upgrade
+                    FieldToMatch:
+                      SingleHeader:
+                        Name: connection
+                    TextTransformations:
+                      - Priority: 0
+                        Type: LOWERCASE
+                    PositionalConstraint: CONTAINS
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: WebSocketSecurityRuleMetric
+
+        # 7. API Endpoint Protection
+        - Name: APIEndpointProtection
+          Priority: 7
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 403
+                CustomResponseBodyKey: APIProtectionResponse
+          Statement:
+            OrStatement:
+              Statements:
+                # Block access to admin endpoints
+                - ByteMatchStatement:
+                    SearchString: /admin
+                    FieldToMatch:
+                      UriPath: {}
+                    TextTransformations:
+                      - Priority: 0
+                        Type: LOWERCASE
+                    PositionalConstraint: STARTS_WITH
+                # Block access to config files
+                - ByteMatchStatement:
+                    SearchString: .env
+                    FieldToMatch:
+                      UriPath: {}
+                    TextTransformations:
+                      - Priority: 0
+                        Type: LOWERCASE
+                    PositionalConstraint: CONTAINS
+                # Block access to backup files
+                - ByteMatchStatement:
+                    SearchString: .backup
+                    FieldToMatch:
+                      UriPath: {}
+                    TextTransformations:
+                      - Priority: 0
+                        Type: LOWERCASE
+                    PositionalConstraint: ENDS_WITH
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: APIEndpointProtectionMetric
+
+        # 8. Malicious User Agent Blocking
+        - Name: MaliciousUserAgentRule
+          Priority: 8
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 403
+                CustomResponseBodyKey: MaliciousUAResponse
+          Statement:
+            OrStatement:
+              Statements:
+                - ByteMatchStatement:
+                    SearchString: sqlmap
+                    FieldToMatch:
+                      SingleHeader:
+                        Name: user-agent
+                    TextTransformations:
+                      - Priority: 0
+                        Type: LOWERCASE
+                    PositionalConstraint: CONTAINS
+                - ByteMatchStatement:
+                    SearchString: nikto
+                    FieldToMatch:
+                      SingleHeader:
+                        Name: user-agent
+                    TextTransformations:
+                      - Priority: 0
+                        Type: LOWERCASE
+                    PositionalConstraint: CONTAINS
+                - ByteMatchStatement:
+                    SearchString: nmap
+                    FieldToMatch:
+                      SingleHeader:
+                        Name: user-agent
+                    TextTransformations:
+                      - Priority: 0
+                        Type: LOWERCASE
+                    PositionalConstraint: CONTAINS
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: MaliciousUserAgentRuleMetric
+
+        # 9. IP Reputation Rule
+        - Name: IPReputationRule
+          Priority: 9
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: IPReputationRuleMetric
+
+        # 10. Custom Security Headers Validation
+        - Name: SecurityHeadersValidation
+          Priority: 10
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 400
+                CustomResponseBodyKey: SecurityHeadersResponse
+          Statement:
+            NotStatement:
+              Statement:
+                AndStatement:
+                  Statements:
+                    - ByteMatchStatement:
+                        SearchString: application/json
+                        FieldToMatch:
+                          SingleHeader:
+                            Name: content-type
+                        TextTransformations:
+                          - Priority: 0
+                            Type: LOWERCASE
+                        PositionalConstraint: STARTS_WITH
+                    - SizeConstraintStatement:
+                        FieldToMatch:
+                          Body: {}
+                        ComparisonOperator: LE
+                        Size: 65536
+                        TextTransformations:
+                          - Priority: 0
+                            Type: NONE
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: SecurityHeadersValidationMetric
+
+      # Custom Response Bodies
+      CustomResponseBodies:
+        RateLimitResponse:
+          ContentType: APPLICATION_JSON
+          Content: |
+            {
+              "error": "Rate limit exceeded",
+              "message": "Too many requests. Please try again later.",
+              "code": 429
+            }
+        
+        GeoBlockResponse:
+          ContentType: APPLICATION_JSON
+          Content: |
+            {
+              "error": "Access denied",
+              "message": "Access from your location is not permitted.",
+              "code": 403
+            }
+        
+        APIProtectionResponse:
+          ContentType: APPLICATION_JSON
+          Content: |
+            {
+              "error": "Forbidden",
+              "message": "Access to this resource is not permitted.",
+              "code": 403
+            }
+        
+        MaliciousUAResponse:
+          ContentType: APPLICATION_JSON
+          Content: |
+            {
+              "error": "Blocked",
+              "message": "Request blocked due to security policy.",
+              "code": 403
+            }
+        
+        SecurityHeadersResponse:
+          ContentType: APPLICATION_JSON
+          Content: |
+            {
+              "error": "Bad Request",
+              "message": "Invalid request format or headers.",
+              "code": 400
+            }
+
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub '${ApplicationName}${Environment}WebACL'
+
+      Tags:
+        - Key: Name
+          Value: !Sub '${ApplicationName}-${Environment}-waf'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: !Ref ApplicationName
+
+  # CloudWatch Log Group for WAF Logs
+  WAFLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/wafv2/${ApplicationName}-${Environment}'
+      RetentionInDays: 30
+
+  # WAF Logging Configuration
+  WAFLoggingConfiguration:
+    Type: AWS::WAFv2::LoggingConfiguration
+    Properties:
+      ResourceArn: !GetAtt RealtimeDataFeedsWebACL.Arn
+      LogDestinationConfigs:
+        - !Sub '${WAFLogGroup.Arn}'
+      LoggingFilter:
+        DefaultBehavior: KEEP
+        Filters:
+          - Behavior: KEEP
+            Conditions:
+              - ActionCondition:
+                  Action: BLOCK
+            Requirement: MEETS_ANY
+
+  # CloudWatch Alarms for WAF Metrics
+  HighBlockedRequestsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ApplicationName}-${Environment}-waf-high-blocked-requests'
+      AlarmDescription: 'High number of blocked requests detected'
+      MetricName: BlockedRequests
+      Namespace: AWS/WAFV2
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 100
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: WebACL
+          Value: !Sub '${ApplicationName}-${Environment}-waf'
+        - Name: Region
+          Value: !Ref AWS::Region
+      AlarmActions:
+        - !Ref SecurityNotificationTopic
+
+  RateLimitAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ApplicationName}-${Environment}-waf-rate-limit-triggered'
+      AlarmDescription: 'Rate limiting is being triggered frequently'
+      MetricName: RateLimitRuleMetric
+      Namespace: AWS/WAFV2
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 50
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: WebACL
+          Value: !Sub '${ApplicationName}-${Environment}-waf'
+      AlarmActions:
+        - !Ref SecurityNotificationTopic
+
+  # SNS Topic for Security Notifications
+  SecurityNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${ApplicationName}-${Environment}-security-alerts'
+      DisplayName: 'Security Alerts for Real-time Data Feeds'
+
+  # IP Set for Known Good IPs (whitelist)
+  TrustedIPSet:
+    Type: AWS::WAFv2::IPSet
+    Properties:
+      Name: !Sub '${ApplicationName}-${Environment}-trusted-ips'
+      Description: 'Trusted IP addresses for Real-time Data Feeds'
+      Scope: REGIONAL
+      IPAddressVersion: IPV4
+      Addresses:
+        - 10.0.0.0/8      # Internal network
+        - 172.16.0.0/12   # Private network
+        - 192.168.0.0/16  # Local network
+        # Add your office/monitoring IPs here
+
+  # IP Set for Known Bad IPs (blacklist)
+  BlockedIPSet:
+    Type: AWS::WAFv2::IPSet
+    Properties:
+      Name: !Sub '${ApplicationName}-${Environment}-blocked-ips'
+      Description: 'Blocked IP addresses for Real-time Data Feeds'
+      Scope: REGIONAL
+      IPAddressVersion: IPV4
+      Addresses:
+        - 192.0.2.0/24    # Example blocked range
+        # Add known malicious IPs here
+
+Outputs:
+  WebACLArn:
+    Description: 'ARN of the Web ACL'
+    Value: !GetAtt RealtimeDataFeedsWebACL.Arn
+    Export:
+      Name: !Sub '${ApplicationName}-${Environment}-waf-arn'
+
+  WebACLId:
+    Description: 'ID of the Web ACL'
+    Value: !Ref RealtimeDataFeedsWebACL
+    Export:
+      Name: !Sub '${ApplicationName}-${Environment}-waf-id'
+
+  SecurityNotificationTopicArn:
+    Description: 'ARN of the Security Notification Topic'
+    Value: !Ref SecurityNotificationTopic
+    Export:
+      Name: !Sub '${ApplicationName}-${Environment}-security-topic-arn'

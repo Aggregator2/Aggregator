@@ -1,0 +1,175 @@
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "devops-team"
+    assignees:
+      - "security-team"
+    commit-message:
+      prefix: "npm"
+      prefix-development: "npm-dev"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "security"
+    milestone: "Security Updates"
+    target-branch: "develop"
+    
+    # Dependency groups for related packages
+    groups:
+      # Group all React-related packages
+      react:
+        patterns:
+          - "react*"
+          - "@types/react*"
+      
+      # Group all testing packages
+      testing:
+        patterns:
+          - "*jest*"
+          - "*testing*"
+          - "cypress*"
+          - "playwright*"
+          - "@testing-library/*"
+      
+      # Group all build tools
+      build-tools:
+        patterns:
+          - "webpack*"
+          - "babel*"
+          - "rollup*"
+          - "vite*"
+          - "esbuild*"
+      
+      # Group all linting tools
+      linting:
+        patterns:
+          - "eslint*"
+          - "prettier*"
+          - "@typescript-eslint/*"
+      
+      # Group blockchain/web3 packages
+      blockchain:
+        patterns:
+          - "ethers*"
+          - "web3*"
+          - "@ethereum/*"
+          - "hardhat*"
+          - "@openzeppelin/*"
+      
+      # Group all TypeScript packages
+      typescript:
+        patterns:
+          - "typescript*"
+          - "@types/*"
+
+    # Security updates configuration
+    allow:
+      - dependency-type: "direct"
+        update-type: "security"
+      - dependency-type: "indirect"
+        update-type: "security"
+      - dependency-type: "direct"
+        update-type: "version-update:semver-minor"
+      - dependency-type: "direct"
+        update-type: "version-update:semver-patch"
+
+    # Ignore specific packages that require manual updates
+    ignore:
+      # Major version updates require manual review
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      
+      # Specific packages to ignore
+      - dependency-name: "node"
+      - dependency-name: "@types/node"
+        versions: [">18.0.0"]
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "devops-team"
+    assignees:
+      - "platform-team"
+    commit-message:
+      prefix: "actions"
+      include: "scope"
+    labels:
+      - "ci/cd"
+      - "github-actions"
+
+  # Enable version updates for Docker
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "devops-team"
+    assignees:
+      - "infrastructure-team"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    labels:
+      - "docker"
+      - "infrastructure"
+
+  # Enable version updates for Terraform (if using)
+  - package-ecosystem: "terraform"
+    directory: "/infrastructure"
+    schedule:
+      interval: "monthly"
+      day: "first-monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "devops-team"
+      - "infrastructure-team"
+    assignees:
+      - "devops-team"
+    commit-message:
+      prefix: "terraform"
+      include: "scope"
+    labels:
+      - "terraform"
+      - "infrastructure"
+
+  # Enable version updates for pip (Python dependencies)
+  - package-ecosystem: "pip"
+    directory: "/scripts"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "devops-team"
+    assignees:
+      - "backend-team"
+    commit-message:
+      prefix: "python"
+      include: "scope"
+    labels:
+      - "python"
+      - "dependencies"
