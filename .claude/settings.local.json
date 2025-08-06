@@ -34,7 +34,10 @@
       "Bash(LIFI_API_KEY=e411f45a-05ed-47d7-aea8-def36d94442e.dcb8f395-2612-41e7-85b2-cb1d1de85502 node test-lifi-comprehensive.js)",
       "Bash(mv:*)",
       "WebFetch(domain:docs.anthropic.com)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
