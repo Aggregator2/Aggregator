@@ -282,7 +282,6 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   ]);
 
   // Hooks
-  const { notify } = useSimpleNotifications();
   
   // Use new notification system for errors
   const showErrorNotification = useCallback((message: string) => {
