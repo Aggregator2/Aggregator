@@ -1,0 +1,571 @@
+/* Container positioning */
+.notificationContainer {
+  position: fixed;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  perspective: 1000px;
+  /* Ensure notifications don't go under mobile browser UI */
+  max-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 40px);
+  overflow-y: visible;
+}
+
+.notificationContainer.top-right {
+  top: 24px;
+  right: 24px;
+}
+
+.notificationContainer.top-center {
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.notificationContainer.bottom-right {
+  bottom: 24px;
+  right: 24px;
+}
+
+.notificationContainer.bottom-center {
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Notification base styles */
+.notification {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  min-width: 380px;
+  max-width: 500px;
+  border-radius: 16px;
+  pointer-events: all;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+  /* Ensure text doesn't get too close to edges */
+  box-sizing: border-box;
+}
+
+/* Progress bar */
+.progressBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: var(--progress, 100%);
+  background: currentColor;
+  opacity: 0.3;
+  transition: width 50ms linear;
+  transform-origin: left;
+}
+
+/* Glow effect */
+.glowEffect {
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(
+    circle at center,
+    currentColor 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  filter: blur(40px);
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.notification:hover .glowEffect {
+  opacity: 0.1;
+}
+
+/* Icon container */
+.iconContainer {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.iconContainer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.notification:hover .iconContainer::before {
+  opacity: 1;
+}
+
+.iconContainer svg {
+  width: 20px;
+  height: 20px;
+  color: currentColor;
+  z-index: 1;
+  position: relative;
+}
+
+/* Content */
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: inherit;
+}
+
+.message {
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  opacity: 0.8;
+  color: inherit;
+}
+
+/* Action button */
+.actionButton {
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Close button */
+.closeButton {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.closeButton::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0;
+  border-radius: 8px;
+  transition: opacity 0.2s ease;
+}
+
+.closeButton:hover {
+  opacity: 1;
+}
+
+.closeButton:hover::before {
+  opacity: 0.1;
+}
+
+.closeButton svg {
+  width: 14px;
+  height: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Type-specific styles */
+.notification.success {
+  background: linear-gradient(
+    135deg,
+    rgba(16, 185, 129, 0.95) 0%,
+    rgba(5, 150, 105, 0.95) 100%
+  );
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.notification.success .iconContainer {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+}
+
+.notification.error {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.95) 0%,
+    rgba(220, 38, 38, 0.95) 100%
+  );
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.notification.error .iconContainer {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  animation: errorPulse 2s ease-in-out infinite;
+}
+
+@keyframes errorPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.notification.warning {
+  background: linear-gradient(
+    135deg,
+    rgba(251, 146, 60, 0.95) 0%,
+    rgba(245, 158, 11, 0.95) 100%
+  );
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.notification.warning .iconContainer {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 20px rgba(251, 146, 60, 0.4);
+}
+
+.notification.info {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.95) 0%,
+    rgba(37, 99, 235, 0.95) 100%
+  );
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.notification.info .iconContainer {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .notification {
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 2px 4px -1px rgba(0, 0, 0, 0.2),
+      0 20px 25px -5px rgba(0, 0, 0, 0.3),
+      0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  }
+
+  .notification.error {
+    background: linear-gradient(
+      135deg,
+      rgba(30, 30, 30, 0.98) 0%,
+      rgba(20, 20, 20, 0.98) 100%
+    );
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+  }
+
+  .notification.error .iconContainer {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+  }
+
+  .notification.error .title {
+    color: white;
+  }
+
+  .notification.error .message {
+    color: rgba(255, 255, 255, 0.8);
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .notificationContainer {
+    left: 0 !important;
+    right: 0 !important;
+    padding: 0 16px;
+    transform: none !important;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .notificationContainer.top-right,
+  .notificationContainer.top-center {
+    top: env(safe-area-inset-top, 20px);
+    padding-top: 16px;
+  }
+
+  .notificationContainer.bottom-right,
+  .notificationContainer.bottom-center {
+    bottom: env(safe-area-inset-bottom, 20px);
+    padding-bottom: 16px;
+  }
+
+  .notification {
+    min-width: unset;
+    width: 100%;
+    max-width: 100%;
+    padding: 14px 16px;
+    gap: 12px;
+    border-radius: 12px;
+    /* Reduce heavy shadows on mobile for performance */
+    box-shadow: 
+      0 2px 4px -1px rgba(0, 0, 0, 0.1),
+      0 4px 6px -1px rgba(0, 0, 0, 0.06),
+      0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    /* Disable 3D transforms on mobile */
+    transform: none !important;
+  }
+
+  /* Simplify animations on mobile */
+  .notification {
+    animation: mobileSlideIn 0.3s ease-out;
+  }
+
+  .notification:hover {
+    transform: none !important;
+  }
+
+  .progressBar {
+    height: 2px;
+  }
+
+  .glowEffect {
+    display: none; /* Disable glow on mobile for performance */
+  }
+
+  .title {
+    font-size: 14px;
+    line-height: 1.3;
+  }
+
+  .message {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .iconContainer {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .iconContainer::before {
+    display: none; /* Simplify on mobile */
+  }
+
+  .iconContainer svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .closeButton {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    /* Larger touch target */
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: -6px -8px -6px 0; /* Compensate for larger touch target */
+  }
+
+  .closeButton svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .actionButton {
+    padding: 8px 14px;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  /* Disable complex hover animations on mobile */
+  .notification:hover .iconContainer::before,
+  .notification:hover .glowEffect,
+  .closeButton:hover::before {
+    display: none;
+  }
+}
+
+/* Smaller mobile devices */
+@media (max-width: 390px) {
+  .notificationContainer {
+    padding: 0 12px;
+  }
+
+  .notification {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .title {
+    font-size: 13px;
+  }
+
+  .message {
+    font-size: 12px;
+  }
+
+  .iconContainer {
+    width: 32px;
+    height: 32px;
+  }
+
+  .iconContainer svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Mobile-specific animations */
+@keyframes mobileSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Entrance animations for staggered effect */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(-50px);
+  }
+  50% {
+    transform: scale(1.05) translateY(0);
+  }
+  70% {
+    transform: scale(0.95) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Hover lift effect */
+.notification {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.notification:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 8px -1px rgba(0, 0, 0, 0.15),
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 25px 30px -5px rgba(0, 0, 0, 0.15),
+    0 15px 15px -5px rgba(0, 0, 0, 0.08);
+}
+
+/* Special animations for different types */
+.notification.success {
+  animation: successGlow 3s ease-in-out infinite;
+}
+
+@keyframes successGlow {
+  0%, 100% {
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06),
+      0 20px 25px -5px rgba(0, 0, 0, 0.1),
+      0 10px 10px -5px rgba(0, 0, 0, 0.04),
+      0 0 40px rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06),
+      0 20px 25px -5px rgba(0, 0, 0, 0.1),
+      0 10px 10px -5px rgba(0, 0, 0, 0.04),
+      0 0 60px rgba(16, 185, 129, 0.3);
+  }
+}
+
+/* Loading state for action buttons */
+.actionButton.loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.actionButton.loading::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: auto;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

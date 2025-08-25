@@ -13,7 +13,7 @@ import { useToast } from "../hooks/useToast";
 import { useOrderToast } from "../hooks/useOrderToast";
 import { useNetworkStatus } from "../hooks/useFallback";
 import { useSimpleNotifications } from "../hooks/useSimpleNotifications";
-import NotificationSystem from "./NotificationSystem";
+import ModernNotificationSystem from "./ModernNotificationSystem";
 import MarketOrderWidget from "./MarketOrderWidget";
 import QuoteSummary from "./QuoteSummary";
 import SkeletonLoader from "./SkeletonLoader";
@@ -1368,10 +1368,11 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         {/* Global animated background - temporarily disabled to fix THREE.js errors */}
         {/* <AnimatedBackground theme="dark" /> */}
         
-        {/* New Professional Notification System */}
-        <NotificationSystem 
+        {/* Modern Notification System */}
+        <ModernNotificationSystem 
           notifications={notifications}
           onDismiss={removeNotification}
+          position="top-right"
         />
         
         {/* Old toast containers - kept for non-insufficient funds messages */}

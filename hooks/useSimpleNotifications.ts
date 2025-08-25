@@ -7,6 +7,10 @@ export interface SimpleNotification {
   message?: string;
   duration?: number;
   timestamp: Date;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 export const useSimpleNotifications = () => {
@@ -16,7 +20,8 @@ export const useSimpleNotifications = () => {
     type: SimpleNotification['type'],
     title: string,
     message?: string,
-    duration?: number
+    duration?: number,
+    action?: SimpleNotification['action']
   ) => {
     const notification: SimpleNotification = {
       id: `${Date.now()}-${Math.random()}`,
@@ -24,7 +29,8 @@ export const useSimpleNotifications = () => {
       title,
       message,
       duration: duration || 10000, // Default 10 seconds
-      timestamp: new Date()
+      timestamp: new Date(),
+      action
     };
 
     setNotifications(prev => [notification, ...prev]);
@@ -39,14 +45,14 @@ export const useSimpleNotifications = () => {
   }, []);
 
   const notify = {
-    success: (title: string, message?: string, duration?: number) => 
-      addNotification('success', title, message, duration),
-    error: (title: string, message?: string, duration?: number) => 
-      addNotification('error', title, message, duration),
-    warning: (title: string, message?: string, duration?: number) => 
-      addNotification('warning', title, message, duration),
-    info: (title: string, message?: string, duration?: number) => 
-      addNotification('info', title, message, duration),
+    success: (title: string, message?: string, duration?: number, action?: SimpleNotification['action']) => 
+      addNotification('success', title, message, duration, action),
+    error: (title: string, message?: string, duration?: number, action?: SimpleNotification['action']) => 
+      addNotification('error', title, message, duration, action),
+    warning: (title: string, message?: string, duration?: number, action?: SimpleNotification['action']) => 
+      addNotification('warning', title, message, duration, action),
+    info: (title: string, message?: string, duration?: number, action?: SimpleNotification['action']) => 
+      addNotification('info', title, message, duration, action),
   };
 
   return {
