@@ -9,8 +9,7 @@ import { ethers } from "ethers";
 import DOMPurify from "dompurify";
 import styles from "./SwapWidget.module.css";
 import { useTokenPrice } from "../hooks/useTokenPrice";
-import { useToast } from "../hooks/useToast";
-import { useOrderToast } from "../hooks/useOrderToast";
+// Removed old toast imports - using ModernNotificationSystem
 import { useNetworkStatus } from "../hooks/useFallback";
 import { useSimpleNotifications } from "../hooks/useSimpleNotifications";
 import ModernNotificationSystem from "./ModernNotificationSystem";
@@ -283,13 +282,28 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   ]);
 
   // Hooks
-  const { showError, ToastContainer } = useToast();
-  const {
-    showOrderSubmitted,
-    showOrderFilled,
-    showOrderFailed,
-    OrderToastContainer,
-  } = useOrderToast();
+  const { notify } = useSimpleNotifications();
+  
+  // Use new notification system for errors
+  const showErrorNotification = useCallback((message: string) => {
+    notify({
+      type: 'error',
+      title: 'Error',
+      message: message,
+      duration: 5000
+    });
+  }, [notify]);
+  
+  // Success notification helper
+  const showSuccessNotification = useCallback((title: string, message?: string) => {
+    notify({
+      type: 'success',
+      title: title,
+      message: message,
+      duration: 5000
+    });
+  }, [notify]);
+  // Removed useOrderToast - using ModernNotificationSystem
   const networkStatus = useNetworkStatus();
   const sellTokenPriceData = useTokenPrice(sellToken.address);
   const buyTokenPriceData = useTokenPrice(buyToken.address);
@@ -308,6 +322,9 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
             // Generate and store JWT token for authentication
             const token = generateTestJWT(result.address);
             storeAuthToken(token);
+            
+            // Show success notification for reconnection
+            showSuccessNotification('Wallet Reconnected', `Reconnected to ${result.address.slice(0, 6)}...${result.address.slice(-4)}`);
             
             onConnect?.();
           }
@@ -450,19 +467,22 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         const token = generateTestJWT(result.address);
         storeAuthToken(token);
         
+        // Show success notification
+        showSuccessNotification('Wallet Connected', `Connected to ${result.address.slice(0, 6)}...${result.address.slice(-4)}`);
+        
         onConnect?.();
       } else {
         const errorMsg = result.error || "Failed to connect wallet";
-        showError(errorMsg);
+        showErrorNotification(errorMsg);
       }
     } catch (error: unknown) {
       const errorMsg =
         (error as Error).message || "Unexpected error connecting wallet";
-      showError(errorMsg);
+      showErrorNotification(errorMsg);
     } finally {
       setConnectingWallet(false);
     }
-  }, [showError, onConnect]);
+  }, [showErrorNotification, onConnect]);
 
   /**
    * Disconnect wallet and clear localStorage
@@ -652,7 +672,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     (token: Token) => {
       // Check if token is blacklisted
       if (isTokenBlacklisted(token.address, token.chainId ?? 1)) {
-        showError(`${DOMPurify.sanitize(token.symbol)} has been flagged and cannot be traded`);
+        showErrorNotification(`${DOMPurify.sanitize(token.symbol)} has been flagged and cannot be traded`);
         return;
       }
 
@@ -668,14 +688,14 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         isWrappedNativeToken(token.address, token.chainId ?? 1)
       );
     },
-    [buyTokenAddress, sellToken, showError]
+    [buyTokenAddress, sellToken, showErrorNotification]
   );
 
   const handleBuyTokenSelect = useCallback(
     (token: Token) => {
       // Check if token is blacklisted
       if (isTokenBlacklisted(token.address, token.chainId ?? 1)) {
-        showError(`${DOMPurify.sanitize(token.symbol)} has been flagged and cannot be traded`);
+        showErrorNotification(`${DOMPurify.sanitize(token.symbol)} has been flagged and cannot be traded`);
         return;
       }
 
@@ -686,7 +706,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         setSellToken(buyToken);
       }
     },
-    [sellTokenAddress, buyToken, showError]
+    [sellTokenAddress, buyToken, showErrorNotification]
   );
 
   /**
@@ -711,7 +731,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
 
   const handleLimitOrderSubmit = async (limitOrder: any) => {
     if (!walletAddress) {
-      showError("Please connect your wallet first");
+      showErrorNotification("Please connect your wallet first");
       await connectWallet();
       return;
     }
@@ -734,14 +754,14 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       // Get signer safely
       const signerResult = await getSigner();
       if (!signerResult.success || !signerResult.signer) {
-        showError(signerResult.error || "Failed to get wallet signer");
+        showErrorNotification(signerResult.error || "Failed to get wallet signer");
         return;
       }
 
       const { signer, address } = signerResult;
 
       if (address && address.toLowerCase() !== walletAddress.toLowerCase()) {
-        showError("Connected wallet address doesn't match. Please reconnect.");
+        showErrorNotification("Connected wallet address doesn't match. Please reconnect.");
         return;
       }
 
@@ -805,7 +825,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         errorMessage = DOMPurify.sanitize(error.message);
       }
 
-      showError(errorMessage);
+      showErrorNotification(errorMessage);
       
       // Add error notification
       notify.error(
@@ -822,19 +842,19 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     e.preventDefault();
 
     if (!walletAddress) {
-      showError("Please connect your wallet first");
+      showErrorNotification("Please connect your wallet first");
       await connectWallet();
       return;
     }
 
     if (!currentQuote) {
-      showError("No quote available. Please wait for quote to load.");
+      showErrorNotification("No quote available. Please wait for quote to load.");
       return;
     }
 
     const amount = parseFloat(sellAmount);
     if (!amount || isNaN(amount) || amount <= 0) {
-      showError("Please enter a valid amount to sell");
+      showErrorNotification("Please enter a valid amount to sell");
       return;
     }
 
@@ -856,14 +876,14 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       // Get signer safely
       const signerResult = await getSigner();
       if (!signerResult.success || !signerResult.signer) {
-        showError(signerResult.error || "Failed to get wallet signer");
+        showErrorNotification(signerResult.error || "Failed to get wallet signer");
         return;
       }
 
       const { signer, address } = signerResult;
 
       if (address && address.toLowerCase() !== walletAddress.toLowerCase()) {
-        showError("Connected wallet address doesn't match. Please reconnect.");
+        showErrorNotification("Connected wallet address doesn't match. Please reconnect.");
         return;
       }
 
@@ -938,7 +958,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         errorMessage = DOMPurify.sanitize(error.message);
       }
 
-      showError(errorMessage);
+      showErrorNotification(errorMessage);
       
       // Add error notification
       notify.error(
@@ -986,20 +1006,13 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         buyToken.decimals || 18
       );
       
-      showOrderSubmitted(
-        orderId,
-        sellToken.symbol,
-        buyToken.symbol,
-        sellAmount,
-        buyAmountFormatted
-      );
-      
-      // Add success notification
-      notify.success(
-        'Order Submitted',
-        `${sellAmount} ${sellToken.symbol} → ${buyAmountFormatted} ${buyToken.symbol}`,
-        20000 // 20 seconds for success
-      );
+      // Show success notification
+      notify({
+        type: 'success',
+        title: 'Order Submitted',
+        message: `${sellAmount} ${sellToken.symbol} → ${buyAmountFormatted} ${buyToken.symbol}`,
+        duration: 20000 // 20 seconds for success
+      });
 
       // Add to local orders for notifications
       const newOrder = {
@@ -1045,12 +1058,12 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
    */
   const handleEscrowDeposit = async () => {
     if (!currentQuote) {
-      showError("No quote available for escrow deposit");
+      showErrorNotification("No quote available for escrow deposit");
       return;
     }
 
     if (!escrowContractFactory) {
-      showError("Escrow not available. Please connect wallet first.");
+      showErrorNotification("Escrow not available. Please connect wallet first.");
       return;
     }
 
@@ -1088,7 +1101,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     } catch (error: any) {
       const errorMessage = error.message || "Escrow deposit failed";
       setEscrowError(errorMessage);
-      showError(errorMessage);
+      showErrorNotification(errorMessage);
     } finally {
       setEscrowLoading(false);
     }
@@ -1181,14 +1194,17 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
 
         if (orderStatus.status === "filled") {
           clearInterval(checkInterval);
-          showOrderFilled(
-            orderId,
-            sellSymbol,
-            buySymbol,
-            sellAmountFormatted,
-            buyAmountFormatted,
-            orderStatus.txHash || "0x" + "0".repeat(64)
-          );
+          // Show order filled notification
+          notify({
+            type: 'success',
+            title: 'Order Filled!',
+            message: `Swapped ${sellAmountFormatted} ${sellSymbol} for ${buyAmountFormatted} ${buySymbol}`,
+            duration: 10000,
+            action: orderStatus.txHash ? {
+              label: 'View Transaction',
+              onClick: () => window.open(`https://etherscan.io/tx/${orderStatus.txHash}`, '_blank')
+            } : undefined
+          });
           // Update local order status
           setLocalOrders(prev => prev.map(o => 
             o.id === orderId ? { ...o, status: 'filled' as const } : o
@@ -1220,13 +1236,17 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
           // Log dispute to backend
           await logDispute(orderId, orderStatus.status, orderStatus.reason);
 
-          showOrderFailed(
-            orderId,
-            sellSymbol,
-            buySymbol,
-            sellAmountFormatted,
-            `Order ${DOMPurify.sanitize(orderStatus.status)}. Dispute resolution available.`
-          );
+          // Show order failed notification
+          notify({
+            type: 'error',
+            title: 'Order Failed',
+            message: `Failed to swap ${sellAmountFormatted} ${sellSymbol} for ${buySymbol}. Order ${DOMPurify.sanitize(orderStatus.status)}. Dispute resolution available.`,
+            duration: 15000,
+            action: {
+              label: 'Open Dispute',
+              onClick: () => setShowDisputeModal(true)
+            }
+          });
         }
       } catch (error) {
         // Failed to check order status
@@ -1286,7 +1306,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         throw new Error("Settlement failed");
       }
     } catch (error) {
-      showError("Failed to initiate settlement. Please try again.");
+      showErrorNotification("Failed to initiate settlement. Please try again.");
       throw error;
     }
   };
@@ -1314,7 +1334,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         throw new Error("Return failed");
       }
     } catch (error) {
-      showError("Failed to process return. Please try again.");
+      showErrorNotification("Failed to process return. Please try again.");
       throw error;
     }
   };
@@ -1375,9 +1395,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
           position="top-right"
         />
         
-        {/* Old toast containers - kept for non-insufficient funds messages */}
-        <ToastContainer />
-        <OrderToastContainer />
+        {/* Old toast containers removed - using ModernNotificationSystem */}
         
         {/* Floating Logo */}
         <div className={styles.floatingLogo}>
