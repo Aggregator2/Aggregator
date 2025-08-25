@@ -1395,6 +1395,39 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
           enableHaptics={true}
         />
         
+        {/* Test Notification Button - Remove after testing */}
+        <button
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            padding: '12px 24px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            zIndex: 9999,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+          }}
+          onClick={() => {
+            notify({
+              type: 'success',
+              title: 'Test Notification',
+              message: 'The new notification system is working! This will disappear in 5 seconds.',
+              duration: 5000,
+              action: {
+                label: 'Dismiss',
+                onClick: () => console.log('Dismissed')
+              }
+            });
+          }}
+        >
+          Test Notification
+        </button>
+        
         {/* Old toast containers removed - using ModernNotificationSystem */}
         
         {/* Floating Logo */}
