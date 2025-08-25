@@ -12,7 +12,7 @@ import { useTokenPrice } from "../hooks/useTokenPrice";
 // Removed old toast imports - using ModernNotificationSystem
 import { useNetworkStatus } from "../hooks/useFallback";
 import { useSimpleNotifications } from "../hooks/useSimpleNotifications";
-import ModernNotificationSystem from "./ModernNotificationSystem";
+import ProfessionalMobileNotification from "./ProfessionalMobileNotification";
 import MarketOrderWidget from "./MarketOrderWidget";
 import QuoteSummary from "./QuoteSummary";
 import SkeletonLoader from "./SkeletonLoader";
@@ -1387,11 +1387,12 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         {/* Global animated background - temporarily disabled to fix THREE.js errors */}
         {/* <AnimatedBackground theme="dark" /> */}
         
-        {/* Modern Notification System */}
-        <ModernNotificationSystem 
+        {/* Professional Mobile Notification System */}
+        <ProfessionalMobileNotification 
           notifications={notifications}
           onDismiss={removeNotification}
-          position="top-right"
+          position="top"
+          enableHaptics={true}
         />
         
         {/* Old toast containers removed - using ModernNotificationSystem */}
