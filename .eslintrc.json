@@ -2,7 +2,8 @@
   "env": {
     "browser": true,
     "es2021": true,
-    "node": true
+    "node": true,
+    "jest": true
   },
   "extends": [
     "eslint:recommended",
@@ -40,5 +41,19 @@
     "artifacts/",
     "cache/",
     "typechain-types/"
+  ],
+  "overrides": [
+    {
+      "files": ["*.js", "*.jsx"],
+      "rules": {
+        "@typescript-eslint/no-var-requires": "off"
+      }
+    },
+    {
+      "files": ["__tests__/**/*", "tests/**/*", "*.test.js", "*.test.jsx", "*.test.ts", "*.test.tsx"],
+      "env": {
+        "jest": true
+      }
+    }
   ]
 }

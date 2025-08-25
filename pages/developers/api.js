@@ -69,7 +69,7 @@ const ApiDocumentation = () => {
 
   const endpointDetails = {
     'get-quote': {
-      description: 'Returns the best available quote across all integrated liquidity sources including 0x, 1inch, Paraswap, and our solver network.',
+      description: 'Returns the best available quote across all integrated liquidity sources including 0x, 1inch, Paraswap, and our solver network. Note: SwappiQ charges a transparent 0.3% platform fee which is clearly shown in the response.',
       parameters: [
         { name: 'sellToken', type: 'string', required: true, description: 'Token address or symbol to sell' },
         { name: 'buyToken', type: 'string', required: true, description: 'Token address or symbol to buy' },
@@ -87,6 +87,7 @@ const ApiDocumentation = () => {
   "buyToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
   "sellAmount": "1000000000000000000",
   "buyAmount": "2345000000",
+  "buyAmountBeforeFee": "2352045000",
   "price": "2345.00",
   "sources": [
     { "name": "0x", "proportion": "0.6" },
@@ -94,7 +95,18 @@ const ApiDocumentation = () => {
   ],
   "estimatedGas": "150000",
   "validTo": 1704067200,
-  "lpFee": "2000000000000000"
+  "lpFee": "2000000000000000",
+  "platformFee": {
+    "amount": "7045000",
+    "percentage": 0.3,
+    "bps": 30
+  },
+  "feeBreakdown": {
+    "platformFee": "7045000",
+    "platformFeePercent": "0.3%",
+    "buyAmountBeforeFee": "2352045000",
+    "buyAmountAfterFee": "2345000000"
+  }
 }`
       }
     },

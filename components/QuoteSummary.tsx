@@ -65,13 +65,54 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
         color: "#ffffff",
       }}
     >
+      {quote?.platformFee && (
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center",
+          marginBottom: 12,
+          paddingBottom: 12,
+          borderBottom: "1px solid rgba(255,255,255,0.08)"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ 
+              width: 4, 
+              height: 4, 
+              borderRadius: "50%", 
+              background: "#f59e0b" 
+            }} />
+            <span style={{ 
+              color: "#ffffff", 
+              fontSize: "13px",
+              fontWeight: 500,
+              letterSpacing: "0.02em"
+            }}>
+              Platform Fee ({quote.platformFee.percentage}%)
+            </span>
+          </div>
+          <span style={{ 
+            fontSize: "13px",
+            fontWeight: 500,
+            color: "#ffffff"
+          }}>
+            {(() => {
+              // Determine decimals based on token
+              const decimals = buyToken.toUpperCase() === 'ETH' || buyToken.toUpperCase() === 'WETH' ? 18 : 
+                              buyToken.toUpperCase() === 'USDC' || buyToken.toUpperCase() === 'USDT' ? 6 : 
+                              buyToken.toUpperCase() === 'WBTC' ? 8 : 18;
+              return parseFloat(ethers.formatUnits(quote.platformFee.amount, decimals)).toFixed(6);
+            })()} {buyToken}
+          </span>
+        </div>
+      )}
+      
       <div style={{ 
         display: "flex", 
         justifyContent: "space-between", 
         alignItems: "center",
         marginBottom: 12,
-        paddingBottom: 12,
-        borderBottom: "1px solid rgba(255,255,255,0.08)"
+        paddingBottom: quote?.platformFee ? 0 : 12,
+        borderBottom: quote?.platformFee ? "none" : "1px solid rgba(255,255,255,0.08)"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ 

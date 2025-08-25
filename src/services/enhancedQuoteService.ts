@@ -263,14 +263,37 @@ export class EnhancedQuoteService {
   }
   
   /**
-   * Get token information
+   * Get token information with real prices
    */
   private getTokenInfo(tokenAddress: string, chainId: number): TokenInfo | null {
     const chainTokens = TOKEN_INFO[chainId.toString()];
-    if (!chainTokens) return null;
+    if (!chainTokens) {
+      // For unknown chains, create basic info
+      return {
+        symbol: 'UNKNOWN',
+        decimals: getTokenDecimals(tokenAddress),
+        priceUSD: getTokenPrice(tokenAddress)
+      };
+    }
     
     const normalizedAddress = tokenAddress.toLowerCase();
-    return chainTokens[normalizedAddress] || null;
+    const tokenInfo = chainTokens[normalizedAddress];
+    
+    if (tokenInfo) {
+      // Update with real price
+      return {
+        ...tokenInfo,
+        priceUSD: getTokenPrice(tokenAddress),
+        decimals: getTokenDecimals(tokenAddress)
+      };
+    }
+    
+    // For unknown tokens
+    return {
+      symbol: 'UNKNOWN',
+      decimals: getTokenDecimals(tokenAddress),
+      priceUSD: getTokenPrice(tokenAddress)
+    };
   }
   
   /**

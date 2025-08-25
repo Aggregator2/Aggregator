@@ -44,6 +44,7 @@ export interface Quote {
   buyToken: string;
   sellAmount: string;
   buyAmount: string;
+  buyAmountBeforeFee?: string;
   minReceived?: string;
   lpFee?: string | number;
   validTo?: number;
@@ -53,6 +54,17 @@ export interface Quote {
   slippage?: string;
   priceImpact?: string;
   networkFeeUsd?: string;
+  platformFee?: {
+    amount: string;
+    percentage: number;
+    bps: number;
+  };
+  feeBreakdown?: {
+    platformFee: string;
+    platformFeePercent: string;
+    buyAmountBeforeFee: string;
+    buyAmountAfterFee: string;
+  };
 }
 
 export interface SwapFormState {

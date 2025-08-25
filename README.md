@@ -228,6 +228,15 @@ npm run test:e2e
 npm run test:coverage
 ```
 
+## 💰 Fees and Pricing
+
+### Transparent Fee Structure
+- **Platform Fee**: 0.3% on all trades (transparently displayed)
+- **Gas Fees**: Paid by users for on-chain transactions
+- **State Channel Fees**: Minimal fees for channel opening/closing
+
+All fees are clearly shown in quotes before execution. No hidden markups or surprise charges.
+
 ## 🔒 Security
 
 - All API endpoints require authentication (JWT)

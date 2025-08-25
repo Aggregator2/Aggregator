@@ -355,14 +355,32 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
           );
           const balance = await tokenContract.balanceOf(walletAddress);
           setUserBalance(balance.toString());
-        } catch (error) {
-          // Silently fail and assume no balance
-          setUserBalance('0');
+        } catch (error: any) {
+          // Handle MetaMask circuit breaker errors gracefully
+          if (error?.code === -32603 && error?.message?.includes('circuit breaker')) {
+            console.log('[SwapWidget] MetaMask circuit breaker is open, retrying later...');
+            // Don't set balance to 0, keep existing balance
+            // Retry after 5 seconds
+            setTimeout(() => {
+              if (walletAddress) {
+                fetchUserBalance();
+              }
+            }, 5000);
+          } else {
+            // For other errors, assume no balance
+            setUserBalance('0');
+          }
         }
       }
     } catch (error: any) {
-      // Silently fail and assume no balance
-      setUserBalance('0');
+      // Handle connection errors gracefully
+      if (error?.code === -32603 && error?.message?.includes('circuit breaker')) {
+        console.log('[SwapWidget] MetaMask circuit breaker is open, will retry later');
+        // Don't update balance, keep existing value
+      } else {
+        // For other errors, assume no balance
+        setUserBalance('0');
+      }
     } finally {
       setBalanceLoading(false);
     }

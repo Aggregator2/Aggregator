@@ -8,6 +8,39 @@ const nextConfig = {
   trailingSlash: false, // Configure domains for images if needed
   images: {
     unoptimized: true,
+    domains: [
+      'raw.githubusercontent.com',
+      'ftmscan.com',
+      'tokens.1inch.io',
+      'assets.coingecko.com',
+      'cdn.paraswap.io',
+      's2.coinmarketcap.com',
+      'static.alchemyapi.io',
+      'logos.covalenthq.com',
+    ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
+  
+  // Fix HMR issues in Next.js 15
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
+  
+  // Disable ISR manifest in development
+  experimental: {
+    // Disable static indicator for pages router
+    disableOptimizedLoading: true,
+  },
+  
+  // Custom dev server configuration
+  devIndicators: {
+    position: 'bottom-right',
   },
   
   // Webpack configuration to fix module resolution issues

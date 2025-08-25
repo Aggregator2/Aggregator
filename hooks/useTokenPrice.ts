@@ -116,15 +116,23 @@ class TokenPriceManager {
       this.priceData.set(tokenAddress, data);
       this.notifySubscribers(tokenAddress, data);
     } catch (error) {
-      const errorData: TokenPriceData = {
-        price: cached?.price || null,
-        loading: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch price',
-        timestamp: Date.now()
-      };
+      // Don't treat abort errors as failures
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Request was cancelled, keep the cached data if available
+        if (cached) {
+          this.notifySubscribers(tokenAddress, cached);
+        }
+      } else {
+        const errorData: TokenPriceData = {
+          price: cached?.price || null,
+          loading: false,
+          error: error instanceof Error ? error.message : 'Failed to fetch price',
+          timestamp: Date.now()
+        };
 
-      this.priceData.set(tokenAddress, errorData);
-      this.notifySubscribers(tokenAddress, errorData);
+        this.priceData.set(tokenAddress, errorData);
+        this.notifySubscribers(tokenAddress, errorData);
+      }
     } finally {
       this.ongoingRequests.delete(tokenAddress);
     }
@@ -150,7 +158,12 @@ class TokenPriceManager {
       return { price: data.price, error: data.error };
     } catch (error) {
       clearTimeout(timeoutId);
-      throw error;
+      // Re-throw AbortError so it can be handled properly upstream
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw error;
+      }
+      // For other errors, wrap them nicely
+      throw new Error(error instanceof Error ? error.message : 'Network error');
     }
   }
 

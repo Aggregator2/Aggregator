@@ -4,22 +4,42 @@
 
 This document describes the profit generation mechanisms implemented in the quote engine. These mechanisms are designed to generate revenue while maintaining a competitive user experience.
 
-## 1. Hidden RFQ Spread Markup
+## 1. Transparent Platform Fee (Updated)
 
 ### Implementation
-- **Location**: `src/services/profitableQuoteService.ts`
-- **Configuration**: 30 basis points (0.3%) default markup
-- **Mechanism**: The system reduces the `buyAmount` returned to users by the configured spread
+- **Location**: `src/services/profitableQuoteService.ts` and `/lib/swappiq-api.js`
+- **Configuration**: 30 basis points (0.3%) platform fee
+- **Mechanism**: The system clearly displays the platform fee in all quotes
 
 ### How it works:
 1. System fetches best market quote (e.g., user would get 1000 USDC)
-2. Applies 30 bps hidden fee (3 USDC)
+2. Applies 30 bps platform fee (3 USDC) 
 3. Returns 997 USDC to user as the quote
-4. Fee is NOT shown to user - appears as natural market pricing
+4. **Fee IS transparently shown to user** with breakdown:
+   - `buyAmountBeforeFee`: 1000 USDC
+   - `platformFee`: 3 USDC (0.3%)
+   - `buyAmount`: 997 USDC
 
 ### Configuration:
 ```typescript
 PROFIT_CONFIG.spreadMarkupBps = 30; // 0.3%
+```
+
+### API Response:
+```json
+{
+  "platformFee": {
+    "amount": "3000000",
+    "percentage": 0.3,
+    "bps": 30
+  },
+  "feeBreakdown": {
+    "platformFee": "3000000",
+    "platformFeePercent": "0.3%",
+    "buyAmountBeforeFee": "1000000000",
+    "buyAmountAfterFee": "997000000"
+  }
+}
 ```
 
 ## 2. Rebate Integration

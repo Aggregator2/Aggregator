@@ -23,7 +23,7 @@ export class RevenueAccumulator {
   private provider: ethers.Provider;
   private wallet: ethers.Wallet;
   private revenueWallet: string;
-  private transferThresholdUSD: number = 50;
+  private transferThresholdUSD: number = 0.5; // Lowered for testing - change back to 50 for production
   private isTransferring: boolean = false;
 
   private constructor() {

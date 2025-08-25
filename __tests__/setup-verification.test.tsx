@@ -67,6 +67,7 @@ describe('Jest Setup Verification', () => {
   // Test module mocking
   test('CSS modules are mocked correctly', () => {
     // This would normally import a CSS module
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const styles = require('../__mocks__/styleMock.js');
     expect(styles).toEqual({});
   });

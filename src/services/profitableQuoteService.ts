@@ -290,65 +290,9 @@ export class ProfitableQuoteService {
   }
   
   private async getQuoteFromFreeService(params: any) {
-    try {
-      // Use fallback mechanism with hardcoded rates for common pairs
-      const fallbackRates: Record<string, number> = {
-        'ETH_USDC': 3500,
-        'ETH_USDT': 3500,
-        'ETH_DAI': 3500,
-        'ETH_BUSD': 3500,
-        'WETH_USDC': 3500,
-        'WETH_USDT': 3500,
-        'WETH_DAI': 3500,
-        'BNB_USDT': 600,
-        'BNB_BUSD': 600,
-        'BNB_USDC': 600,
-        'MATIC_USDC': 1.2,
-        'MATIC_USDT': 1.2,
-        'SOL_USDC': 180,
-        'SOL_USDT': 180,
-        'USDC_USDT': 1,
-        'USDT_USDC': 1,
-        'USDC_BUSD': 1,
-        'BUSD_USDC': 1,
-        'USDT_BUSD': 1,
-        'BUSD_USDT': 1,
-      };
-
-      // Try to find a fallback rate
-      const sellSymbol = this.getTokenSymbol(params.sellToken, params.chainId);
-      const buySymbol = this.getTokenSymbol(params.buyToken, params.chainId);
-      const pairKey = `${sellSymbol}_${buySymbol}`;
-      const reversePairKey = `${buySymbol}_${sellSymbol}`;
-      
-      let rate = fallbackRates[pairKey];
-      let isReverse = false;
-      
-      if (!rate && fallbackRates[reversePairKey]) {
-        rate = 1 / fallbackRates[reversePairKey];
-        isReverse = true;
-      }
-      
-      if (rate) {
-        const sellAmountBN = BigInt(params.sellAmount);
-        const buyAmount = (sellAmountBN * BigInt(Math.floor(rate * 1000))) / BigInt(1000);
-        
-        return {
-          sellToken: params.sellToken,
-          buyToken: params.buyToken,
-          sellAmount: params.sellAmount,
-          buyAmount: buyAmount.toString(),
-          price: rate,
-          source: 'fallback',
-          sources: [{ name: 'fallback', proportion: '1' }],
-        };
-      }
-      
-      return null;
-    } catch (error) {
-      console.warn('Free service quote failed:', error);
-      return null;
-    }
+    // This method is deprecated - we should use real API quotes only
+    console.warn('getQuoteFromFreeService called but is deprecated');
+    return null;
   }
   
   private getTokenSymbol(address: string, chainId?: number): string {
@@ -400,67 +344,9 @@ export class ProfitableQuoteService {
   }
   
   private createBasicFallbackQuote(params: any): any {
-    try {
-      // Basic exchange rates (rough estimates as of 2024)
-      const baseRates: Record<string, Record<string, number>> = {
-        'ETH': { 'USDC': 3500, 'USDT': 3500, 'DAI': 3500, 'WETH': 1, 'BUSD': 3500 },
-        'WETH': { 'USDC': 3500, 'USDT': 3500, 'DAI': 3500, 'ETH': 1, 'BUSD': 3500 },
-        'BNB': { 'USDT': 600, 'BUSD': 600, 'USDC': 600, 'DAI': 600 },
-        'MATIC': { 'USDC': 1.2, 'USDT': 1.2, 'DAI': 1.2, 'BUSD': 1.2 },
-        'SOL': { 'USDC': 180, 'USDT': 180, 'DAI': 180, 'BUSD': 180 },
-        'USDC': { 'USDT': 1, 'DAI': 1, 'BUSD': 1 },
-        'USDT': { 'USDC': 1, 'DAI': 1, 'BUSD': 1 },
-        'DAI': { 'USDC': 1, 'USDT': 1, 'BUSD': 1 },
-        'BUSD': { 'USDC': 1, 'USDT': 1, 'DAI': 1 },
-        'PYTH': { 'USDC': 0.4, 'USDT': 0.4, 'DAI': 0.4 },
-      };
-      
-      const sellSymbol = this.getTokenSymbol(params.sellToken);
-      const buySymbol = this.getTokenSymbol(params.buyToken);
-      
-      console.log('[ProfitableQuoteService] Creating fallback quote for:', {
-        sellToken: params.sellToken,
-        buyToken: params.buyToken,
-        sellSymbol,
-        buySymbol,
-        sellAmount: params.sellAmount
-      });
-      
-      let rate = baseRates[sellSymbol]?.[buySymbol];
-      
-      // Try reverse rate
-      if (!rate && baseRates[buySymbol]?.[sellSymbol]) {
-        rate = 1 / baseRates[buySymbol][sellSymbol];
-      }
-      
-      // Default rate for unknown pairs
-      if (!rate) {
-        console.log('No rate found for pair, using 1:1 fallback');
-        rate = 1; // 1:1 fallback
-      }
-      
-      console.log('Using rate:', rate);
-      
-      const sellAmountBN = BigInt(params.sellAmount);
-      const buyAmount = (sellAmountBN * BigInt(Math.floor(rate * 10000))) / BigInt(10000);
-      
-      return {
-        sellToken: params.sellToken,
-        buyToken: params.buyToken,
-        sellAmount: params.sellAmount,
-        buyAmount: buyAmount.toString(),
-        price: rate,
-        source: 'fallback',
-        sources: [{ name: 'fallback', proportion: '1' }],
-        to: '0x0000000000000000000000000000000000000000',
-        data: '0x',
-        gas: '150000',
-        gasPrice: '5000000000',
-      };
-    } catch (error) {
-      console.error('Failed to create fallback quote:', error);
-      return null;
-    }
+    // Fallback quotes should not be used - we need real API quotes
+    console.error('[ProfitableQuoteService] Fallback quote requested but should not be used - all quotes must come from real APIs');
+    return null;
   }
   
   /**

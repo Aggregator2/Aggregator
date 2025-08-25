@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revenue Verification Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0b0d;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: #1a1d21;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2a2d31;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00d4ff;
+            font-size: 2.5rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: #1a1d21;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #2a2d31;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            color: #00d4ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-active {
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        .status-inactive {
+            background: #ff4444;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .balance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .balance-item {
+            background: #0a0b0d;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #2a2d31;
+        }
+
+        .token-symbol {
+            font-weight: bold;
+            color: #00d4ff;
+            margin-bottom: 5px;
+        }
+
+        .balance-amount {
+            font-size: 1.1rem;
+            color: #fff;
+        }
+
+        .balance-usd {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .transaction-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .transaction-item {
+            background: #0a0b0d;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid #2a2d31;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tx-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .tx-incoming {
+            background: #00ff8833;
+            color: #00ff88;
+        }
+
+        .tx-outgoing {
+            background: #ff444433;
+            color: #ff4444;
+        }
+
+        .tx-info {
+            flex: 1;
+            margin-left: 15px;
+        }
+
+        .tx-amount {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .tx-time {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #00d4ff;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #00a8cc;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #2a2d31;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #3a3d41;
+        }
+
+        .btn-danger {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #cc3333;
+        }
+
+        .settings-section {
+            background: #1a1d21;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #2a2d31;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #2a2d31;
+            background: #0a0b0d;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-info {
+            background: #00d4ff22;
+            border: 1px solid #00d4ff44;
+            color: #00d4ff;
+        }
+
+        .alert-success {
+            background: #00ff8822;
+            border: 1px solid #00ff8844;
+            color: #00ff88;
+        }
+
+        .alert-warning {
+            background: #ffaa0022;
+            border: 1px solid #ffaa0044;
+            color: #ffaa00;
+        }
+
+        .alert-error {
+            background: #ff444422;
+            border: 1px solid #ff444444;
+            color: #ff4444;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #2a2d31;
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .revenue-chart {
+            height: 300px;
+            background: #0a0b0d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Revenue Verification Dashboard</h1>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Alert Section -->
+        <div id="alertContainer"></div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="btn" onclick="refreshData()">
+                <span id="refreshIcon">🔄</span> Refresh Data
+            </button>
+            <button class="btn btn-secondary" onclick="startMonitoring()">
+                <span id="monitorIcon">▶️</span> Start Monitoring
+            </button>
+            <button class="btn btn-secondary" onclick="stopMonitoring()">
+                <span id="stopIcon">⏸️</span> Stop Monitoring
+            </button>
+            <button class="btn btn-danger" onclick="forceTransfer()">
+                💸 Force Transfer
+            </button>
+        </div>
+
+        <!-- Main Dashboard Grid -->
+        <div class="dashboard-grid">
+            <!-- Revenue Summary Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span>💰</span>
+                        Revenue Summary
+                    </h2>
+                    <span class="status-indicator status-active"></span>
+                </div>
+                <div class="metric-value" id="totalRevenue">$0.00</div>
+                <div class="metric-label">Total Accumulated Revenue</div>
+                <div style="margin-top: 15px;">
+                    <div class="metric-label">Transfer Threshold</div>
+                    <div style="color: #00d4ff;">$50.00</div>
+                </div>
+            </div>
+
+            <!-- Wallet Status Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span>🔗</span>
+                        Revenue Wallet
+                    </h2>
+                </div>
+                <div style="font-family: monospace; font-size: 0.9rem; word-break: break-all;" id="revenueWallet">
+                    Loading...
+                </div>
+                <div class="balance-grid" id="walletBalances">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+
+            <!-- Fee Collection Status -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span>📊</span>
+                        Fee Collections
+                    </h2>
+                </div>
+                <div class="metric-value" id="totalFees">0</div>
+                <div class="metric-label">Total Fee Events</div>
+                <div style="margin-top: 15px;">
+                    <div class="metric-label">Last Collection</div>
+                    <div style="color: #888; font-size: 0.9rem;" id="lastCollection">-</div>
+                </div>
+            </div>
+
+            <!-- Network Status -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span>🌐</span>
+                        Network Status
+                    </h2>
+                </div>
+                <div id="networkStatus">
+                    <div style="margin-bottom: 10px;">
+                        <span class="status-indicator status-active"></span>
+                        Ethereum: <span style="color: #00ff88;">Connected</span>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <span class="status-indicator status-active"></span>
+                        Arbitrum: <span style="color: #00ff88;">Connected</span>
+                    </div>
+                    <div>
+                        <span class="status-indicator status-active"></span>
+                        Polygon: <span style="color: #00ff88;">Connected</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span>📜</span>
+                    Recent Transactions
+                </h2>
+            </div>
+            <div class="transaction-list" id="transactionList">
+                <div style="text-align: center; color: #888;">No transactions yet</div>
+            </div>
+        </div>
+
+        <!-- Revenue Chart -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span>📈</span>
+                    Revenue Over Time
+                </h2>
+            </div>
+            <div class="revenue-chart" id="revenueChart">
+                <canvas id="chartCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="settings-section">
+            <h2 class="card-title" style="margin-bottom: 20px;">
+                <span>⚙️</span>
+                Settings
+            </h2>
+            <div class="input-group">
+                <label>Revenue Wallet Address</label>
+                <input type="text" id="revenueWalletInput" placeholder="0x..." readonly>
+            </div>
+            <div class="input-group">
+                <label>Transfer Threshold (USD)</label>
+                <input type="number" id="thresholdInput" value="50" min="1" max="10000">
+            </div>
+            <button class="btn" onclick="updateSettings()">Update Settings</button>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let isMonitoring = false;
+        let monitoringInterval = null;
+        let revenueData = {
+            totalRevenue: 0,
+            feeCount: 0,
+            lastCollection: null,
+            transactions: [],
+            walletBalances: {}
+        };
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            refreshData();
+            initializeChart();
+        });
+
+        // Load settings
+        function loadSettings() {
+            const revenueWallet = localStorage.getItem('revenueWallet') || 'Not configured';
+            document.getElementById('revenueWallet').textContent = revenueWallet;
+            document.getElementById('revenueWalletInput').value = revenueWallet;
+        }
+
+        // Refresh data
+        async function refreshData() {
+            showAlert('info', 'Refreshing data...');
+            document.getElementById('refreshIcon').style.animation = 'spin 1s linear';
+
+            try {
+                // Fetch revenue accumulator state
+                const response = await fetch('/api/revenue/state');
+                const data = await response.json();
+
+                if (data.success) {
+                    updateDashboard(data.state);
+                    showAlert('success', 'Data refreshed successfully');
+                } else {
+                    showAlert('error', 'Failed to fetch revenue data');
+                }
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+                showAlert('error', 'Error connecting to server');
+            }
+
+            document.getElementById('refreshIcon').style.animation = '';
+        }
+
+        // Update dashboard with new data
+        function updateDashboard(state) {
+            // Update revenue summary
+            revenueData.totalRevenue = state.totalRevenueUSD || 0;
+            document.getElementById('totalRevenue').textContent = `$${revenueData.totalRevenue.toFixed(2)}`;
+
+            // Update fee collections
+            revenueData.feeCount = state.collectedFees?.length || 0;
+            document.getElementById('totalFees').textContent = revenueData.feeCount;
+
+            // Update last collection time
+            if (state.lastTransferTimestamp) {
+                const lastTransfer = new Date(state.lastTransferTimestamp);
+                document.getElementById('lastCollection').textContent = lastTransfer.toLocaleString();
+            }
+
+            // Update wallet balances
+            updateWalletBalances();
+
+            // Update transaction list
+            if (state.collectedFees && state.collectedFees.length > 0) {
+                updateTransactionList(state.collectedFees.slice(-10).reverse());
+            }
+
+            // Update chart
+            updateChart();
+        }
+
+        // Update wallet balances
+        async function updateWalletBalances() {
+            const balancesContainer = document.getElementById('walletBalances');
+            balancesContainer.innerHTML = '<div class="loading-spinner"></div>';
+
+            try {
+                const response = await fetch('/api/revenue/balances');
+                const data = await response.json();
+
+                if (data.success && data.balances) {
+                    balancesContainer.innerHTML = '';
+                    
+                    for (const [chain, tokens] of Object.entries(data.balances)) {
+                        for (const [token, balance] of Object.entries(tokens)) {
+                            if (parseFloat(balance) > 0) {
+                                const balanceItem = createBalanceItem(chain, token, balance);
+                                balancesContainer.appendChild(balanceItem);
+                            }
+                        }
+                    }
+
+                    if (balancesContainer.children.length === 0) {
+                        balancesContainer.innerHTML = '<div style="color: #888;">No balances found</div>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching balances:', error);
+                balancesContainer.innerHTML = '<div style="color: #ff4444;">Error loading balances</div>';
+            }
+        }
+
+        // Create balance item element
+        function createBalanceItem(chain, token, balance) {
+            const div = document.createElement('div');
+            div.className = 'balance-item';
+            
+            const tokenPrice = getTokenPrice(token);
+            const usdValue = parseFloat(balance) * tokenPrice;
+            
+            div.innerHTML = `
+                <div class="token-symbol">${token} (${chain})</div>
+                <div class="balance-amount">${parseFloat(balance).toFixed(6)}</div>
+                <div class="balance-usd">≈ $${usdValue.toFixed(2)}</div>
+            `;
+            
+            return div;
+        }
+
+        // Get token price (mock implementation)
+        function getTokenPrice(token) {
+            const prices = {
+                'ETH': 2000,
+                'USDC': 1,
+                'USDT': 1,
+                'DAI': 1
+            };
+            return prices[token] || 1;
+        }
+
+        // Update transaction list
+        function updateTransactionList(fees) {
+            const listContainer = document.getElementById('transactionList');
+            listContainer.innerHTML = '';
+
+            fees.forEach(fee => {
+                const txItem = createTransactionItem(fee);
+                listContainer.appendChild(txItem);
+            });
+        }
+
+        // Create transaction item element
+        function createTransactionItem(fee) {
+            const div = document.createElement('div');
+            div.className = 'transaction-item';
+            
+            const time = new Date(fee.timestamp).toLocaleString();
+            const amount = ethers.formatUnits(fee.feeAmount, 18);
+            const usdValue = parseFloat(amount) * fee.tokenUsdPrice;
+            
+            div.innerHTML = `
+                <span class="tx-type tx-incoming">FEE</span>
+                <div class="tx-info">
+                    <div class="tx-amount">${parseFloat(amount).toFixed(6)} ${fee.feeToken}</div>
+                    <div class="tx-time">${time} • $${usdValue.toFixed(2)}</div>
+                </div>
+            `;
+            
+            return div;
+        }
+
+        // Start monitoring
+        function startMonitoring() {
+            if (!isMonitoring) {
+                isMonitoring = true;
+                showAlert('success', 'Monitoring started');
+                document.getElementById('monitorIcon').textContent = '⏸️';
+                
+                // Refresh every 10 seconds
+                monitoringInterval = setInterval(refreshData, 10000);
+            }
+        }
+
+        // Stop monitoring
+        function stopMonitoring() {
+            if (isMonitoring) {
+                isMonitoring = false;
+                showAlert('info', 'Monitoring stopped');
+                document.getElementById('monitorIcon').textContent = '▶️';
+                
+                if (monitoringInterval) {
+                    clearInterval(monitoringInterval);
+                    monitoringInterval = null;
+                }
+            }
+        }
+
+        // Force transfer
+        async function forceTransfer() {
+            if (!confirm('Are you sure you want to force a revenue transfer?')) {
+                return;
+            }
+
+            showAlert('info', 'Initiating transfer...');
+
+            try {
+                const response = await fetch('/api/revenue/force-transfer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Key': prompt('Enter admin key:')
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', 'Transfer initiated successfully');
+                    setTimeout(refreshData, 2000);
+                } else {
+                    showAlert('error', data.error || 'Transfer failed');
+                }
+            } catch (error) {
+                console.error('Error forcing transfer:', error);
+                showAlert('error', 'Error connecting to server');
+            }
+        }
+
+        // Update settings
+        function updateSettings() {
+            const threshold = document.getElementById('thresholdInput').value;
+            
+            if (threshold && !isNaN(threshold)) {
+                localStorage.setItem('transferThreshold', threshold);
+                showAlert('success', 'Settings updated');
+            } else {
+                showAlert('error', 'Invalid threshold value');
+            }
+        }
+
+        // Show alert
+        function showAlert(type, message) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.innerHTML = `
+                ${getAlertIcon(type)}
+                <span>${message}</span>
+            `;
+            
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Get alert icon
+        function getAlertIcon(type) {
+            const icons = {
+                'info': 'ℹ️',
+                'success': '✅',
+                'warning': '⚠️',
+                'error': '❌'
+            };
+            return icons[type] || 'ℹ️';
+        }
+
+        // Initialize chart
+        function initializeChart() {
+            // Chart initialization would go here
+            // Using a simple placeholder for now
+            const canvas = document.getElementById('chartCanvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#00d4ff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        // Update chart
+        function updateChart() {
+            // Chart update logic would go here
+        }
+
+        // Ethers.js utilities
+        const ethers = {
+            formatUnits: (value, decimals) => {
+                const divisor = Math.pow(10, decimals);
+                return (BigInt(value) / BigInt(divisor)).toString();
+            }
+        };
+    </script>
+</body>
+</html>

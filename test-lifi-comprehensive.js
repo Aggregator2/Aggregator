@@ -1,198 +1,147 @@
-const axios = require('axios');
+// Comprehensive test for LiFi API integration
+require('dotenv').config();
+const { getRoutes } = require('@lifi/sdk');
 
-const PORT = 3009;
-const API_URL = `http://localhost:${PORT}/api/quote-profitable`;
-
-// Test cases with various token pairs
-const testCases = [
-  {
-    name: 'ETH to USDC (Ethereum)',
-    data: {
-      sellToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
-      buyToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
-      sellAmount: '1000000000000000000', // 1 WETH
-      chainId: 1
-    }
-  },
-  {
-    name: 'USDC to USDT (Stablecoin)',
-    data: {
-      sellToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
-      buyToken: '0xdAC17F958D2ee523a2206206994597C13D831ec7', // USDT
-      sellAmount: '1000000000', // 1000 USDC
-      chainId: 1
-    }
-  },
-  {
-    name: 'WETH to DAI (Ethereum)',
-    data: {
-      sellToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
-      buyToken: '0x6B175474E89094C44Da98b954EedeAC495271d0F', // DAI
-      sellAmount: '500000000000000000', // 0.5 WETH
-      chainId: 1
-    }
-  },
-  {
-    name: 'LINK to WETH',
-    data: {
-      sellToken: '0x514910771AF9Ca656af840dff83E8264EcF986CA', // LINK
-      buyToken: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
-      sellAmount: '100000000000000000000', // 100 LINK
-      chainId: 1
-    }
-  },
-  {
-    name: 'UNI to USDC',
-    data: {
-      sellToken: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', // UNI
-      buyToken: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
-      sellAmount: '50000000000000000000', // 50 UNI
-      chainId: 1
-    }
-  }
-];
-
-// Test token list endpoint
-async function testTokenList() {
-  console.log('\n📋 Testing Token List API...\n');
+async function testDirectLiFiAPI() {
+  console.log('Testing direct LiFi API calls...\n');
   
-  try {
-    const response = await axios.get(`http://localhost:${PORT}/api/tokens/comprehensive-v2`, {
-      params: {
-        chains: '1,56,137,42161'
+  const lifiApiKey = process.env.LIFI_API_KEY || 'e411f45a-05ed-47d7-aea8-def36d94442e.dcb8f395-2612-41e7-85b2-cb1d1de85502';
+  console.log('Using LiFi API key:', lifiApiKey ? 'Found' : 'Not found');
+  
+  const testCases = [
+    {
+      name: 'ETH -> USDC on Ethereum',
+      fromChainId: 1,
+      toChainId: 1,
+      fromTokenAddress: '0x0000000000000000000000000000000000000000', // ETH native
+      toTokenAddress: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', // USDC
+      fromAmount: '1000000000000000000', // 1 ETH
+      expectDecimals: 6
+    },
+    {
+      name: 'WETH -> USDC on Ethereum',
+      fromChainId: 1,
+      toChainId: 1,
+      fromTokenAddress: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', // WETH
+      toTokenAddress: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', // USDC
+      fromAmount: '1000000000000000000', // 1 WETH
+      expectDecimals: 6
+    },
+    {
+      name: '1INCH -> USDC on Ethereum',
+      fromChainId: 1,
+      toChainId: 1,
+      fromTokenAddress: '0x111111111117dc0aa78b770fa6a738034120c302', // 1INCH
+      toTokenAddress: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', // USDC
+      fromAmount: '1000000000000000000', // 1 1INCH
+      expectDecimals: 6
+    }
+  ];
+
+  for (const test of testCases) {
+    console.log(`\nTesting: ${test.name}`);
+    console.log(`From: ${test.fromTokenAddress}`);
+    console.log(`To: ${test.toTokenAddress}`);
+    console.log(`Amount: ${test.fromAmount}`);
+    
+    try {
+      const routesRequest = {
+        fromChainId: test.fromChainId,
+        toChainId: test.toChainId,
+        fromTokenAddress: test.fromTokenAddress,
+        toTokenAddress: test.toTokenAddress,
+        fromAmount: test.fromAmount,
+        options: {
+          slippage: 0.005, // 0.5%
+          allowSwitchChain: false,
+          bridges: { allow: [] }, // Same-chain swap only
+          exchanges: {
+            allow: ['uniswap', 'sushiswap', 'paraswap', '1inch', 'openocean']
+          }
+        }
+      };
+      
+      console.log('Calling LiFi API...');
+      const startTime = Date.now();
+      
+      const routes = await getRoutes(routesRequest, {
+        apiKey: lifiApiKey
+      });
+      
+      const endTime = Date.now();
+      console.log(`API Response time: ${endTime - startTime}ms`);
+      
+      if (!routes || !routes.routes || routes.routes.length === 0) {
+        console.log('❌ No routes found');
+        continue;
       }
-    });
-    
-    const { tokens, stats } = response.data;
-    console.log(`✅ Token List Success:`);
-    console.log(`   Total tokens: ${stats.total}`);
-    console.log(`   Sources: ${Object.keys(stats.bySource).join(', ')}`);
-    console.log(`   By source:`, stats.bySource);
-    console.log(`   By chain:`, stats.byChain);
-    
-    // Check if LiFi is primary source
-    if (stats.bySource.LiFi) {
-      console.log(`   ✅ LiFi is active with ${stats.bySource.LiFi} tokens`);
-    } else {
-      console.log(`   ❌ LiFi is not active!`);
+      
+      console.log(`✅ Found ${routes.routes.length} routes`);
+      
+      const bestRoute = routes.routes[0];
+      const toAmount = bestRoute.toAmount;
+      const toAmountHuman = parseFloat(toAmount) / Math.pow(10, test.expectDecimals);
+      
+      console.log(`Best route details:`);
+      console.log(`  - Tool: ${bestRoute.steps[0]?.tool || 'Unknown'}`);
+      console.log(`  - To amount (raw): ${toAmount}`);
+      console.log(`  - To amount (human): ${toAmountHuman.toFixed(2)} ${test.name.split(' -> ')[1].split(' ')[0]}`);
+      console.log(`  - Gas estimate: ${bestRoute.gasCostUSD || 'N/A'} USD`);
+      
+      // Calculate effective rate
+      const fromAmountHuman = parseFloat(test.fromAmount) / 1e18; // All test tokens have 18 decimals
+      const effectiveRate = toAmountHuman / fromAmountHuman;
+      console.log(`  - Effective rate: 1 ${test.name.split(' -> ')[0]} = ${effectiveRate.toFixed(2)} ${test.name.split(' -> ')[1].split(' ')[0]}`);
+      
+    } catch (error) {
+      console.log(`❌ Error: ${error.message}`);
+      if (error.response) {
+        console.log(`Response status: ${error.response.status}`);
+        console.log(`Response data:`, error.response.data);
+      }
     }
-    
-    return tokens.length;
-  } catch (error) {
-    console.log(`❌ Token List Failed: ${error.message}`);
-    return 0;
   }
 }
 
-// Test quote functionality
-async function testQuote(testCase) {
-  console.log(`\n🔄 Testing: ${testCase.name}`);
+async function testSwappiQEndpoint() {
+  console.log('\n\n=== Testing SwappiQ Quote Endpoint ===\n');
   
-  try {
-    const startTime = Date.now();
-    const response = await axios.post(API_URL, testCase.data, {
-      timeout: 60000 // 60 second timeout
-    });
-    const duration = Date.now() - startTime;
-    
-    const { buyAmount, source, price, minReceived } = response.data;
-    
-    console.log(`✅ Success in ${duration}ms:`);
-    console.log(`   Source: ${source}`);
-    console.log(`   Buy Amount: ${buyAmount}`);
-    console.log(`   Price: ${price}`);
-    console.log(`   Min Received: ${minReceived}`);
-    
-    // Check if LiFi was used
-    if (source === 'LiFi') {
-      console.log(`   ✅ Using LiFi as primary source!`);
-    } else if (source === 'fallback') {
-      console.log(`   ⚠️  Using fallback - LiFi may not have route`);
-    }
-    
-    return { success: true, source, duration };
-  } catch (error) {
-    console.log(`❌ Failed: ${error.response?.data?.error || error.message}`);
-    return { success: false, error: error.message };
-  }
-}
-
-// Check LiFi integration
-async function checkLiFiIntegration() {
-  console.log('\n🔍 Checking LiFi Integration...\n');
+  const fetch = require('node-fetch');
   
-  // Check if LiFi API key is set
-  const hasApiKey = process.env.LIFI_API_KEY ? 'Yes' : 'No';
-  console.log(`LiFi API Key configured: ${hasApiKey}`);
-  
-  // Test LiFi SDK directly
-  try {
-    const { getChains } = require('@lifi/sdk');
-    const chains = await getChains();
-    console.log(`✅ LiFi SDK working - ${chains.length} chains available`);
-  } catch (error) {
-    console.log(`❌ LiFi SDK error: ${error.message}`);
-  }
-}
-
-// Main test runner
-async function runTests() {
-  console.log('🚀 Starting Comprehensive LiFi Integration Tests\n');
-  console.log(`Server: http://localhost:${PORT}`);
-  console.log('Waiting for server to be ready...\n');
-  
-  // Wait for server
-  await new Promise(resolve => setTimeout(resolve, 3000));
-  
-  // Check LiFi integration
-  await checkLiFiIntegration();
-  
-  // Test token list
-  const tokenCount = await testTokenList();
-  
-  if (tokenCount < 500) {
-    console.log(`\n⚠️  WARNING: Only ${tokenCount} tokens loaded. Expected 500+`);
-  }
-  
-  // Test quotes
-  console.log('\n📊 Testing Quotes...');
-  
-  const results = {
-    total: testCases.length,
-    lifi: 0,
-    fallback: 0,
-    failed: 0
+  const testQuote = {
+    sellToken: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', // WETH
+    buyToken: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', // USDC
+    sellAmount: '1000000000000000000', // 1 WETH
+    chainId: 1,
+    slippageTolerance: '0.5'
   };
   
-  for (const testCase of testCases) {
-    const result = await testQuote(testCase);
+  try {
+    const response = await fetch('http://localhost:3000/api/quote-profitable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(testQuote)
+    });
     
-    if (result.success) {
-      if (result.source === 'LiFi') results.lifi++;
-      else if (result.source === 'fallback') results.fallback++;
+    const data = await response.json();
+    
+    if (response.ok) {
+      console.log('✅ Quote endpoint working!');
+      console.log('Buy amount:', data.buyAmount);
+      console.log('Platform fee:', data.platformFee);
+      console.log('Fee breakdown:', data.feeBreakdown);
     } else {
-      results.failed++;
+      console.log('❌ Quote endpoint error:', data.error);
     }
-    
-    // Small delay between tests
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  }
-  
-  // Summary
-  console.log('\n📈 Test Summary:');
-  console.log(`Total tests: ${results.total}`);
-  console.log(`LiFi quotes: ${results.lifi} (${(results.lifi/results.total*100).toFixed(1)}%)`);
-  console.log(`Fallback quotes: ${results.fallback} (${(results.fallback/results.total*100).toFixed(1)}%)`);
-  console.log(`Failed: ${results.failed}`);
-  
-  if (results.lifi === results.total) {
-    console.log('\n✅ SUCCESS: LiFi is working 100% for all token pairs!');
-  } else if (results.lifi > 0) {
-    console.log('\n⚠️  PARTIAL SUCCESS: LiFi is working but not for all pairs');
-  } else {
-    console.log('\n❌ FAILURE: LiFi is not working properly');
+  } catch (error) {
+    console.log('❌ Failed to call endpoint:', error.message);
   }
 }
 
 // Run tests
-runTests().catch(console.error);
+async function runAllTests() {
+  await testDirectLiFiAPI();
+  await testSwappiQEndpoint();
+}
+
+runAllTests().catch(console.error);
