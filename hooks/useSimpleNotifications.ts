@@ -44,16 +44,15 @@ export const useSimpleNotifications = () => {
     setNotifications([]);
   }, []);
 
-  const notify = {
-    success: (title: string, message?: string, duration?: number, action?: SimpleNotification['action']) => 
-      addNotification('success', title, message, duration, action),
-    error: (title: string, message?: string, duration?: number, action?: SimpleNotification['action']) => 
-      addNotification('error', title, message, duration, action),
-    warning: (title: string, message?: string, duration?: number, action?: SimpleNotification['action']) => 
-      addNotification('warning', title, message, duration, action),
-    info: (title: string, message?: string, duration?: number, action?: SimpleNotification['action']) => 
-      addNotification('info', title, message, duration, action),
-  };
+  const notify = useCallback((notification: Partial<SimpleNotification> & { type: SimpleNotification['type']; title: string }) => {
+    const newNotification: SimpleNotification = {
+      id: `${Date.now()}-${Math.random()}`,
+      timestamp: new Date(),
+      duration: 5000, // Default 5 seconds
+      ...notification
+    };
+    setNotifications(prev => [newNotification, ...prev]);
+  }, []);
 
   return {
     notifications,

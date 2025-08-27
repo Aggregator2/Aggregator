@@ -471,7 +471,13 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         
         onConnect?.();
       } else {
-        const errorMsg = result.error || "Failed to connect wallet";
+        let errorMsg = result.error || "Failed to connect wallet";
+        
+        // Provide more user-friendly message for common errors
+        if (errorMsg.includes("MetaMask is not installed")) {
+          errorMsg = "Please install MetaMask wallet to continue. Visit metamask.io to download.";
+        }
+        
         showErrorNotification(errorMsg);
       }
     } catch (error: unknown) {
@@ -1395,6 +1401,21 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
           enableHaptics={true}
         />
         
+        {/* Debug: Show notification count */}
+        <div style={{
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          background: 'rgba(0,0,0,0.8)',
+          color: 'white',
+          padding: '8px 16px',
+          borderRadius: '8px',
+          fontSize: '12px',
+          zIndex: 10000
+        }}>
+          Notifications: {notifications.length}
+        </div>
+        
         {/* Test Notification Button - Remove after testing */}
         <button
           style={{
@@ -1413,6 +1434,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
           }}
           onClick={() => {
+            console.log('Test button clicked');
             notify({
               type: 'success',
               title: 'Test Notification',
@@ -1423,6 +1445,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
                 onClick: () => console.log('Dismissed')
               }
             });
+            console.log('Current notifications:', notifications);
           }}
         >
           Test Notification
