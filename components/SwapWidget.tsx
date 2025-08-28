@@ -1401,55 +1401,6 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
           enableHaptics={true}
         />
         
-        {/* Debug: Show notification count */}
-        <div style={{
-          position: 'fixed',
-          top: '10px',
-          right: '10px',
-          background: 'rgba(0,0,0,0.8)',
-          color: 'white',
-          padding: '8px 16px',
-          borderRadius: '8px',
-          fontSize: '12px',
-          zIndex: 10000
-        }}>
-          Notifications: {notifications.length}
-        </div>
-        
-        {/* Test Notification Button - Remove after testing */}
-        <button
-          style={{
-            position: 'fixed',
-            bottom: '20px',
-            right: '20px',
-            padding: '12px 24px',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            zIndex: 9999,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-          }}
-          onClick={() => {
-            console.log('Test button clicked');
-            notify({
-              type: 'success',
-              title: 'Test Notification',
-              message: 'The new notification system is working! This will disappear in 5 seconds.',
-              duration: 5000,
-              action: {
-                label: 'Dismiss',
-                onClick: () => console.log('Dismissed')
-              }
-            });
-            console.log('Current notifications:', notifications);
-          }}
-        >
-          Test Notification
-        </button>
         
         {/* Old toast containers removed - using ModernNotificationSystem */}
         
@@ -1484,6 +1435,14 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
             onConnect={connectWallet}
             onDisconnect={disconnectWallet}
             orders={safeOrders}
+            notifications={notifications.map(n => ({
+              id: n.id,
+              type: n.type as 'success' | 'error' | 'pending' | 'info',
+              message: n.message || n.title,
+              timestamp: n.timestamp,
+              details: { title: n.title, action: n.action }
+            }))}
+            onClearNotifications={() => notifications.forEach(n => removeNotification(n.id))}
           />
         </div>
 
