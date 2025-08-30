@@ -80,8 +80,8 @@ export interface SwapWidgetProps {
 const EIP712_DOMAIN = {
   name: "SwappiQ",
   version: "1",
-  chainId: 31337,
-  verifyingContract: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+  chainId: 1, // Ethereum mainnet
+  verifyingContract: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512", // TODO: Update to mainnet contract
 } as const;
 
 const EIP712_TYPES = {
@@ -339,7 +339,16 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
    * Fetch user balance for selected token
    */
   const fetchUserBalance = useCallback(async () => {
+    console.log('[SwapWidget] fetchUserBalance called', {
+      walletAddress,
+      hasWindow: typeof window !== 'undefined',
+      hasEthereum: typeof window !== 'undefined' && !!window.ethereum,
+      sellToken: sellToken?.symbol,
+      sellTokenAddress: sellToken?.address
+    });
+
     if (!walletAddress || !window.ethereum) {
+      console.log('[SwapWidget] No wallet or ethereum provider', { walletAddress, hasEthereum: !!window.ethereum });
       setUserBalance(null);
       setBalanceError(null);
       return;
@@ -351,18 +360,38 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       
+      // Get the network to check which chain we're on
+      const network = await provider.getNetwork();
+      console.log('[SwapWidget] Connected to network', { 
+        chainId: network.chainId.toString(), 
+        name: network.name,
+        expectedChainId: sellToken.chainId,
+        tokenChainId: sellToken.chainId
+      });
+      
       // Check if it's ETH (native token)
       const isNativeToken = sellToken.address.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ||
                            sellToken.symbol.toUpperCase() === 'ETH';
       
+      console.log('[SwapWidget] Token type check', { isNativeToken, symbol: sellToken.symbol, address: sellToken.address });
+      
       if (isNativeToken) {
         // Fetch ETH balance
+        console.log('[SwapWidget] Fetching ETH balance for', walletAddress);
         const balance = await provider.getBalance(walletAddress);
+        console.log('[SwapWidget] ETH balance fetched', { raw: balance.toString(), formatted: ethers.formatEther(balance) });
         setUserBalance(balance.toString());
         retryCountRef.current = 0; // Reset retry count on success
       } else {
         // Fetch ERC20 token balance - wrapped in try-catch to handle any errors
         try {
+          console.log('[SwapWidget] Fetching ERC20 balance', { 
+            token: sellToken.symbol, 
+            address: sellToken.address,
+            userAddress: walletAddress,
+            decimals: sellToken.decimals 
+          });
+          
           const minimalERC20ABI = [
             "function balanceOf(address account) view returns (uint256)"
           ];
@@ -372,6 +401,11 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
             provider
           );
           const balance = await tokenContract.balanceOf(walletAddress);
+          console.log('[SwapWidget] ERC20 balance fetched', { 
+            raw: balance.toString(), 
+            formatted: ethers.formatUnits(balance, sellToken.decimals || 18),
+            symbol: sellToken.symbol 
+          });
           setUserBalance(balance.toString());
           retryCountRef.current = 0; // Reset retry count on success
         } catch (error: any) {
@@ -478,7 +512,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     try {
       const result = await connectWalletUtil({
         timeout: 15000, // Reduced from 30s to 15s
-        requiredChainId: 31337, // Local development network
+        requiredChainId: 1, // Ethereum mainnet
         onPendingRequest: () => {
           // Connection request already pending
         },

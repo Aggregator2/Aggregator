@@ -250,8 +250,13 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
                     setShowBalance(true);
                     setBalance('Loading...');
                     try {
+                      console.log('[WalletHeader] Fetching ETH balance for', walletAddress);
                       const provider = new ethers.BrowserProvider(window.ethereum);
                       const balanceWei = await provider.getBalance(walletAddress);
+                      console.log('[WalletHeader] ETH balance fetched', { 
+                        raw: balanceWei.toString(), 
+                        formatted: ethers.formatEther(balanceWei) 
+                      });
                       setBalance(ethers.formatEther(balanceWei));
                     } catch (error) {
                       console.error('Failed to get balance:', error);

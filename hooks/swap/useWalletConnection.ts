@@ -62,7 +62,7 @@ export function useWalletConnection({
     try {
       const result = await connectWalletUtil({
         timeout: 30000,
-        requiredChainId: 31337, // Local development network
+        requiredChainId: 1, // Ethereum mainnet
         onPendingRequest: () => {
           showWarning(
             "Connection request already pending. Please check MetaMask."
