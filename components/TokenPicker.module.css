@@ -166,6 +166,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .chainPill:hover {
@@ -510,6 +511,46 @@
     transform-origin: bottom center;
   }
   
+  /* Mobile-specific chain filter adjustments */
+  .chainFilter {
+    gap: 10px;
+    padding-bottom: 12px;
+    margin: 0 -4px; /* Allow slight overflow for better scrolling */
+    padding-left: 4px;
+    padding-right: 4px;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  }
+  
+  .chainFilter::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .chainFilter::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+  
+  .chainPill {
+    padding: 12px 18px;
+    font-size: 14px;
+    min-width: max-content;
+    border-radius: 16px;
+    gap: 8px;
+    height: 44px; /* Better touch target */
+    min-height: 44px;
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .chainPill:hover {
+    transform: none; /* Disable hover transform on mobile */
+  }
+  
+  .chainPill.active {
+    background: rgba(76, 130, 251, 0.25);
+    border-color: rgba(76, 130, 251, 0.4);
+    font-weight: 600;
+  }
+  
   .tokenRow {
     padding: 12px 20px;
   }
@@ -532,7 +573,14 @@
   }
   
   .searchContainer {
-    padding: 0 20px 16px 20px;
+    padding: 0 20px 20px 20px;
+    gap: 14px;
+  }
+  
+  .searchInput {
+    padding: 14px 18px;
+    font-size: 16px;
+    border-radius: 14px;
   }
   
   .popularSection {

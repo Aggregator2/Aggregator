@@ -50,17 +50,49 @@ export class BalanceValidationService extends EventEmitter {
   private readonly nativeTokenAddress = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
   private settlementContract: string;
   private refreshTimers: Map<string, NodeJS.Timeout> = new Map();
+  private providerInitialized: boolean = false;
+  private providerInitPromise: Promise<void> | null = null;
 
   constructor(settlementContract: string) {
     super();
     this.settlementContract = settlementContract;
-    this.initializeProvider();
+    // Don't initialize provider in constructor for SSR compatibility
   }
 
-  private async initializeProvider() {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      this.provider = new ethers.BrowserProvider(window.ethereum);
+  private async initializeProvider(): Promise<void> {
+    // Return existing promise if initialization is in progress
+    if (this.providerInitPromise) {
+      return this.providerInitPromise;
     }
+
+    // Skip if already initialized
+    if (this.providerInitialized) {
+      return;
+    }
+
+    this.providerInitPromise = (async () => {
+      try {
+        if (typeof window !== 'undefined' && window.ethereum) {
+          this.provider = new ethers.BrowserProvider(window.ethereum);
+          this.providerInitialized = true;
+        }
+      } catch (error) {
+        console.error('Failed to initialize provider:', error);
+        this.provider = null;
+      } finally {
+        this.providerInitPromise = null;
+      }
+    })();
+
+    return this.providerInitPromise;
+  }
+
+  private async ensureProvider(): Promise<ethers.BrowserProvider> {
+    await this.initializeProvider();
+    if (!this.provider) {
+      throw new Error('Web3 provider not available. Please connect your wallet.');
+    }
+    return this.provider;
   }
 
   /**
@@ -85,9 +117,8 @@ export class BalanceValidationService extends EventEmitter {
     }
 
     try {
-      if (!this.provider) {
-        throw new Error('No provider available');
-      }
+      // Ensure provider is initialized
+      await this.ensureProvider();
 
       let balance: TokenBalance;
 
@@ -201,9 +232,9 @@ export class BalanceValidationService extends EventEmitter {
    * Get native ETH balance
    */
   private async getNativeBalance(userAddress: string): Promise<TokenBalance> {
-    if (!this.provider) throw new Error('No provider available');
+    const provider = await this.ensureProvider();
 
-    const balance = await this.provider.getBalance(userAddress);
+    const balance = await provider.getBalance(userAddress);
     const balanceFormatted = ethers.formatEther(balance);
 
     return {
@@ -227,9 +258,9 @@ export class BalanceValidationService extends EventEmitter {
     tokenSymbol?: string,
     tokenDecimals?: number
   ): Promise<TokenBalance> {
-    if (!this.provider) throw new Error('No provider available');
+    const provider = await this.ensureProvider();
 
-    const contract = new ethers.Contract(tokenAddress, ERC20_ABI, this.provider);
+    const contract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
 
     // Fetch all data in parallel
     const [balance, allowance, decimals, symbol] = await Promise.all([

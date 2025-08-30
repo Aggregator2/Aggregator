@@ -46,6 +46,7 @@
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff !important; /* Force white text */
 }
 
 .notification:active {
@@ -113,7 +114,9 @@
 .iconContainer svg {
   width: 22px;
   height: 22px;
-  color: currentColor;
+  color: #ffffff;
+  fill: #ffffff;
+  stroke: #ffffff;
 }
 
 /* Content */
@@ -127,7 +130,7 @@
   font-size: 15px;
   font-weight: 600;
   line-height: 1.3;
-  color: rgba(255, 255, 255, 0.95);
+  color: #ffffff !important;
   letter-spacing: -0.01em;
   /* Prevent text selection during swipe */
   -webkit-user-select: none;
@@ -139,7 +142,8 @@
   font-size: 14px;
   font-weight: 400;
   line-height: 1.4;
-  color: rgba(255, 255, 255, 0.75);
+  color: #ffffff !important;
+  opacity: 0.9;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -199,67 +203,115 @@
 .closeButton svg {
   width: 18px;
   height: 18px;
+  color: #ffffff;
+  stroke: #ffffff;
 }
 
 /* Type Variants - Professional Colors */
 .notification.success {
-  background: rgba(16, 185, 129, 0.95);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  color: #ffffff;
+  background: rgba(16, 185, 129, 0.95) !important;
+  border: 1px solid rgba(34, 197, 94, 0.3) !important;
+  color: #ffffff !important;
 }
 
 .notification.success .iconContainer {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
 }
 
 .notification.success .progressBar {
-  background: #16a34a;
+  background: #16a34a !important;
+}
+
+.notification.success .title,
+.notification.success .message,
+.notification.success .actionButton {
+  color: #ffffff !important;
 }
 
 .notification.error {
-  background: rgba(220, 38, 38, 0.95);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #ffffff;
+  background: rgba(220, 38, 38, 0.95) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  color: #ffffff !important;
 }
 
 .notification.error .iconContainer {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
 }
 
 .notification.error .progressBar {
-  background: #ef4444;
+  background: #ef4444 !important;
+}
+
+.notification.error .title,
+.notification.error .message,
+.notification.error .actionButton {
+  color: #ffffff !important;
 }
 
 .notification.warning {
-  background: rgba(217, 119, 6, 0.95);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  color: #ffffff;
+  background: rgba(217, 119, 6, 0.95) !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+  color: #ffffff !important;
 }
 
 .notification.warning .iconContainer {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
 }
 
 .notification.warning .progressBar {
-  background: #f59e0b;
+  background: #f59e0b !important;
+}
+
+.notification.warning .title,
+.notification.warning .message,
+.notification.warning .actionButton {
+  color: #ffffff !important;
 }
 
 .notification.info {
-  background: rgba(37, 99, 235, 0.95);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #ffffff;
+  background: rgba(37, 99, 235, 0.95) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  color: #ffffff !important;
 }
 
 .notification.info .iconContainer {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
 }
 
 .notification.info .progressBar {
-  background: #3b82f6;
+  background: #3b82f6 !important;
+}
+
+.notification.info .title,
+.notification.info .message,
+.notification.info .actionButton {
+  color: #ffffff !important;
+}
+
+/* Pending state (if used) */
+.notification.pending {
+  background: rgba(107, 114, 128, 0.95) !important;
+  border: 1px solid rgba(156, 163, 175, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.notification.pending .iconContainer {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.notification.pending .progressBar {
+  background: #6b7280 !important;
+}
+
+.notification.pending .title,
+.notification.pending .message,
+.notification.pending .actionButton {
+  color: #ffffff !important;
 }
 
 /* Dark Mode Support */

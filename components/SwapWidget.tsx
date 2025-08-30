@@ -168,6 +168,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
 
   // Ref to prevent unnecessary re-renders
   const isInitialRender = useRef(true);
+  const retryCountRef = useRef(0);
 
   // Quote state
   const [currentQuote, setCurrentQuote] = useState<Quote | null>(null);
@@ -358,6 +359,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         // Fetch ETH balance
         const balance = await provider.getBalance(walletAddress);
         setUserBalance(balance.toString());
+        retryCountRef.current = 0; // Reset retry count on success
       } else {
         // Fetch ERC20 token balance - wrapped in try-catch to handle any errors
         try {
@@ -371,6 +373,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
           );
           const balance = await tokenContract.balanceOf(walletAddress);
           setUserBalance(balance.toString());
+          retryCountRef.current = 0; // Reset retry count on success
         } catch (error: any) {
           // Handle MetaMask circuit breaker errors gracefully
           if (error?.code === -32603 && error?.message?.includes('circuit breaker')) {
@@ -383,8 +386,28 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
               }
             }, 5000);
           } else {
-            // For other errors, assume no balance
-            setUserBalance('0');
+            // For other errors, implement retry with exponential backoff
+            console.error('[SwapWidget] Error fetching token balance:', error);
+            
+            // Check if this is a network error that might be temporary
+            const isNetworkError = error?.message?.includes('network') || 
+                                 error?.message?.includes('timeout') ||
+                                 error?.code === 'NETWORK_ERROR';
+            
+            if (isNetworkError && !retryCountRef.current) {
+              // First retry after 2 seconds
+              retryCountRef.current = 1;
+              setTimeout(() => {
+                if (walletAddress) {
+                  fetchUserBalance();
+                }
+              }, 2000);
+            } else {
+              // Show error after retry attempts
+              setUserBalance(null);
+              setBalanceError('Unable to fetch balance. Please try again.');
+              retryCountRef.current = 0;
+            }
           }
         }
       }
@@ -394,8 +417,10 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         console.log('[SwapWidget] MetaMask circuit breaker is open, will retry later');
         // Don't update balance, keep existing value
       } else {
-        // For other errors, assume no balance
-        setUserBalance('0');
+        // For other errors, show error state
+        console.error('[SwapWidget] Error fetching balance:', error);
+        setUserBalance(null);
+        setBalanceError('Unable to connect to wallet. Please check your connection.');
       }
     } finally {
       setBalanceLoading(false);
@@ -1581,6 +1606,8 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
                       <SkeletonLoader variant="text" width="80px" height="14px" />
                     ) : userBalance ? (
                       parseFloat(ethers.formatUnits(userBalance, sellToken.decimals || 18)).toFixed(6)
+                    ) : balanceError ? (
+                      '---'
                     ) : (
                       '0.0'
                     )} {sellToken.symbol}</span>
@@ -1604,6 +1631,19 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
                         MAX
                       </button>
                     )}
+                  </div>
+                )}
+                
+                {/* Balance Error Display */}
+                {balanceError && !balanceLoading && (
+                  <div className={styles.priceError}>
+                    {balanceError}
+                    <button type="button" onClick={() => {
+                      setBalanceError(null);
+                      fetchUserBalance();
+                    }}>
+                      Retry
+                    </button>
                   </div>
                 )}
                 

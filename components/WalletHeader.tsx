@@ -248,13 +248,24 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
                   e.stopPropagation();
                   if (window.ethereum && !showBalance) {
                     setShowBalance(true);
+                    setBalance('Loading...');
                     try {
                       const provider = new ethers.BrowserProvider(window.ethereum);
                       const balanceWei = await provider.getBalance(walletAddress);
                       setBalance(ethers.formatEther(balanceWei));
                     } catch (error) {
                       console.error('Failed to get balance:', error);
-                      setBalance('Error loading balance');
+                      // Retry once after a delay
+                      setTimeout(async () => {
+                        try {
+                          const provider = new ethers.BrowserProvider(window.ethereum);
+                          const balanceWei = await provider.getBalance(walletAddress);
+                          setBalance(ethers.formatEther(balanceWei));
+                        } catch (retryError) {
+                          console.error('Retry failed:', retryError);
+                          setBalance('Unable to load');
+                        }
+                      }, 1000);
                     }
                   }
                 }}>
