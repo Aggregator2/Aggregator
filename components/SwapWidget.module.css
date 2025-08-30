@@ -926,15 +926,15 @@
 /* Responsive design */
 @media (max-width: 640px) {
   .tradeCard {
-    padding: 24px;
-    max-width: calc(100vw - 32px);
-    width: calc(100vw - 32px);
-    border-radius: 20px;
+    padding: 20px;
+    max-width: calc(100vw - 20px);
+    width: calc(100vw - 20px);
+    border-radius: 18px;
     position: fixed;
     top: 50%;
     bottom: auto;
     left: 50%;
-    transform: translate(-50%, -50%) scale(0.9);
+    transform: translate(-50%, -50%) scale(0.85);
     transform-origin: center;
     max-height: calc(100vh - 100px);
     overflow-y: auto;
@@ -1157,5 +1157,20 @@
     padding: 6px 8px;
     font-size: 12px;
     border-radius: 6px;
+  }
+}
+/* Extra small devices (iPhone SE, small Android phones) */
+@media (max-width: 390px) {
+  .tradeCard {
+    transform: translate(-50%, -50%) scale(0.78);
+    padding: 16px;
+  }
+  
+  .floatingLogo {
+    transform: translateX(-50%) scale(0.65);
+  }
+  
+  .floatingControls {
+    transform: scale(0.8);
   }
 }

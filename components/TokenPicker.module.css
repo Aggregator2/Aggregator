@@ -490,11 +490,24 @@
 }
 
 /* Mobile Responsive */
-@media (max-width: 480px) {
+@media (max-width: 640px) {
+  .backdrop {
+    padding: 0;
+  }
+  
   .modal {
-    max-height: 90vh;
-    margin: 10px;
-    height: calc(100vh - 40px);
+    max-height: 85vh;
+    height: 85vh;
+    margin: 0;
+    border-radius: 24px 24px 0 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 100%;
+    width: 100%;
+    transform: scale(0.9);
+    transform-origin: bottom center;
   }
   
   .tokenRow {
