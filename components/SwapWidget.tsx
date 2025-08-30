@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { ethers } from "ethers";
 import DOMPurify from "dompurify";
+import { getProvider, getTokenAddress } from "../utils/getProvider";
 import styles from "./SwapWidget.module.css";
 import { useTokenPrice } from "../hooks/useTokenPrice";
 // Removed old toast imports - using ModernNotificationSystem
@@ -77,10 +78,10 @@ export interface SwapWidgetProps {
 }
 
 // EIP-712 definitions for orders
-const EIP712_DOMAIN = {
+// Note: chainId should be set dynamically when signing
+const EIP712_DOMAIN_BASE = {
   name: "SwappiQ",
   version: "1",
-  chainId: 1, // Ethereum mainnet
   verifyingContract: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512", // TODO: Update to mainnet contract
 } as const;
 
@@ -358,19 +359,23 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     setBalanceError(null);
 
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = await getProvider();
+      if (!provider) {
+        throw new Error('Unable to connect to Ethereum network');
+      }
       
       // Get the network to check which chain we're on
       const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
       console.log('[SwapWidget] Connected to network', { 
-        chainId: network.chainId.toString(), 
+        chainId, 
         name: network.name,
         expectedChainId: sellToken.chainId,
         tokenChainId: sellToken.chainId
       });
       
       // Check if it's ETH (native token)
-      const isNativeToken = sellToken.address.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ||
+      const isNativeToken = sellToken.address.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ||
                            sellToken.symbol.toUpperCase() === 'ETH';
       
       console.log('[SwapWidget] Token type check', { isNativeToken, symbol: sellToken.symbol, address: sellToken.address });
@@ -385,18 +390,32 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       } else {
         // Fetch ERC20 token balance - wrapped in try-catch to handle any errors
         try {
+          // Get the correct token address for the current chain
+          let tokenAddress = sellToken.address;
+          
+          // If we have a token mapping for this chain, use it
+          if (sellToken.symbol === 'USDC' || sellToken.symbol === 'USDT' || sellToken.symbol === 'DAI') {
+            const mappedAddress = getTokenAddress(sellToken.symbol, chainId);
+            if (mappedAddress) {
+              tokenAddress = mappedAddress;
+              console.log(`[SwapWidget] Using chain-specific address for ${sellToken.symbol} on chain ${chainId}: ${mappedAddress}`);
+            }
+          }
+          
           console.log('[SwapWidget] Fetching ERC20 balance', { 
             token: sellToken.symbol, 
-            address: sellToken.address,
+            address: tokenAddress,
+            originalAddress: sellToken.address,
             userAddress: walletAddress,
-            decimals: sellToken.decimals 
+            decimals: sellToken.decimals,
+            chainId
           });
           
           const minimalERC20ABI = [
             "function balanceOf(address account) view returns (uint256)"
           ];
           const tokenContract = new ethers.Contract(
-            sellToken.address,
+            tokenAddress,
             minimalERC20ABI,
             provider
           );
@@ -861,9 +880,17 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         throw new Error(`Missing order fields: ${missingFields.join(", ")}`);
       }
 
-      // Sign the order
+      // Get current chainId from provider
+      const provider = await getProvider();
+      if (!provider) {
+        throw new Error('Unable to connect to Ethereum network');
+      }
+      const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
+      
+      // Sign the order with dynamic chainId
       const signature = await signer.signTypedData(
-        EIP712_DOMAIN,
+        { ...EIP712_DOMAIN_BASE, chainId },
         EIP712_TYPES,
         order
       );
@@ -988,9 +1015,17 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       // Skip pre-validation to speed up MetaMask prompt
       // Validation will happen server-side after signing
 
-      // Sign the order
+      // Get current chainId from provider
+      const provider = await getProvider();
+      if (!provider) {
+        throw new Error('Unable to connect to Ethereum network');
+      }
+      const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
+      
+      // Sign the order with dynamic chainId
       const signature = await signer.signTypedData(
-        EIP712_DOMAIN,
+        { ...EIP712_DOMAIN_BASE, chainId },
         EIP712_TYPES,
         order
       );

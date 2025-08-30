@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ethers } from 'ethers';
+import { getProvider } from '../utils/getProvider';
 import styles from './WalletHeader.module.css';
 import type { Order } from '../types/wallet';
 
@@ -251,7 +252,10 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
                     setBalance('Loading...');
                     try {
                       console.log('[WalletHeader] Fetching ETH balance for', walletAddress);
-                      const provider = new ethers.BrowserProvider(window.ethereum);
+                      const provider = await getProvider();
+                      if (!provider) {
+                        throw new Error('Unable to connect to Ethereum network');
+                      }
                       const balanceWei = await provider.getBalance(walletAddress);
                       console.log('[WalletHeader] ETH balance fetched', { 
                         raw: balanceWei.toString(), 
@@ -263,7 +267,10 @@ const WalletHeader: React.FC<WalletHeaderProps> = ({
                       // Retry once after a delay
                       setTimeout(async () => {
                         try {
-                          const provider = new ethers.BrowserProvider(window.ethereum);
+                          const provider = await getProvider();
+                          if (!provider) {
+                            throw new Error('Unable to connect to Ethereum network');
+                          }
                           const balanceWei = await provider.getBalance(walletAddress);
                           setBalance(ethers.formatEther(balanceWei));
                         } catch (retryError) {
