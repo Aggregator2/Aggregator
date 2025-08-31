@@ -14,6 +14,31 @@ interface TokenInfo {
   priceUSD: number;
 }
 
+// Helper functions for token info
+function getTokenPrice(tokenAddress: string): number {
+  // Default prices for common tokens
+  const prices: Record<string, number> = {
+    '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2': 3500, // WETH
+    '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': 1, // USDC
+    '0xdac17f958d2ee523a2206206994597c13d831ec7': 1, // USDT
+    '0x6b175474e89094c44da98b954eedeac495271d0f': 1, // DAI
+    '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee': 3500, // ETH
+  };
+  return prices[tokenAddress.toLowerCase()] || 0;
+}
+
+function getTokenDecimals(tokenAddress: string): number {
+  // Default decimals for common tokens
+  const decimals: Record<string, number> = {
+    '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2': 18, // WETH
+    '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': 6, // USDC
+    '0xdac17f958d2ee523a2206206994597c13d831ec7': 6, // USDT
+    '0x6b175474e89094c44da98b954eedeac495271d0f': 18, // DAI
+    '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee': 18, // ETH
+  };
+  return decimals[tokenAddress.toLowerCase()] || 18;
+}
+
 // Enhanced token mappings with current prices (as of 2024)
 const TOKEN_INFO: Record<string, Record<string, TokenInfo>> = {
   // Ethereum Mainnet (chainId: 1)
@@ -152,11 +177,12 @@ export class EnhancedQuoteService {
     const buyDecimals = BigInt(10 ** buyTokenInfo.decimals);
     
     // Convert sell amount to USD value
-    const sellValueUSD = Number(sellAmountBN) / Number(sellDecimals) * sellTokenInfo.priceUSD;
+    const sellAmountDecimal = Number(sellAmountBN) / Number(sellDecimals);
+    const sellValueUSD = sellAmountDecimal * sellTokenInfo.priceUSD;
     
     // Calculate buy amount based on USD value
-    const buyAmountRaw = sellValueUSD / buyTokenInfo.priceUSD;
-    const buyAmount = BigInt(Math.floor(buyAmountRaw * Number(buyDecimals)));
+    const buyAmountDecimal = sellValueUSD / buyTokenInfo.priceUSD;
+    const buyAmount = BigInt(Math.floor(buyAmountDecimal * Number(buyDecimals)));
     
     // Apply a small spread (0.3%)
     const spread = 997n; // 99.7% = 0.3% spread
@@ -194,9 +220,13 @@ export class EnhancedQuoteService {
     const rate = sellInfo.priceUSD / buyInfo.priceUSD;
     const sellAmountBN = BigInt(sellAmount);
     
-    // Adjust for decimals
-    const decimalAdjustment = BigInt(10 ** (buyInfo.decimals - sellInfo.decimals));
-    let buyAmount = (sellAmountBN * BigInt(Math.floor(rate * 1000)) * decimalAdjustment) / 1000n;
+    // Calculate buy amount with proper decimal handling
+    // First convert sell amount to its decimal representation
+    const sellAmountDecimal = Number(sellAmountBN) / Math.pow(10, sellInfo.decimals);
+    // Calculate buy amount in decimal
+    const buyAmountDecimal = sellAmountDecimal * rate;
+    // Convert back to raw amount with buy token decimals
+    let buyAmount = BigInt(Math.floor(buyAmountDecimal * Math.pow(10, buyInfo.decimals)));
     
     // Apply spread
     buyAmount = (buyAmount * 997n) / 1000n;
