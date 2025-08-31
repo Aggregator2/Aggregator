@@ -143,7 +143,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     userAddress || null
   );
   const [localOrders, setLocalOrders] = useState<any[]>([]);
-  const { notifications, notify, removeNotification } = useSimpleNotifications();
+  const { notifications, notify: notifyUser, removeNotification } = useSimpleNotifications();
   const [tokens] = useState(DEFAULT_TOKENS);
   const [sellToken, setSellToken] = useState<Token>(DEFAULT_TOKENS[0]);
   const [buyToken, setBuyToken] = useState<Token>(DEFAULT_TOKENS[1]);
@@ -287,23 +287,23 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   
   // Use new notification system for errors
   const showErrorNotification = useCallback((message: string) => {
-    notify({
+    notifyUser({
       type: 'error',
       title: 'Error',
       message: message,
       duration: 5000
     });
-  }, [notify]);
+  }, [notifyUser]);
   
   // Success notification helper
   const showSuccessNotification = useCallback((title: string, message?: string) => {
-    notify({
+    notifyUser({
       type: 'success',
       title: title,
       message: message,
       duration: 5000
     });
-  }, [notify]);
+  }, [notifyUser]);
   // Removed useOrderToast - using ModernNotificationSystem
   const networkStatus = useNetworkStatus();
   const sellTokenPriceData = useTokenPrice(sellToken.address);
@@ -836,7 +836,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       const shortage = parseFloat(limitOrder.sellAmount) - parseFloat(availableAmount);
       
       // Only show external notification
-      notify({
+      notifyUser({
         type: 'error',
         title: 'Cannot Place Order',
         message: `You need ${shortage.toFixed(6)} more ${sellToken.symbol}`,
@@ -908,7 +908,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       );
 
       // Add pending notification
-      notify({
+      notifyUser({
         type: 'info',
         title: 'Submitting Limit Order',
         message: `${limitOrder.sellAmount} ${sellToken.symbol} → ${limitOrder.buyAmount} ${buyToken.symbol}`
@@ -932,7 +932,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       showErrorNotification(errorMessage);
       
       // Add error notification
-      notify({
+      notifyUser({
         type: 'error',
         title: 'Limit Order Failed',
         message: errorMessage
@@ -969,7 +969,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       const shortage = parseFloat(sellAmount) - parseFloat(availableAmount);
       
       // Only show external notification
-      notify({
+      notifyUser({
         type: 'error',
         title: 'Cannot Execute Swap',
         message: `You need ${shortage.toFixed(6)} more ${sellToken.symbol}`,
@@ -1056,7 +1056,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       );
 
       // Add pending notification
-      notify({
+      notifyUser({
         type: 'info',
         title: 'Submitting Order',
         message: `${sellAmount} ${sellToken.symbol} → ${buyToken.symbol}`
@@ -1086,7 +1086,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       showErrorNotification(errorMessage);
       
       // Add error notification
-      notify({
+      notifyUser({
         type: 'error',
         title: 'Order Failed',
         message: errorMessage
@@ -1133,7 +1133,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       );
       
       // Show success notification
-      notify({
+      notifyUser({
         type: 'success',
         title: 'Order Submitted',
         message: `${sellAmount} ${sellToken.symbol} → ${buyAmountFormatted} ${buyToken.symbol}`,
@@ -1321,7 +1321,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         if (orderStatus.status === "filled") {
           clearInterval(checkInterval);
           // Show order filled notification
-          notify({
+          notifyUser({
             type: 'success',
             title: 'Order Filled!',
             message: `Swapped ${sellAmountFormatted} ${sellSymbol} for ${buyAmountFormatted} ${buySymbol}`,
@@ -1363,7 +1363,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
           await logDispute(orderId, orderStatus.status, orderStatus.reason);
 
           // Show order failed notification
-          notify({
+          notifyUser({
             type: 'error',
             title: 'Order Failed',
             message: `Failed to swap ${sellAmountFormatted} ${sellSymbol} for ${buySymbol}. Order ${DOMPurify.sanitize(orderStatus.status)}. Dispute resolution available.`,
