@@ -106,13 +106,17 @@ class CoinGeckoService {
       // Calculate exchange rate
       const rate = sellPrice / buyPrice;
 
-      // Convert sell amount to token units
+      // Convert sell amount to token units using BigInt for precision
       const sellAmountBN = BigInt(sellAmount);
-      const sellAmountInTokens = Number(sellAmountBN) / Math.pow(10, sellDecimals);
       
-      // Calculate buy amount
-      const buyAmountInTokens = sellAmountInTokens * rate;
-      const buyAmount = BigInt(Math.floor(buyAmountInTokens * Math.pow(10, buyDecimals)));
+      // Calculate buy amount using BigInt math to avoid precision loss
+      // First scale up the rate to avoid decimals (multiply by 1e18 for precision)
+      const scaleFactor = BigInt(10 ** 18);
+      const rateBN = BigInt(Math.floor(rate * Number(scaleFactor)));
+      
+      // Calculate: (sellAmount * rate * 10^buyDecimals) / (10^sellDecimals * scaleFactor)
+      const buyAmountBN = (sellAmountBN * rateBN * BigInt(10 ** buyDecimals)) / (BigInt(10 ** sellDecimals) * scaleFactor);
+      const buyAmount = buyAmountBN;
 
       return {
         sellToken,
