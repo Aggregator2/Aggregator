@@ -693,7 +693,7 @@ export class MultiChainQuoteService {
         value: bestRoute.steps?.[0]?.transactionRequest?.value || '0',
         gas: totalGas || '200000',
         gasPrice: '5000000000', // 5 gwei default
-        price: parseFloat(bestRoute.toAmount) / parseFloat(sellAmount),
+        price: Number(ethers.formatUnits(bestRoute.toAmount, 18)) / Number(ethers.formatUnits(sellAmount, 18)),
         sources: [{name: 'LiFi', proportion: '1'}]
       };
 
@@ -946,7 +946,7 @@ export class MultiChainQuoteService {
     const params = new URLSearchParams({
       inputMint: sellToken,
       outputMint: buyToken,
-      amount: (parseFloat(sellAmount) * 1e9).toString(), // Solana uses 9 decimals
+      amount: ethers.parseUnits(ethers.formatUnits(sellAmount, 18), 9).toString(), // Convert from 18 to 9 decimals for Solana
       slippageBps: (slippage * 100).toString(),
       swapMode: "ExactIn",
     });

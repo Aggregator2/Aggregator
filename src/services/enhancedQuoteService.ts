@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { calculateTokenSwapViaUSD } from '../../utils/decimalMath';
 
 interface QuoteParams {
   sellToken: string;
@@ -171,29 +172,31 @@ export class EnhancedQuoteService {
       throw new Error('Token information not found');
     }
     
-    // Calculate based on USD prices
-    const sellAmountBN = BigInt(sellAmount);
-    const sellDecimals = BigInt(10 ** sellTokenInfo.decimals);
-    const buyDecimals = BigInt(10 ** buyTokenInfo.decimals);
-    
-    // Convert sell amount to USD value
-    const sellAmountDecimal = Number(sellAmountBN) / Number(sellDecimals);
-    const sellValueUSD = sellAmountDecimal * sellTokenInfo.priceUSD;
-    
-    // Calculate buy amount based on USD value
-    const buyAmountDecimal = sellValueUSD / buyTokenInfo.priceUSD;
-    const buyAmount = BigInt(Math.floor(buyAmountDecimal * Number(buyDecimals)));
+    // Use decimal math utility for precise calculation
+    const buyAmount = calculateTokenSwapViaUSD(
+      sellAmount,
+      sellTokenInfo.priceUSD,
+      buyTokenInfo.priceUSD,
+      sellTokenInfo.decimals,
+      buyTokenInfo.decimals
+    );
     
     // Apply a small spread (0.3%)
     const spread = 997n; // 99.7% = 0.3% spread
-    const buyAmountWithSpread = (buyAmount * spread) / 1000n;
+    const buyAmountBN = BigInt(buyAmount);
+    const buyAmountWithSpread = (buyAmountBN * spread) / 1000n;
+    
+    // Calculate price
+    const sellAmountBN = BigInt(sellAmount);
+    const price = Number(ethers.formatUnits(buyAmountWithSpread, buyTokenInfo.decimals)) / 
+                  Number(ethers.formatUnits(sellAmountBN, sellTokenInfo.decimals));
     
     return {
       sellToken,
       buyToken,
       sellAmount,
       buyAmount: buyAmountWithSpread.toString(),
-      price: Number(buyAmountWithSpread) / Number(sellAmountBN),
+      price,
       source: 'price-based',
       sources: [{ name: 'price-based', proportion: '1' }],
       estimatedGas: '200000',
@@ -216,26 +219,26 @@ export class EnhancedQuoteService {
       throw new Error('Tokens not supported in hardcoded quotes');
     }
     
-    // Simple conversion based on known prices
-    const rate = sellInfo.priceUSD / buyInfo.priceUSD;
-    const sellAmountBN = BigInt(sellAmount);
-    
-    // Calculate buy amount with proper decimal handling
-    // First convert sell amount to its decimal representation
-    const sellAmountDecimal = Number(sellAmountBN) / Math.pow(10, sellInfo.decimals);
-    // Calculate buy amount in decimal
-    const buyAmountDecimal = sellAmountDecimal * rate;
-    // Convert back to raw amount with buy token decimals
-    let buyAmount = BigInt(Math.floor(buyAmountDecimal * Math.pow(10, buyInfo.decimals)));
+    // Use decimal math utility for precise calculation
+    const buyAmount = calculateTokenSwapViaUSD(
+      sellAmount,
+      sellInfo.priceUSD,
+      buyInfo.priceUSD,
+      sellInfo.decimals,
+      buyInfo.decimals
+    );
     
     // Apply spread
-    buyAmount = (buyAmount * 997n) / 1000n;
+    let buyAmountBN = BigInt(buyAmount);
+    buyAmountBN = (buyAmountBN * 997n) / 1000n;
+    
+    const rate = sellInfo.priceUSD / buyInfo.priceUSD;
     
     return Promise.resolve({
       sellToken,
       buyToken,
       sellAmount,
-      buyAmount: buyAmount.toString(),
+      buyAmount: buyAmountBN.toString(),
       price: rate,
       source: 'hardcoded',
       sources: [{ name: 'hardcoded', proportion: '1' }],
@@ -255,17 +258,24 @@ export class EnhancedQuoteService {
     const sellInfo = this.getTokenInfo(sellToken, chainId) || { decimals: 18 };
     const buyInfo = this.getTokenInfo(buyToken, chainId) || { decimals: 18 };
     
-    const sellAmountBN = BigInt(sellAmount);
-    const decimalAdjustment = BigInt(10 ** (buyInfo.decimals - sellInfo.decimals));
+    // For stablecoins, use 1:1 rate with spread
+    const buyAmount = calculateTokenSwapViaUSD(
+      sellAmount,
+      1.0, // USD price for stablecoins
+      1.0, // USD price for stablecoins
+      sellInfo.decimals,
+      buyInfo.decimals
+    );
     
-    // 1:1 with 0.1% spread
-    let buyAmount = (sellAmountBN * decimalAdjustment * 999n) / 1000n;
+    // Apply 0.1% spread
+    let buyAmountBN = BigInt(buyAmount);
+    buyAmountBN = (buyAmountBN * 999n) / 1000n;
     
     return {
       sellToken,
       buyToken,
       sellAmount,
-      buyAmount: buyAmount.toString(),
+      buyAmount: buyAmountBN.toString(),
       price: 0.999,
       source: 'stablecoin-pair',
       sources: [{ name: 'stablecoin', proportion: '1' }],

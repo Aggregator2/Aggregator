@@ -76,17 +76,17 @@ export class RevenueAccumulator {
       // Calculate USD value of the fee
       const feeAmountBN = BigNumber.from(fee.feeAmount);
       const decimals = fee.feeToken === "ETH" ? 18 : 18; // Assuming 18 decimals, adjust per token
-      const feeAmountDecimal = parseFloat(
-        ethers.formatUnits(feeAmountBN, decimals)
-      );
-      const feeUsdValue = feeAmountDecimal * fee.tokenUsdPrice;
+      const feeAmountFormatted = ethers.formatUnits(feeAmountBN, decimals);
+      
+      // Use high precision calculation for USD value
+      const feeUsdValue = parseFloat(feeAmountFormatted) * fee.tokenUsdPrice;
 
       // Add to state
       this.state.collectedFees.push(fee);
       this.state.totalRevenueUSD += feeUsdValue;
 
       console.log(
-        `[RevenueAccumulator] Added fee: ${feeAmountDecimal} ${
+        `[RevenueAccumulator] Added fee: ${feeAmountFormatted} ${
           fee.feeToken
         } = $${feeUsdValue.toFixed(2)}`
       );
