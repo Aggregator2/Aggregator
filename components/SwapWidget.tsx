@@ -836,11 +836,12 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       const shortage = parseFloat(limitOrder.sellAmount) - parseFloat(availableAmount);
       
       // Only show external notification
-      notify.error(
-        'Cannot Place Order',
-        `You need ${shortage.toFixed(6)} more ${sellToken.symbol}`,
-        20000
-      );
+      notify({
+        type: 'error',
+        title: 'Cannot Place Order',
+        message: `You need ${shortage.toFixed(6)} more ${sellToken.symbol}`,
+        duration: 20000
+      });
       return;
     }
 
@@ -907,10 +908,11 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       );
 
       // Add pending notification
-      notify.info(
-        'Submitting Limit Order',
-        `${limitOrder.sellAmount} ${sellToken.symbol} → ${limitOrder.buyAmount} ${buyToken.symbol}`
-      );
+      notify({
+        type: 'info',
+        title: 'Submitting Limit Order',
+        message: `${limitOrder.sellAmount} ${sellToken.symbol} → ${limitOrder.buyAmount} ${buyToken.symbol}`
+      });
 
       // Submit to backend
       if (onSubmitOrder) {
@@ -930,10 +932,11 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       showErrorNotification(errorMessage);
       
       // Add error notification
-      notify.error(
-        'Limit Order Failed',
-        errorMessage
-      );
+      notify({
+        type: 'error',
+        title: 'Limit Order Failed',
+        message: errorMessage
+      });
     }
   };
 
@@ -966,11 +969,12 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       const shortage = parseFloat(sellAmount) - parseFloat(availableAmount);
       
       // Only show external notification
-      notify.error(
-        'Cannot Execute Swap',
-        `You need ${shortage.toFixed(6)} more ${sellToken.symbol}`,
-        20000
-      );
+      notify({
+        type: 'error',
+        title: 'Cannot Execute Swap',
+        message: `You need ${shortage.toFixed(6)} more ${sellToken.symbol}`,
+        duration: 20000
+      });
       return;
     }
 
@@ -1052,10 +1056,11 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       );
 
       // Add pending notification
-      notify.info(
-        'Submitting Order',
-        `${sellAmount} ${sellToken.symbol} → ${buyToken.symbol}`
-      );
+      notify({
+        type: 'info',
+        title: 'Submitting Order',
+        message: `${sellAmount} ${sellToken.symbol} → ${buyToken.symbol}`
+      });
 
       // Submit to backend or parent component
       if (onSubmitOrder) {
@@ -1081,10 +1086,11 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       showErrorNotification(errorMessage);
       
       // Add error notification
-      notify.error(
-        'Order Failed',
-        errorMessage
-      );
+      notify({
+        type: 'error',
+        title: 'Order Failed',
+        message: errorMessage
+      });
     }
   };
 
