@@ -633,6 +633,17 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         // Warning present but not logged
       }
 
+      console.log('[SwapWidget] Quote received:', {
+        sellToken: data.sellToken,
+        buyToken: data.buyToken,
+        sellAmount: data.sellAmount,
+        buyAmount: data.buyAmount,
+        buyAmountRaw: data.buyAmount,
+        buyAmountLength: data.buyAmount?.length,
+        expectedDecimals: buyToken.decimals,
+        formatted: ethers.formatUnits(data.buyAmount, buyToken.decimals || 18)
+      });
+      
       setCurrentQuote(data);
       setQuoteUpdatedAt(new Date());
       setIsQuoteStale(false);
@@ -1000,6 +1011,16 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         signingScheme: "eip712",
         nonce: parseInt(nonce) || Date.now(),
       };
+      
+      console.log('[SwapWidget] Order being signed:', {
+        sellAmount: order.sellAmount,
+        sellAmountFormatted: ethers.formatUnits(order.sellAmount, sellToken.decimals || 18),
+        sellToken: sellToken.symbol,
+        buyAmount: order.buyAmount,
+        buyAmountFormatted: ethers.formatUnits(order.buyAmount, buyToken.decimals || 18),
+        buyToken: buyToken.symbol,
+        buyAmountLength: order.buyAmount.length
+      });
 
       // Validate order
       const missingFields = Object.entries(order)
