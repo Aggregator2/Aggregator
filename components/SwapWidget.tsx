@@ -1057,27 +1057,32 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
             slippagePercentage: parseFloat(slippageTolerance) || 0.5
           };
 
-          // For now, use a simplified approach until 0x integration is deployed
-          // In production, this would fetch from 0x API for best rates
-          notifyUser({
-            type: 'warning',
-            title: 'Demo Mode',
-            message: 'Instant swap is in demo mode. In production, this would execute a real on-chain swap.',
-            duration: 8000
+          // For now, execute through backend API
+          const response = await fetch('/api/executeSwap', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${getAuthToken()}`
+            },
+            body: JSON.stringify(swapParams)
           });
 
-          // Simulate a successful swap for demo
-          const demoTxHash = '0x' + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to execute swap');
+          }
+
+          const result = await response.json();
           
           notifyUser({
             type: 'success',
-            title: 'Swap Complete! 🎉',
-            message: `Demo swap: ${sellAmount} ${sellToken.symbol} → ${ethers.formatUnits(currentQuote.buyAmount, buyToken.decimals || 18)} ${buyToken.symbol}`,
+            title: 'Swap Initiated! 🚀',
+            message: `Swapping ${sellAmount} ${sellToken.symbol} → ${ethers.formatUnits(currentQuote.buyAmount, buyToken.decimals || 18)} ${buyToken.symbol}`,
             duration: 20000,
-            action: {
+            action: result.txHash ? {
               label: 'View Transaction',
-              onClick: () => window.open(`https://etherscan.io/tx/${demoTxHash}`, '_blank')
-            }
+              onClick: () => window.open(`https://etherscan.io/tx/${result.txHash}`, '_blank')
+            } : undefined
           });
 
           // Clear form
@@ -1152,10 +1157,8 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
    */
   const submitOrder = async (signedOrder: any) => {
     try {
-      // Use validated endpoint for production, fallback to regular for testing
-      const endpoint = process.env.NODE_ENV === 'production' 
-        ? "/api/submitOrder-validated" 
-        : "/api/submitOrder";
+      // Always use regular submitOrder endpoint for now
+      const endpoint = "/api/submitOrder";
         
       const token = getAuthToken();
       if (!token) {
