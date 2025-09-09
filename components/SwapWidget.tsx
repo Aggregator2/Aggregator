@@ -1125,8 +1125,28 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
 
       const data = await response.json();
 
-      // Show order toast notification
+      // Show appropriate notification based on order status
       const orderId = data.orderId || Date.now().toString();
+      
+      if (data.status === 'filled' || data.executionReport?.status === 'FILLED') {
+        notifyUser({
+          type: 'success',
+          title: 'Order Matched! 🎉',
+          message: data.message || 'Your order has been matched and will settle in the next batch.',
+          duration: 10000,
+          action: {
+            label: 'View Details',
+            onClick: () => window.open(`/orders/${orderId}`, '_blank')
+          }
+        });
+      } else {
+        notifyUser({
+          type: 'info',
+          title: 'Order Placed',
+          message: data.message || 'Your order is in the order book waiting for a match.',
+          duration: 8000
+        });
+      }
       const buyAmountFormatted = ethers.formatUnits(
         currentQuote?.buyAmount || "0",
         buyToken.decimals || 18
