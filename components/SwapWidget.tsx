@@ -159,8 +159,8 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
   const [connectingWallet, setConnectingWallet] = useState(false);
 
   // Settlement mode
-  const [settlementMode, setSettlementMode] = useState<"offchain" | "escrow">(
-    "offchain"
+  const [settlementMode, setSettlementMode] = useState<"offchain" | "escrow" | "instant">(
+    "instant" // Default to instant for immediate execution
   );
 
   // Escrow state
@@ -1037,6 +1037,120 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
         throw new Error(`Missing order fields: ${missingFields.join(", ")}`);
       }
 
+      // Check if instant mode is selected
+      if (settlementMode === "instant") {
+        // Execute instant on-chain swap
+        notifyUser({
+          type: 'info',
+          title: 'Preparing Swap',
+          message: 'Getting best price and preparing transaction...',
+          duration: 5000
+        });
+
+        try {
+          // Use the connected signer to execute the swap directly
+          const swapParams = {
+            sellToken: sellToken.address,
+            buyToken: buyToken.address,
+            sellAmount: baseUnits,
+            takerAddress: address || walletAddress,
+            slippagePercentage: parseFloat(slippageTolerance) || 0.5
+          };
+
+          // Get quote from 0x API (or similar)
+          const quoteResponse = await fetch('/api/quote-0x', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(swapParams)
+          });
+
+          if (!quoteResponse.ok) {
+            throw new Error('Failed to get swap quote');
+          }
+
+          const quote = await quoteResponse.json();
+
+          // Check if we need approval
+          if (quote.allowanceTarget && sellToken.address !== '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') {
+            notifyUser({
+              type: 'info',
+              title: 'Token Approval',
+              message: `Approving ${sellToken.symbol} for swap...`,
+              duration: 10000
+            });
+
+            const tokenContract = new ethers.Contract(
+              sellToken.address,
+              ['function approve(address spender, uint256 amount) external returns (bool)'],
+              signer
+            );
+
+            const approveTx = await tokenContract.approve(quote.allowanceTarget, ethers.MaxUint256);
+            await approveTx.wait();
+          }
+
+          // Execute the swap transaction
+          notifyUser({
+            type: 'info',
+            title: 'Executing Swap',
+            message: 'Please confirm the transaction in your wallet...',
+            duration: 10000
+          });
+
+          const tx = await signer.sendTransaction({
+            to: quote.to,
+            data: quote.data,
+            value: quote.value,
+            gasLimit: quote.estimatedGas,
+            gasPrice: quote.gasPrice,
+          });
+
+          notifyUser({
+            type: 'info',
+            title: 'Transaction Submitted',
+            message: `Transaction hash: ${tx.hash.substring(0, 10)}...`,
+            duration: 15000,
+            action: {
+              label: 'View on Etherscan',
+              onClick: () => window.open(`https://etherscan.io/tx/${tx.hash}`, '_blank')
+            }
+          });
+
+          // Wait for confirmation
+          const receipt = await tx.wait();
+
+          if (receipt.status === 1) {
+            notifyUser({
+              type: 'success',
+              title: 'Swap Complete! 🎉',
+              message: `Successfully swapped ${sellAmount} ${sellToken.symbol} for ${buyToken.symbol}`,
+              duration: 20000,
+              action: {
+                label: 'View Transaction',
+                onClick: () => window.open(`https://etherscan.io/tx/${tx.hash}`, '_blank')
+              }
+            });
+
+            // Refresh balances
+            await Promise.all([
+              fetchUserBalance(sellToken),
+              fetchUserBalance(buyToken)
+            ]);
+
+            // Clear form
+            setSellAmount("");
+          } else {
+            throw new Error('Transaction failed');
+          }
+
+          return;
+        } catch (error: any) {
+          console.error('[SwapWidget] Instant swap error:', error);
+          showErrorNotification(error.message || 'Failed to execute instant swap');
+          return;
+        }
+      }
+
       // Skip pre-validation to speed up MetaMask prompt
       // Validation will happen server-side after signing
 
@@ -1656,10 +1770,10 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
 
               <div className={styles.settingGroup}>
                 <div className={styles.settingLabel}>
-                  If No Match Found
+                  Execution Mode
                   <span
                     className={styles.infoIcon}
-                    title="What happens if solver can't match your trade"
+                    title="Choose between instant on-chain execution or batched settlement"
                   >
                     !
                   </span>
@@ -1668,21 +1782,34 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
                   <button
                     type="button"
                     className={`${styles.settlementButton} ${
-                      settlementMode === "offchain" ? styles.active : ""
+                      settlementMode === "instant" ? styles.active : ""
                     }`}
-                    onClick={() => setSettlementMode("offchain")}
+                    onClick={() => setSettlementMode("instant")}
+                    style={{
+                      fontSize: '12px',
+                      flex: '1'
+                    }}
                   >
-                    Return Funds
+                    Instant Swap
                   </button>
                   <button
                     type="button"
                     className={`${styles.settlementButton} ${
-                      settlementMode === "escrow" ? styles.active : ""
+                      settlementMode === "offchain" ? styles.active : ""
                     }`}
-                    onClick={() => setSettlementMode("escrow")}
+                    onClick={() => setSettlementMode("offchain")}
+                    style={{
+                      fontSize: '12px',
+                      flex: '1'
+                    }}
                   >
-                    On-chain Settlement
+                    Batch (5min)
                   </button>
+                </div>
+                <div style={{ fontSize: '11px', color: '#666', marginTop: '8px', textAlign: 'center' }}>
+                  {settlementMode === 'instant' 
+                    ? 'Execute immediately on-chain (gas fees apply)'
+                    : 'Match off-chain, settle later (lower fees)'}
                 </div>
               </div>
             </div>
