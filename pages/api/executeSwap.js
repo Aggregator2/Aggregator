@@ -98,7 +98,17 @@ export default async function handler(req, res) {
     }
 
     // Calculate minimum amount out with slippage
-    const amounts = await router.getAmountsOut(sellAmount, path);
+    let amounts;
+    try {
+      amounts = await router.getAmountsOut(sellAmount, path);
+    } catch (error) {
+      console.error('Failed to get amounts for path:', path, error.message);
+      return res.status(400).json({ 
+        error: 'No liquidity found for this trading pair',
+        message: `Cannot find a trading route from ${sellToken} to ${buyToken}. Try a different pair or amount.`,
+        path: path
+      });
+    }
     const expectedOut = amounts[amounts.length - 1];
     const slippage = BigInt(Math.floor(parseFloat(slippagePercentage) * 100));
     const minAmountOut = (expectedOut * (10000n - slippage)) / 10000n;

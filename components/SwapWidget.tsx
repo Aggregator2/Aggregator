@@ -1038,7 +1038,9 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
       }
 
       // Check if instant mode is selected
+      console.log('[SwapWidget] Settlement mode:', settlementMode);
       if (settlementMode === "instant") {
+        console.log('[SwapWidget] Executing instant swap...');
         // Execute instant on-chain swap
         notifyUser({
           type: 'info',
@@ -1069,6 +1071,7 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
           };
 
           // Get transaction data from backend
+          console.log('[SwapWidget] Calling /api/executeSwap with params:', swapParamsWithChain);
           const response = await fetch('/api/executeSwap', {
             method: 'POST',
             headers: { 
@@ -1078,8 +1081,10 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
             body: JSON.stringify(swapParamsWithChain)
           });
 
+          console.log('[SwapWidget] executeSwap response status:', response.status);
           if (!response.ok) {
             const error = await response.json();
+            console.error('[SwapWidget] executeSwap error response:', error);
             throw new Error(error.message || 'Failed to prepare swap');
           }
 
