@@ -1,7 +1,4 @@
 import { ethers } from 'ethers';
-import { BalanceValidationService } from '../../src/services/balanceValidationService';
-
-const balanceValidator = new BalanceValidationService();
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
