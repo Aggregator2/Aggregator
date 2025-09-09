@@ -1466,21 +1466,65 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
     sellAmountFormatted: string,
     buyAmountFormatted: string
   ) => {
+    // Add persistent order tracking notification
+    const trackingId = `order-${orderId}`;
+    notifyUser({
+      id: trackingId,
+      type: 'info',
+      title: 'Order Tracking',
+      message: `Monitoring ${sellSymbol} → ${buySymbol} order`,
+      duration: 300000, // 5 minutes
+      persistent: true,
+      progress: {
+        value: 0,
+        max: 100,
+        label: 'Pending match...'
+      }
+    });
+
+    let checkCount = 0;
+    const maxChecks = 60; // Check for 5 minutes max
+    
     const checkInterval = setInterval(async () => {
+      checkCount++;
+      
       try {
         const response = await fetch(`/api/orders/${orderId}`);
         if (!response.ok) return;
 
         const orderStatus = await response.json();
 
+        // Update progress notification
+        const progress = orderStatus.status === 'filled' ? 100 : 
+                        orderStatus.filledAmount ? 
+                        (parseInt(orderStatus.filledAmount) / (parseInt(orderStatus.filledAmount) + parseInt(orderStatus.remainingAmount))) * 100 : 
+                        (checkCount / maxChecks) * 100;
+
+        notifyUser({
+          id: trackingId,
+          type: 'info',
+          title: 'Order Tracking',
+          message: `${sellSymbol} → ${buySymbol} order`,
+          duration: 300000,
+          persistent: true,
+          progress: {
+            value: progress,
+            max: 100,
+            label: orderStatus.status === 'filled' ? 'Filled!' : 
+                   orderStatus.matches?.length ? `Partially filled (${Math.round(progress)}%)` : 
+                   'Waiting for match...'
+          }
+        });
+
         if (orderStatus.status === "filled") {
           clearInterval(checkInterval);
           // Show order filled notification
           notifyUser({
+            id: `${trackingId}-complete`,
             type: 'success',
-            title: 'Order Filled!',
-            message: `Swapped ${sellAmountFormatted} ${sellSymbol} for ${buyAmountFormatted} ${buySymbol}`,
-            duration: 10000,
+            title: 'Order Filled! 🎉',
+            message: `Successfully swapped ${sellAmountFormatted} ${sellSymbol} for ${buyAmountFormatted} ${buySymbol}`,
+            duration: 60000,
             action: orderStatus.txHash ? {
               label: 'View Transaction',
               onClick: () => window.open(`https://etherscan.io/tx/${orderStatus.txHash}`, '_blank')
@@ -1765,6 +1809,52 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
             </button>
           </div>
 
+          {/* Always show execution mode for clarity */}
+          <div className={styles.settingGroup} style={{ marginTop: '12px' }}>
+            <div className={styles.settingLabel}>
+              Execution Mode
+              <span
+                className={styles.infoIcon}
+                title="Choose between instant on-chain execution or batched settlement"
+              >
+                !
+              </span>
+            </div>
+            <div className={styles.settlementButtons}>
+              <button
+                type="button"
+                className={`${styles.settlementButton} ${
+                  settlementMode === "instant" ? styles.active : ""
+                }`}
+                onClick={() => setSettlementMode("instant")}
+                style={{
+                  fontSize: '12px',
+                  flex: '1'
+                }}
+              >
+                Instant Swap
+              </button>
+              <button
+                type="button"
+                className={`${styles.settlementButton} ${
+                  settlementMode === "offchain" ? styles.active : ""
+                }`}
+                onClick={() => setSettlementMode("offchain")}
+                style={{
+                  fontSize: '12px',
+                  flex: '1'
+                }}
+              >
+                Batch (5min)
+              </button>
+            </div>
+            <div style={{ fontSize: '11px', color: '#666', marginTop: '8px', textAlign: 'center' }}>
+              {settlementMode === 'instant' 
+                ? 'Execute immediately on-chain (gas fees apply)'
+                : 'Match off-chain, settle later (lower fees)'}
+            </div>
+          </div>
+
           {showSettings && (
             <div className={styles.settingsPanel}>
               <div className={styles.settingGroup}>
@@ -1786,51 +1876,6 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
                     placeholder="0.5"
                   />
                   <span className={styles.slippagePercent}>%</span>
-                </div>
-              </div>
-
-              <div className={styles.settingGroup}>
-                <div className={styles.settingLabel}>
-                  Execution Mode
-                  <span
-                    className={styles.infoIcon}
-                    title="Choose between instant on-chain execution or batched settlement"
-                  >
-                    !
-                  </span>
-                </div>
-                <div className={styles.settlementButtons}>
-                  <button
-                    type="button"
-                    className={`${styles.settlementButton} ${
-                      settlementMode === "instant" ? styles.active : ""
-                    }`}
-                    onClick={() => setSettlementMode("instant")}
-                    style={{
-                      fontSize: '12px',
-                      flex: '1'
-                    }}
-                  >
-                    Instant Swap
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.settlementButton} ${
-                      settlementMode === "offchain" ? styles.active : ""
-                    }`}
-                    onClick={() => setSettlementMode("offchain")}
-                    style={{
-                      fontSize: '12px',
-                      flex: '1'
-                    }}
-                  >
-                    Batch (5min)
-                  </button>
-                </div>
-                <div style={{ fontSize: '11px', color: '#666', marginTop: '8px', textAlign: 'center' }}>
-                  {settlementMode === 'instant' 
-                    ? 'Execute immediately on-chain (gas fees apply)'
-                    : 'Match off-chain, settle later (lower fees)'}
                 </div>
               </div>
             </div>
