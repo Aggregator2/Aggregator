@@ -1057,33 +1057,107 @@ const SwapWidget: React.FC<SwapWidgetProps> = ({
             slippagePercentage: parseFloat(slippageTolerance) || 0.5
           };
 
-          // For now, execute through backend API
+          // Get chain ID
+          const provider = await getProvider();
+          const network = await provider.getNetwork();
+          const chainId = Number(network.chainId).toString();
+
+          // Prepare swap parameters with chain ID
+          const swapParamsWithChain = {
+            ...swapParams,
+            chainId
+          };
+
+          // Get transaction data from backend
           const response = await fetch('/api/executeSwap', {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${getAuthToken()}`
             },
-            body: JSON.stringify(swapParams)
+            body: JSON.stringify(swapParamsWithChain)
           });
 
           if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.message || 'Failed to execute swap');
+            throw new Error(error.message || 'Failed to prepare swap');
           }
 
           const result = await response.json();
           
+          // Check if we need approval first
+          if (result.requiresApproval && sellToken.address !== '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') {
+            notifyUser({
+              type: 'info',
+              title: 'Approval Required',
+              message: `Please approve ${sellToken.symbol} spending first`,
+              duration: 10000
+            });
+
+            // Create token contract
+            const tokenContract = new ethers.Contract(
+              sellToken.address,
+              ['function approve(address spender, uint256 amount) returns (bool)'],
+              signer
+            );
+
+            // Request approval
+            const approveTx = await tokenContract.approve(result.approvalTarget, ethers.MaxUint256);
+            
+            notifyUser({
+              type: 'info',
+              title: 'Approving...',
+              message: 'Waiting for approval confirmation',
+              duration: 30000
+            });
+
+            await approveTx.wait();
+          }
+
+          // Now execute the swap
+          notifyUser({
+            type: 'info',
+            title: 'Executing Swap',
+            message: 'Please confirm the transaction in your wallet',
+            duration: 10000
+          });
+
+          // Send the transaction
+          const tx = await signer.sendTransaction({
+            to: result.transaction.to,
+            data: result.transaction.data,
+            value: result.transaction.value,
+            chainId: parseInt(result.transaction.chainId)
+          });
+
           notifyUser({
             type: 'success',
-            title: 'Swap Initiated! 🚀',
-            message: `Swapping ${sellAmount} ${sellToken.symbol} → ${ethers.formatUnits(currentQuote.buyAmount, buyToken.decimals || 18)} ${buyToken.symbol}`,
-            duration: 20000,
-            action: result.txHash ? {
+            title: 'Transaction Submitted! 🚀',
+            message: `Swapping ${sellAmount} ${sellToken.symbol} → ${buyToken.symbol}`,
+            duration: 30000,
+            action: {
               label: 'View Transaction',
-              onClick: () => window.open(`https://etherscan.io/tx/${result.txHash}`, '_blank')
-            } : undefined
+              onClick: () => window.open(`https://etherscan.io/tx/${tx.hash}`, '_blank')
+            }
           });
+
+          // Wait for confirmation
+          const receipt = await tx.wait();
+          
+          if (receipt.status === 1) {
+            notifyUser({
+              type: 'success',
+              title: 'Swap Complete! 🎉',
+              message: `Successfully swapped ${sellAmount} ${sellToken.symbol}`,
+              duration: 60000,
+              action: {
+                label: 'View Transaction',
+                onClick: () => window.open(`https://etherscan.io/tx/${tx.hash}`, '_blank')
+              }
+            });
+          } else {
+            throw new Error('Transaction failed');
+          }
 
           // Clear form
           setSellAmount("");
